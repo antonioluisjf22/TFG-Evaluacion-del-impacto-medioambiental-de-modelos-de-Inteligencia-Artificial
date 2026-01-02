@@ -36,7 +36,7 @@ Combina investigación académica rigurosa con prototipo funcional:
 Este es el mayor diferenciador del proyecto. La herramienta debe mostrar cómo el mismo modelo tiene diferentes impactos según la ubicación geográfica y el centro de datos:
 
 - Por ejemplo: *"Un modelo en Noruega (92% renovable) emite 0.5 kg CO2, pero en Polonia (80% carbón) emite 3.2 kg CO2"*
-- **Integración de datos reales:** Electricity Map API para obtener mix energético por región en tiempo real.
+- **Integración de datos reales:** Electricity Map API para obtener mix energético por región en tiempo real. Climatiq API para obtener factores de emisión que incluyen PUE en sus cálculos
 - **Aplicación de ML:** Desarrollar modelos predictivos que estimen impacto según características del modelo (parámetros, FLOPS) y ubicación geográfica.
 - **Análisis de tendencias:** Visualizar cómo cambia el impacto a lo largo del tiempo según transición energética de cada país y centro de datos.
 - **Variación en base al tiempo de ejecución**: Tener en cuenta también el impacto acumulativo en base al tiempo de empleo.
@@ -68,6 +68,7 @@ Combinaciones: "Mejor modelo para balance rendimiento-carbono"
 ### Capa 1: Recopilación y Gestión de Datos
 - **Características de modelos:** Parámetros, FLOPS, consumo energético reportado (papers, benchmarks públicos)
 - **Mix energético por región:** Electricity Map API, datos históricos de operadores energéticos.
+- **Cálculo de PUE para distintos centros de datos**: Climatiq API: Proporciona factores de emisión que incluyen PUE en sus cálculos. https://www.climatiq.io/ 
 > [!TIP]
 > BUSCAR TAMBIÉN DATOS ESPECÍFICOS DE LOS CENTROS DE DATOS (AWS, AZURE...)
 
@@ -187,8 +188,8 @@ Proponer un **badge/certificación que modelos pueden obtener** si cumplen ciert
 | Fase | Objetivo | Resultado/Entregables | Duración Aprox. |
 |------|----------|---|---|
 | **Investigación & Research** | Entender fórmulas (FLOPS→Watts→CO2), metodologías, estado del arte. Buscar información sobre ML CO2 Impact, DeepGreen, CodeCarbon. Investigar características y consumo energético de 5-10 modelos base | Documento técnico de 15-20 pgs, comparativa análisis de herramientas existentes, papers referenciados, tabla con características de modelos (parámetros, FLOPS, consumo energético) | 2-3 semanas |
-| **Recopilación de Datos** | Identificar y validar fuentes de datos confiables: mix energético por región (Electricity Map API), PUE de data centers (AWS, Azure), métricas de rendimiento por modelo y tarea | Dataset consolidado con fuentes documentadas y trazables, validación de precisión de datos | 1-2 semanas |
-| **Prototipo V1** | Comparador básico funcional: 5-10 modelos + 3-5 regiones geográficas. Motor de cálculo básico (MWh × PUE × CI) | Dashboard simple pero preciso, cálculos de CO2 validados contra otras herramientas, integración con Electricity Map API, tabla comparativa de modelos | 3-4 semanas |
+| **Recopilación de Datos** | Identificar y validar fuentes de datos confiables: mix energético por región (Electricity Map API), PUE de data centers (AWS, Azure, Climatiq API), métricas de rendimiento por modelo y tarea | Dataset consolidado con fuentes documentadas y trazables, validación de precisión de datos | 1-2 semanas |
+| **Prototipo V1** | Comparador básico funcional: 5-10 modelos + 3-5 regiones geográficas. Motor de cálculo básico (MWh × PUE × CI) | Dashboard simple pero preciso, cálculos de CO2 validados contra otras herramientas, integración con Electricity Map API y Climatiq API, tabla comparativa de modelos | 3-4 semanas |
 | **Prototipo V2** | Agregar visualizaciones avanzadas y etiquetado energético. Implementar sistema de scoring (A+++, A+, A, B, C, etc.). Personalización según restricciones del usuario | Sistema de scoring como electrodomésticos, gráficos interactivos, modos de visualización (Rendimiento/Sostenible/Balanceado), primera versión de interfaces personalizadas | 3-4 semanas |
 | **Feature: Trade-offs** | Implementar calculadora interactiva de Pareto. Visualizar frontera de eficiencia entre rendimiento y sostenibilidad | Gráfico interactivo de frontera de Pareto, interactividad al pasar ratón sobre modelos (de momento opcional), análisis de qué se gana/pierde al cambiar de modelo | 1-2 semanas |
 | **Feature: Simulador** | Implementar escenarios de producción con impacto acumulativo. Inputs: modelo, frecuencia ejecución, días operativo, región | Calculadora avanzada, outputs en kg CO2/año, equivalente en árboles, costo en $, comparativas visuales, cálculo de impacto según tiempo de uso | 1-2 semanas |
