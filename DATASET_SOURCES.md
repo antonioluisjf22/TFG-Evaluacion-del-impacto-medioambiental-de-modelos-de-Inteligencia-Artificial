@@ -1,6 +1,6 @@
 # DATASET SOURCES DOCUMENTATION
 
-**Última actualización**: 2026-01-12
+**Última actualización**: 2026-01-13
 
 ---
 
@@ -108,15 +108,20 @@ Características de eficiencia de 10 data centers de 4 proveedores principales, 
 | azure-global | Azure | 1.12 | https://azure.microsoft.com/en-us/global-infrastructure/sustainability/ | 2026-01-08 | 93% |
 | aws-global | AWS | 1.15 | https://sustainability.aboutamazon.com/ | 2026-01-08 | 95% |
 
-**ACTUALIZACIÓN 2026-01-12**: Dataset expandido a 43 data centers completos
+**ACTUALIZACIÓN 2026-01-13**: Dataset expandido a 71 data centers completos, reorganizados por proveedor
 
 | Proveedor | Cantidad | PUE Rango | PUE Promedio | Confianza |
 |-----------|----------|-----------|------------|-----------|
-| Google Cloud | 14 | 1.06-1.13 | 1.095 | 100% |
-| AWS | 16 | 1.09-1.42 | 1.170 | 100% |
-| Microsoft Azure | 12 | 1.14-1.30 | 1.174 | 100% |
-| Deep Green | 1 | 1.00 | 1.00 | 100% |
-| **TOTAL** | **43** | **1.00-1.42** | **1.15** | **100%** |
+| Google Cloud | 31 | 1.06-1.16 | 1.090 | 100% |
+| AWS | 21 | 1.09-1.46 | 1.200 | 100% |
+| Microsoft Azure | 19 | 1.12-1.30 | 1.180 | 100% |
+| Deep Green | 1 | 1.005 | 1.005 | 100% |
+| **TOTAL** | **72** | **1.005-1.46** | **1.147** | **100%** |
+
+**Nuevos Data Centers Agregados (2026-01-13)**:
+- **AWS**: 6 nuevas regiones - ap-south-2 (Hyderabad, 1.46 PUE), ap-southeast-2, me-south-1, ca-west-1, us-west-1, cn-north-1
+- **Azure**: 7 nuevas regiones - arizona, illinois, iowa, texas, washington, wyoming, singapore
+- **GCP**: 16 nuevas regiones - us-ga1, us-nv1, us-al1, us-nc1, us-va1-a/b, us-tx1, us-ok1, us-tn1, us-oh1, us-ne1, us-nv2, us-or1-a, us-ia1-b, au-sy1, au-mel1
 
 ### Metodología de Recopilación
 

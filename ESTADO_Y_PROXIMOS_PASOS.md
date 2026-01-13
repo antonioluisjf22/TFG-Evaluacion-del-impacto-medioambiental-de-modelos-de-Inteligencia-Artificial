@@ -1,6 +1,6 @@
 # 📊 ESTADO Y PRÓXIMOS PASOS - TFG Impacto Medioambiental AI
 
-**Actualizado**: 2026-01-12 | **Progreso**: 75% (6/8 tareas)
+**Actualizado**: 2026-01-13 | **Progreso**: 75% (6/8 tareas)
 
 ---
 
@@ -10,14 +10,14 @@
 |-----------|--------|----------|
 | **Estructura carpetas** | ✅ | datasets/raw/{models, data_centers, carbon_intensity, energy_consumption, model_performance} |
 | **Modelos AI** | ✅ | 10 modelos (GPT-4, Llama2, Mistral, Claude, BERT, ViT, PaLM, Falcon, MPT, OPT) |
-| **Data Centers** | ✅ | 43 data centers (AWS, Azure, GCP, Deep Green) - PUE 1.00-1.42 |
+| **Data Centers** | ✅ | 71 data centers (AWS 21, Azure 19, GCP 31, Deep Green 1) - PUE 1.005-1.46 |
 | **FLOPS** | ✅ | Todos validados en papers/reportes |
 | **models.csv** | ✅ | 2.06 KB, 10 registros, confianza 84.9% |
-| **data_centers.csv** | ✅ | 8.3 KB, 43 registros, confianza 100% |
+| **data_centers.csv** | ✅ | Actualizado con 71 registros, confianza 100% |
 | **DATASET_SOURCES.md** | ✅ | Trazabilidad completa de todas las fuentes |
 | **Carbon Intensity API** | ⏳ | Pendiente: Registrarse + Probar |
 
-**Total datos**: 53 registros | **Confianza global**: 94.5%
+**Total datos**: 81 registros | **Confianza global**: 94.5%
 
 ---
 

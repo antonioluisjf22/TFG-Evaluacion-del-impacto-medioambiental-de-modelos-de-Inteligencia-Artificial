@@ -9,7 +9,7 @@ from datetime import datetime
 import os
 
 # Crear directorio si no existe
-output_dir = "datasets/raw/data_centers"
+output_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "datasets/raw/data_centers")
 os.makedirs(output_dir, exist_ok=True)
 
 # ===== DATOS DE DATA CENTERS =====
@@ -198,6 +198,78 @@ data_centers_data = [
         "confidence": 1.00,
         "data_type": "Official Report 2024"
     },
+    {
+        "dc_id": "aws-ap-south-2",
+        "provider_name": "AWS",
+        "region": "ap-south-2 (Hyderabad)",
+        "country_code": "IN",
+        "pue": 1.46,
+        "cooling_type": "Chiller",
+        "notes": "Asia-Pacific Hyderabad. Very high PUE due to hot climate.",
+        "source_url": "aws-wue-pue.csv",
+        "confidence": 1.00,
+        "data_type": "Official Report 2024"
+    },
+    {
+        "dc_id": "aws-ap-southeast-2",
+        "provider_name": "AWS",
+        "region": "ap-southeast-2 (Sydney)",
+        "country_code": "AU",
+        "pue": 1.15,
+        "cooling_type": "Chiller",
+        "notes": "Sydney, Australia. No PUE data available; using regional average.",
+        "source_url": "aws-wue-pue.csv",
+        "confidence": 0.85,
+        "data_type": "Official Report 2024"
+    },
+    {
+        "dc_id": "aws-me-south-1",
+        "provider_name": "AWS",
+        "region": "me-south-1 (Bahrain)",
+        "country_code": "BH",
+        "pue": 1.33,
+        "cooling_type": "Chiller",
+        "notes": "Middle East Bahrain region.",
+        "source_url": "aws-wue-pue.csv",
+        "confidence": 1.00,
+        "data_type": "Official Report 2024"
+    },
+    {
+        "dc_id": "aws-ca-west-1",
+        "provider_name": "AWS",
+        "region": "ca-west-1 (Canada West)",
+        "country_code": "CA",
+        "pue": 1.17,
+        "cooling_type": "Air Cooling",
+        "notes": "Western Canada region.",
+        "source_url": "aws-wue-pue.csv",
+        "confidence": 1.00,
+        "data_type": "Official Report 2024"
+    },
+    {
+        "dc_id": "aws-us-west-1",
+        "provider_name": "AWS",
+        "region": "us-west-1 (Northern California)",
+        "country_code": "US",
+        "pue": 1.18,
+        "cooling_type": "Evaporative",
+        "notes": "US West (N. California).",
+        "source_url": "aws-wue-pue.csv",
+        "confidence": 1.00,
+        "data_type": "Official Report 2024"
+    },
+    {
+        "dc_id": "aws-cn-north-1",
+        "provider_name": "AWS",
+        "region": "cn-north-1 (Ningxia)",
+        "country_code": "CN",
+        "pue": 1.25,
+        "cooling_type": "Chiller",
+        "notes": "China Ningxia region.",
+        "source_url": "aws-wue-pue.csv",
+        "confidence": 1.00,
+        "data_type": "Official Report 2024"
+    },
 
     # ==========================================
     # MICROSOFT AZURE
@@ -319,6 +391,78 @@ data_centers_data = [
         "pue": 1.30,
         "cooling_type": "Recycled Water Cooling",
         "notes": "Tropical climate. Uses reclaimed NEWater for cooling.",
+        "source_url": "https://datacenters.microsoft.com/sustainability/efficiency/",
+        "confidence": 1.00,
+        "data_type": "Official Website"
+    },
+    {
+        "dc_id": "azure-arizona",
+        "provider_name": "Microsoft Azure",
+        "region": "arizona (Arizona)",
+        "country_code": "US",
+        "pue": 1.13,
+        "cooling_type": "Evaporative",
+        "notes": "Arizona region.",
+        "source_url": "https://datacenters.microsoft.com/sustainability/efficiency/",
+        "confidence": 1.00,
+        "data_type": "Official Website"
+    },
+    {
+        "dc_id": "azure-illinois",
+        "provider_name": "Microsoft Azure",
+        "region": "illinois (Illinois)",
+        "country_code": "US",
+        "pue": 1.25,
+        "cooling_type": "Traditional Chiller",
+        "notes": "Illinois region.",
+        "source_url": "https://datacenters.microsoft.com/sustainability/efficiency/",
+        "confidence": 1.00,
+        "data_type": "Official Website"
+    },
+    {
+        "dc_id": "azure-iowa",
+        "provider_name": "Microsoft Azure",
+        "region": "iowa (Iowa)",
+        "country_code": "US",
+        "pue": 1.16,
+        "cooling_type": "Adiabatic",
+        "notes": "Iowa region.",
+        "source_url": "https://datacenters.microsoft.com/sustainability/efficiency/",
+        "confidence": 1.00,
+        "data_type": "Official Website"
+    },
+    {
+        "dc_id": "azure-texas",
+        "provider_name": "Microsoft Azure",
+        "region": "texas (Texas)",
+        "country_code": "US",
+        "pue": 1.28,
+        "cooling_type": "Chiller",
+        "notes": "Texas region. High PUE due to heat.",
+        "source_url": "https://datacenters.microsoft.com/sustainability/efficiency/",
+        "confidence": 1.00,
+        "data_type": "Official Website"
+    },
+    {
+        "dc_id": "azure-washington",
+        "provider_name": "Microsoft Azure",
+        "region": "washington (Washington)",
+        "country_code": "US",
+        "pue": 1.16,
+        "cooling_type": "Evaporative",
+        "notes": "Washington state region.",
+        "source_url": "https://datacenters.microsoft.com/sustainability/efficiency/",
+        "confidence": 1.00,
+        "data_type": "Official Website"
+    },
+    {
+        "dc_id": "azure-wyoming",
+        "provider_name": "Microsoft Azure",
+        "region": "wyoming (Wyoming)",
+        "country_code": "US",
+        "pue": 1.12,
+        "cooling_type": "Free Cooling",
+        "notes": "Wyoming region. Efficient due to cool climate.",
         "source_url": "https://datacenters.microsoft.com/sustainability/efficiency/",
         "confidence": 1.00,
         "data_type": "Official Website"
@@ -529,6 +673,198 @@ data_centers_data = [
         "pue": 1.06,
         "cooling_type": "Adiabatic",
         "notes": "Columbus / New Albany. One of the newest and most efficient.",
+        "source_url": "Google 2025 Environmental Report",
+        "confidence": 1.00,
+        "data_type": "Official Report 2024"
+    },
+    {
+        "dc_id": "gcp-us-ga1",
+        "provider_name": "Google Cloud",
+        "region": "us-ga1 (Georgia)",
+        "country_code": "US",
+        "pue": 1.09,
+        "cooling_type": "Adiabatic",
+        "notes": "Douglas County, Georgia.",
+        "source_url": "Google 2025 Environmental Report",
+        "confidence": 1.00,
+        "data_type": "Official Report 2024"
+    },
+    {
+        "dc_id": "gcp-us-nv1",
+        "provider_name": "Google Cloud",
+        "region": "us-nv1 (Nevada)",
+        "country_code": "US",
+        "pue": 1.09,
+        "cooling_type": "Adiabatic",
+        "notes": "Henderson, Nevada.",
+        "source_url": "Google 2025 Environmental Report",
+        "confidence": 1.00,
+        "data_type": "Official Report 2024"
+    },
+    {
+        "dc_id": "gcp-us-al1",
+        "provider_name": "Google Cloud",
+        "region": "us-al1 (Alabama)",
+        "country_code": "US",
+        "pue": 1.10,
+        "cooling_type": "Adiabatic",
+        "notes": "Jackson County, Alabama.",
+        "source_url": "Google 2025 Environmental Report",
+        "confidence": 1.00,
+        "data_type": "Official Report 2024"
+    },
+    {
+        "dc_id": "gcp-us-nc1",
+        "provider_name": "Google Cloud",
+        "region": "us-nc1 (North Carolina)",
+        "country_code": "US",
+        "pue": 1.13,
+        "cooling_type": "Air Cooling",
+        "notes": "Lenoir, North Carolina.",
+        "source_url": "Google 2025 Environmental Report",
+        "confidence": 1.00,
+        "data_type": "Official Report 2024"
+    },
+    {
+        "dc_id": "gcp-us-va1-a",
+        "provider_name": "Google Cloud",
+        "region": "us-va1 (Virginia, Facility A)",
+        "country_code": "US",
+        "pue": 1.09,
+        "cooling_type": "Adiabatic",
+        "notes": "Loudoun County, Virginia (1st facility).",
+        "source_url": "Google 2025 Environmental Report",
+        "confidence": 1.00,
+        "data_type": "Official Report 2024"
+    },
+    {
+        "dc_id": "gcp-us-va1-b",
+        "provider_name": "Google Cloud",
+        "region": "us-va1 (Virginia, Facility B)",
+        "country_code": "US",
+        "pue": 1.08,
+        "cooling_type": "Adiabatic",
+        "notes": "Loudoun County, Virginia (2nd facility).",
+        "source_url": "Google 2025 Environmental Report",
+        "confidence": 1.00,
+        "data_type": "Official Report 2024"
+    },
+    {
+        "dc_id": "gcp-us-tx1",
+        "provider_name": "Google Cloud",
+        "region": "us-tx1 (Texas)",
+        "country_code": "US",
+        "pue": 1.10,
+        "cooling_type": "Adiabatic",
+        "notes": "Midlothian, Texas.",
+        "source_url": "Google 2025 Environmental Report",
+        "confidence": 1.00,
+        "data_type": "Official Report 2024"
+    },
+    {
+        "dc_id": "gcp-us-ok1",
+        "provider_name": "Google Cloud",
+        "region": "us-ok1 (Oklahoma)",
+        "country_code": "US",
+        "pue": 1.11,
+        "cooling_type": "Adiabatic",
+        "notes": "Mayes County, Oklahoma.",
+        "source_url": "Google 2025 Environmental Report",
+        "confidence": 1.00,
+        "data_type": "Official Report 2024"
+    },
+    {
+        "dc_id": "gcp-us-tn1",
+        "provider_name": "Google Cloud",
+        "region": "us-tn1 (Tennessee)",
+        "country_code": "US",
+        "pue": 1.10,
+        "cooling_type": "Adiabatic",
+        "notes": "Montgomery County, Tennessee.",
+        "source_url": "Google 2025 Environmental Report",
+        "confidence": 1.00,
+        "data_type": "Official Report 2024"
+    },
+    {
+        "dc_id": "gcp-us-oh1",
+        "provider_name": "Google Cloud",
+        "region": "us-oh1 (Ohio)",
+        "country_code": "US",
+        "pue": 1.07,
+        "cooling_type": "Adiabatic",
+        "notes": "New Albany, Ohio.",
+        "source_url": "Google 2025 Environmental Report",
+        "confidence": 1.00,
+        "data_type": "Official Report 2024"
+    },
+    {
+        "dc_id": "gcp-us-ne1",
+        "provider_name": "Google Cloud",
+        "region": "us-ne1 (Nebraska)",
+        "country_code": "US",
+        "pue": 1.09,
+        "cooling_type": "Adiabatic",
+        "notes": "Papillion, Nebraska.",
+        "source_url": "Google 2025 Environmental Report",
+        "confidence": 1.00,
+        "data_type": "Official Report 2024"
+    },
+    {
+        "dc_id": "gcp-us-nv2",
+        "provider_name": "Google Cloud",
+        "region": "us-nv2 (Nevada, Facility 2)",
+        "country_code": "US",
+        "pue": 1.16,
+        "cooling_type": "Adiabatic",
+        "notes": "Storey County, Nevada.",
+        "source_url": "Google 2025 Environmental Report",
+        "confidence": 1.00,
+        "data_type": "Official Report 2024"
+    },
+    {
+        "dc_id": "gcp-us-or1-a",
+        "provider_name": "Google Cloud",
+        "region": "us-or1 (Oregon, Facility 2)",
+        "country_code": "US",
+        "pue": 1.06,
+        "cooling_type": "Evaporative",
+        "notes": "The Dalles, Oregon (2nd facility). Tied for best US efficiency.",
+        "source_url": "Google 2025 Environmental Report",
+        "confidence": 1.00,
+        "data_type": "Official Report 2024"
+    },
+    {
+        "dc_id": "gcp-us-ia1-b",
+        "provider_name": "Google Cloud",
+        "region": "us-ia1 (Iowa, Facility 2)",
+        "country_code": "US",
+        "pue": 1.07,
+        "cooling_type": "Adiabatic",
+        "notes": "Council Bluffs, Iowa (2nd facility).",
+        "source_url": "Google 2025 Environmental Report",
+        "confidence": 1.00,
+        "data_type": "Official Report 2024"
+    },
+    {
+        "dc_id": "gcp-au-sy1",
+        "provider_name": "Google Cloud",
+        "region": "au-sy1 (Sydney)",
+        "country_code": "AU",
+        "pue": 1.07,
+        "cooling_type": "Adiabatic",
+        "notes": "Sydney, Australia.",
+        "source_url": "Google 2025 Environmental Report",
+        "confidence": 1.00,
+        "data_type": "Official Report 2024"
+    },
+    {
+        "dc_id": "gcp-au-mel1",
+        "provider_name": "Google Cloud",
+        "region": "au-mel1 (Melbourne)",
+        "country_code": "AU",
+        "pue": 1.08,
+        "cooling_type": "Adiabatic",
+        "notes": "Melbourne, Australia.",
         "source_url": "Google 2025 Environmental Report",
         "confidence": 1.00,
         "data_type": "Official Report 2024"
