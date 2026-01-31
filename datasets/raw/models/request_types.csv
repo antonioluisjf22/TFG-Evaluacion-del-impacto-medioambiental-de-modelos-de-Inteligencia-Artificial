@@ -1,0 +1,14 @@
+request_type_id,model_type,tokens_input_avg,tokens_output_avg,description
+chat_simple,LLM,50,100,Pregunta-respuesta corta
+chat_extended,LLM,200,500,Conversación extendida
+generation_short,LLM,20,256,Generación de texto corto
+generation_long,LLM,50,2048,Generación de texto largo
+summarization,LLM,1000,200,Resumen de documento
+code_generation,LLM,100,300,Generación de código
+translation,LLM,200,220,Traducción de texto
+image_classification,Vision,196,10,Clasificación de imagen
+image_captioning,Vision,196,50,Descripción de imagen
+visual_qa,Vision,250,100,Pregunta sobre imagen
+text_classification,Classification,128,1,Clasificación de texto
+sentiment_analysis,Classification,64,1,Análisis de sentimiento
+ner,Classification,100,50,Reconocimiento de entidades
