@@ -1,7 +1,18 @@
 #!/usr/bin/env python3
 """
-Script para extraer información de Data Centers (Solo PUE, sin % Renovables)
+Script para extraer información de Data Centers (PUE + % Renovables declarado)
 Genera: datasets/raw/data_centers/data_centers.csv
+
+NOTA SOBRE provider_renewable_pct:
+Este campo representa el % de energía renovable DECLARADO por el proveedor,
+basado en contratos PPA (Power Purchase Agreements) y certificados verdes.
+NO representa el mix real de la red eléctrica local (ver carbon_intensity_api).
+
+Fuentes de compromisos de renovables:
+- AWS: https://sustainability.aboutamazon.com/products-services/the-cloud
+- Google Cloud: https://sustainability.google/operating-sustainably/
+- Microsoft Azure: https://azure.microsoft.com/en-us/explore/global-infrastructure/sustainability
+- Deep Green: https://deepgreen.energy/sustainability/
 """
 
 import pandas as pd
@@ -11,6 +22,16 @@ import os
 # Crear directorio si no existe
 output_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "datasets/raw/data_centers")
 os.makedirs(output_dir, exist_ok=True)
+
+# ===== COMPROMISOS DE RENOVABLES POR PROVEEDOR =====
+# Estos son los % declarados por cada proveedor (PPAs, certificados verdes)
+# Fuente: Reportes de sostenibilidad oficiales 2024-2025
+PROVIDER_RENEWABLE_CLAIMS = {
+    "AWS": 100,           # 100% renovable desde 2025 (objetivo alcanzado)
+    "Google Cloud": 100,  # 100% desde 2017 (carbon matching)
+    "Microsoft Azure": 100,  # 100% desde 2025
+    "Deep Green": 100,    # 100% declarado (energía verde certificada)
+}
 
 # ===== DATOS DE DATA CENTERS =====
 data_centers_data = [
@@ -898,10 +919,13 @@ df = df.sort_values('pue').reset_index(drop=True)
 # Agregar columna de timestamp
 df['data_collected_date'] = datetime.now().strftime('%Y-%m-%d')
 
-# Seleccionar columnas finales (SIN RENEWABLES)
+# Agregar provider_renewable_pct basado en los compromisos del proveedor
+df['provider_renewable_pct'] = df['provider_name'].map(PROVIDER_RENEWABLE_CLAIMS).fillna(0).astype(int)
+
+# Seleccionar columnas finales (CON RENEWABLES declarado)
 output_columns = [
     'dc_id', 'provider_name', 'region', 'country_code',
-    'pue', 'cooling_type', 'notes',
+    'pue', 'provider_renewable_pct', 'cooling_type', 'notes',
     'source_url', 'confidence', 'data_type', 'data_collected_date'
 ]
 df = df[output_columns]

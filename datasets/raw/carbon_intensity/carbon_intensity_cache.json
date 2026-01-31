@@ -1,0 +1,1105 @@
+{
+  "all_zones": {
+    "zones": {
+      "AE": {
+        "zoneName": "AE"
+      },
+      "AF": {
+        "zoneName": "AF"
+      },
+      "AG": {
+        "zoneName": "AG"
+      },
+      "AL": {
+        "zoneName": "AL"
+      },
+      "AM": {
+        "zoneName": "AM"
+      },
+      "AO": {
+        "zoneName": "AO"
+      },
+      "AR": {
+        "zoneName": "AR"
+      },
+      "AT": {
+        "zoneName": "AT"
+      },
+      "AU": {
+        "zoneName": "AU"
+      },
+      "AU-NSW": {
+        "zoneName": "AU-NSW"
+      },
+      "AU-NT": {
+        "zoneName": "AU-NT"
+      },
+      "AU-QLD": {
+        "zoneName": "AU-QLD"
+      },
+      "AU-SA": {
+        "zoneName": "AU-SA"
+      },
+      "AU-TAS": {
+        "zoneName": "AU-TAS"
+      },
+      "AU-TAS-FI": {
+        "zoneName": "AU-TAS-FI"
+      },
+      "AU-TAS-KI": {
+        "zoneName": "AU-TAS-KI"
+      },
+      "AU-VIC": {
+        "zoneName": "AU-VIC"
+      },
+      "AU-WA": {
+        "zoneName": "AU-WA"
+      },
+      "AU-WA-RI": {
+        "zoneName": "AU-WA-RI"
+      },
+      "AW": {
+        "zoneName": "AW"
+      },
+      "AX": {
+        "zoneName": "AX"
+      },
+      "AZ": {
+        "zoneName": "AZ"
+      },
+      "BA": {
+        "zoneName": "BA"
+      },
+      "BB": {
+        "zoneName": "BB"
+      },
+      "BD": {
+        "zoneName": "BD"
+      },
+      "BE": {
+        "zoneName": "BE"
+      },
+      "BF": {
+        "zoneName": "BF"
+      },
+      "BG": {
+        "zoneName": "BG"
+      },
+      "BH": {
+        "zoneName": "BH"
+      },
+      "BI": {
+        "zoneName": "BI"
+      },
+      "BJ": {
+        "zoneName": "BJ"
+      },
+      "BN": {
+        "zoneName": "BN"
+      },
+      "BO": {
+        "zoneName": "BO"
+      },
+      "BR": {
+        "zoneName": "BR"
+      },
+      "BR-CS": {
+        "zoneName": "BR-CS"
+      },
+      "BR-N": {
+        "zoneName": "BR-N"
+      },
+      "BR-NE": {
+        "zoneName": "BR-NE"
+      },
+      "BR-S": {
+        "zoneName": "BR-S"
+      },
+      "BS": {
+        "zoneName": "BS"
+      },
+      "BT": {
+        "zoneName": "BT"
+      },
+      "BW": {
+        "zoneName": "BW"
+      },
+      "BY": {
+        "zoneName": "BY"
+      },
+      "BZ": {
+        "zoneName": "BZ"
+      },
+      "CA": {
+        "zoneName": "CA"
+      },
+      "CA-AB": {
+        "zoneName": "CA-AB"
+      },
+      "CA-BC": {
+        "zoneName": "CA-BC"
+      },
+      "CA-MB": {
+        "zoneName": "CA-MB"
+      },
+      "CA-NB": {
+        "zoneName": "CA-NB"
+      },
+      "CA-NL": {
+        "zoneName": "CA-NL"
+      },
+      "CA-NS": {
+        "zoneName": "CA-NS"
+      },
+      "CA-NT": {
+        "zoneName": "CA-NT"
+      },
+      "CA-NU": {
+        "zoneName": "CA-NU"
+      },
+      "CA-ON": {
+        "zoneName": "CA-ON"
+      },
+      "CA-PE": {
+        "zoneName": "CA-PE"
+      },
+      "CA-QC": {
+        "zoneName": "CA-QC"
+      },
+      "CA-SK": {
+        "zoneName": "CA-SK"
+      },
+      "CA-YT": {
+        "zoneName": "CA-YT"
+      },
+      "CD": {
+        "zoneName": "CD"
+      },
+      "CF": {
+        "zoneName": "CF"
+      },
+      "CG": {
+        "zoneName": "CG"
+      },
+      "CH": {
+        "zoneName": "CH"
+      },
+      "CI": {
+        "zoneName": "CI"
+      },
+      "CL-SEN": {
+        "zoneName": "CL-SEN"
+      },
+      "CM": {
+        "zoneName": "CM"
+      },
+      "CN": {
+        "zoneName": "CN"
+      },
+      "CO": {
+        "zoneName": "CO"
+      },
+      "CR": {
+        "zoneName": "CR"
+      },
+      "CU": {
+        "zoneName": "CU"
+      },
+      "CV": {
+        "zoneName": "CV"
+      },
+      "CW": {
+        "zoneName": "CW"
+      },
+      "CY": {
+        "zoneName": "CY"
+      },
+      "CZ": {
+        "zoneName": "CZ"
+      },
+      "DE": {
+        "zoneName": "DE"
+      },
+      "DJ": {
+        "zoneName": "DJ"
+      },
+      "DK": {
+        "zoneName": "DK"
+      },
+      "DK-BHM": {
+        "zoneName": "DK-BHM"
+      },
+      "DK-DK1": {
+        "zoneName": "DK-DK1"
+      },
+      "DK-DK2": {
+        "zoneName": "DK-DK2"
+      },
+      "DM": {
+        "zoneName": "DM"
+      },
+      "DO": {
+        "zoneName": "DO"
+      },
+      "DZ": {
+        "zoneName": "DZ"
+      },
+      "EC": {
+        "zoneName": "EC"
+      },
+      "EE": {
+        "zoneName": "EE"
+      },
+      "EG": {
+        "zoneName": "EG"
+      },
+      "ER": {
+        "zoneName": "ER"
+      },
+      "ES": {
+        "zoneName": "ES"
+      },
+      "ES-CE": {
+        "zoneName": "ES-CE"
+      },
+      "ES-CN-FV": {
+        "zoneName": "ES-CN-FV"
+      },
+      "ES-CN-GC": {
+        "zoneName": "ES-CN-GC"
+      },
+      "ES-CN-HI": {
+        "zoneName": "ES-CN-HI"
+      },
+      "ES-CN-IG": {
+        "zoneName": "ES-CN-IG"
+      },
+      "ES-CN-LP": {
+        "zoneName": "ES-CN-LP"
+      },
+      "ES-CN-LZ": {
+        "zoneName": "ES-CN-LZ"
+      },
+      "ES-CN-TE": {
+        "zoneName": "ES-CN-TE"
+      },
+      "ES-IB-FO": {
+        "zoneName": "ES-IB-FO"
+      },
+      "ES-IB-IZ": {
+        "zoneName": "ES-IB-IZ"
+      },
+      "ES-IB-MA": {
+        "zoneName": "ES-IB-MA"
+      },
+      "ES-IB-ME": {
+        "zoneName": "ES-IB-ME"
+      },
+      "ES-ML": {
+        "zoneName": "ES-ML"
+      },
+      "ET": {
+        "zoneName": "ET"
+      },
+      "FI": {
+        "zoneName": "FI"
+      },
+      "FJ": {
+        "zoneName": "FJ"
+      },
+      "FK": {
+        "zoneName": "FK"
+      },
+      "FM": {
+        "zoneName": "FM"
+      },
+      "FO": {
+        "zoneName": "FO"
+      },
+      "FO-MI": {
+        "zoneName": "FO-MI"
+      },
+      "FO-SI": {
+        "zoneName": "FO-SI"
+      },
+      "FR": {
+        "zoneName": "FR"
+      },
+      "FR-COR": {
+        "zoneName": "FR-COR"
+      },
+      "GA": {
+        "zoneName": "GA"
+      },
+      "GB": {
+        "zoneName": "GB"
+      },
+      "GB-NIR": {
+        "zoneName": "GB-NIR"
+      },
+      "GB-ORK": {
+        "zoneName": "GB-ORK"
+      },
+      "GE": {
+        "zoneName": "GE"
+      },
+      "GF": {
+        "zoneName": "GF"
+      },
+      "GH": {
+        "zoneName": "GH"
+      },
+      "GI": {
+        "zoneName": "GI"
+      },
+      "GL": {
+        "zoneName": "GL"
+      },
+      "GM": {
+        "zoneName": "GM"
+      },
+      "GN": {
+        "zoneName": "GN"
+      },
+      "GP": {
+        "zoneName": "GP"
+      },
+      "GQ": {
+        "zoneName": "GQ"
+      },
+      "GR": {
+        "zoneName": "GR"
+      },
+      "GS": {
+        "zoneName": "GS"
+      },
+      "GT": {
+        "zoneName": "GT"
+      },
+      "GU": {
+        "zoneName": "GU"
+      },
+      "GW": {
+        "zoneName": "GW"
+      },
+      "GY": {
+        "zoneName": "GY"
+      },
+      "HK": {
+        "zoneName": "HK"
+      },
+      "HN": {
+        "zoneName": "HN"
+      },
+      "HR": {
+        "zoneName": "HR"
+      },
+      "HT": {
+        "zoneName": "HT"
+      },
+      "HU": {
+        "zoneName": "HU"
+      },
+      "ID": {
+        "zoneName": "ID"
+      },
+      "IE": {
+        "zoneName": "IE"
+      },
+      "IL": {
+        "zoneName": "IL"
+      },
+      "IN": {
+        "zoneName": "IN"
+      },
+      "IN-EA": {
+        "zoneName": "IN-EA"
+      },
+      "IN-NE": {
+        "zoneName": "IN-NE"
+      },
+      "IN-NO": {
+        "zoneName": "IN-NO"
+      },
+      "IN-SO": {
+        "zoneName": "IN-SO"
+      },
+      "IN-WE": {
+        "zoneName": "IN-WE"
+      },
+      "IQ": {
+        "zoneName": "IQ"
+      },
+      "IR": {
+        "zoneName": "IR"
+      },
+      "IS": {
+        "zoneName": "IS"
+      },
+      "IT": {
+        "zoneName": "IT"
+      },
+      "IT-CNO": {
+        "zoneName": "IT-CNO"
+      },
+      "IT-CSO": {
+        "zoneName": "IT-CSO"
+      },
+      "IT-NO": {
+        "zoneName": "IT-NO"
+      },
+      "IT-SAR": {
+        "zoneName": "IT-SAR"
+      },
+      "IT-SIC": {
+        "zoneName": "IT-SIC"
+      },
+      "IT-SO": {
+        "zoneName": "IT-SO"
+      },
+      "JM": {
+        "zoneName": "JM"
+      },
+      "JO": {
+        "zoneName": "JO"
+      },
+      "JP": {
+        "zoneName": "JP"
+      },
+      "JP-CB": {
+        "zoneName": "JP-CB"
+      },
+      "JP-CG": {
+        "zoneName": "JP-CG"
+      },
+      "JP-HKD": {
+        "zoneName": "JP-HKD"
+      },
+      "JP-HR": {
+        "zoneName": "JP-HR"
+      },
+      "JP-KN": {
+        "zoneName": "JP-KN"
+      },
+      "JP-KY": {
+        "zoneName": "JP-KY"
+      },
+      "JP-ON": {
+        "zoneName": "JP-ON"
+      },
+      "JP-SK": {
+        "zoneName": "JP-SK"
+      },
+      "JP-TH": {
+        "zoneName": "JP-TH"
+      },
+      "JP-TK": {
+        "zoneName": "JP-TK"
+      },
+      "KE": {
+        "zoneName": "KE"
+      },
+      "KG": {
+        "zoneName": "KG"
+      },
+      "KH": {
+        "zoneName": "KH"
+      },
+      "KM": {
+        "zoneName": "KM"
+      },
+      "KP": {
+        "zoneName": "KP"
+      },
+      "KR": {
+        "zoneName": "KR"
+      },
+      "KW": {
+        "zoneName": "KW"
+      },
+      "KY": {
+        "zoneName": "KY"
+      },
+      "KZ": {
+        "zoneName": "KZ"
+      },
+      "LA": {
+        "zoneName": "LA"
+      },
+      "LB": {
+        "zoneName": "LB"
+      },
+      "LC": {
+        "zoneName": "LC"
+      },
+      "LK": {
+        "zoneName": "LK"
+      },
+      "LR": {
+        "zoneName": "LR"
+      },
+      "LS": {
+        "zoneName": "LS"
+      },
+      "LT": {
+        "zoneName": "LT"
+      },
+      "LU": {
+        "zoneName": "LU"
+      },
+      "LV": {
+        "zoneName": "LV"
+      },
+      "LY": {
+        "zoneName": "LY"
+      },
+      "MA": {
+        "zoneName": "MA"
+      },
+      "MD": {
+        "zoneName": "MD"
+      },
+      "ME": {
+        "zoneName": "ME"
+      },
+      "MG": {
+        "zoneName": "MG"
+      },
+      "MK": {
+        "zoneName": "MK"
+      },
+      "ML": {
+        "zoneName": "ML"
+      },
+      "MM": {
+        "zoneName": "MM"
+      },
+      "MN": {
+        "zoneName": "MN"
+      },
+      "MO": {
+        "zoneName": "MO"
+      },
+      "MQ": {
+        "zoneName": "MQ"
+      },
+      "MR": {
+        "zoneName": "MR"
+      },
+      "MT": {
+        "zoneName": "MT"
+      },
+      "MU": {
+        "zoneName": "MU"
+      },
+      "MV": {
+        "zoneName": "MV"
+      },
+      "MW": {
+        "zoneName": "MW"
+      },
+      "MX": {
+        "zoneName": "MX"
+      },
+      "MY": {
+        "zoneName": "MY"
+      },
+      "MY-EM": {
+        "zoneName": "MY-EM"
+      },
+      "MY-WM": {
+        "zoneName": "MY-WM"
+      },
+      "MZ": {
+        "zoneName": "MZ"
+      },
+      "NA": {
+        "zoneName": "NA"
+      },
+      "NC": {
+        "zoneName": "NC"
+      },
+      "NE": {
+        "zoneName": "NE"
+      },
+      "NG": {
+        "zoneName": "NG"
+      },
+      "NI": {
+        "zoneName": "NI"
+      },
+      "NL": {
+        "zoneName": "NL"
+      },
+      "NO": {
+        "zoneName": "NO"
+      },
+      "NO-NO1": {
+        "zoneName": "NO-NO1"
+      },
+      "NO-NO2": {
+        "zoneName": "NO-NO2"
+      },
+      "NO-NO3": {
+        "zoneName": "NO-NO3"
+      },
+      "NO-NO4": {
+        "zoneName": "NO-NO4"
+      },
+      "NO-NO5": {
+        "zoneName": "NO-NO5"
+      },
+      "NP": {
+        "zoneName": "NP"
+      },
+      "NZ": {
+        "zoneName": "NZ"
+      },
+      "OM": {
+        "zoneName": "OM"
+      },
+      "PA": {
+        "zoneName": "PA"
+      },
+      "PE": {
+        "zoneName": "PE"
+      },
+      "PF": {
+        "zoneName": "PF"
+      },
+      "PG": {
+        "zoneName": "PG"
+      },
+      "PH": {
+        "zoneName": "PH"
+      },
+      "PH-LU": {
+        "zoneName": "PH-LU"
+      },
+      "PH-MI": {
+        "zoneName": "PH-MI"
+      },
+      "PH-VI": {
+        "zoneName": "PH-VI"
+      },
+      "PK": {
+        "zoneName": "PK"
+      },
+      "PL": {
+        "zoneName": "PL"
+      },
+      "PM": {
+        "zoneName": "PM"
+      },
+      "PR": {
+        "zoneName": "PR"
+      },
+      "PS": {
+        "zoneName": "PS"
+      },
+      "PT": {
+        "zoneName": "PT"
+      },
+      "PT-MA": {
+        "zoneName": "PT-MA"
+      },
+      "PW": {
+        "zoneName": "PW"
+      },
+      "PY": {
+        "zoneName": "PY"
+      },
+      "QA": {
+        "zoneName": "QA"
+      },
+      "RE": {
+        "zoneName": "RE"
+      },
+      "RO": {
+        "zoneName": "RO"
+      },
+      "RS": {
+        "zoneName": "RS"
+      },
+      "RU-1": {
+        "zoneName": "RU-1"
+      },
+      "RU-2": {
+        "zoneName": "RU-2"
+      },
+      "RU-AS": {
+        "zoneName": "RU-AS"
+      },
+      "RW": {
+        "zoneName": "RW"
+      },
+      "SA": {
+        "zoneName": "SA"
+      },
+      "SB": {
+        "zoneName": "SB"
+      },
+      "SC": {
+        "zoneName": "SC"
+      },
+      "SD": {
+        "zoneName": "SD"
+      },
+      "SE": {
+        "zoneName": "SE"
+      },
+      "SE-SE1": {
+        "zoneName": "SE-SE1"
+      },
+      "SE-SE2": {
+        "zoneName": "SE-SE2"
+      },
+      "SE-SE3": {
+        "zoneName": "SE-SE3"
+      },
+      "SE-SE4": {
+        "zoneName": "SE-SE4"
+      },
+      "SG": {
+        "zoneName": "SG"
+      },
+      "SI": {
+        "zoneName": "SI"
+      },
+      "SK": {
+        "zoneName": "SK"
+      },
+      "SL": {
+        "zoneName": "SL"
+      },
+      "SN": {
+        "zoneName": "SN"
+      },
+      "SO": {
+        "zoneName": "SO"
+      },
+      "SR": {
+        "zoneName": "SR"
+      },
+      "SS": {
+        "zoneName": "SS"
+      },
+      "ST": {
+        "zoneName": "ST"
+      },
+      "SV": {
+        "zoneName": "SV"
+      },
+      "SY": {
+        "zoneName": "SY"
+      },
+      "SZ": {
+        "zoneName": "SZ"
+      },
+      "TD": {
+        "zoneName": "TD"
+      },
+      "TG": {
+        "zoneName": "TG"
+      },
+      "TH": {
+        "zoneName": "TH"
+      },
+      "TJ": {
+        "zoneName": "TJ"
+      },
+      "TL": {
+        "zoneName": "TL"
+      },
+      "TM": {
+        "zoneName": "TM"
+      },
+      "TN": {
+        "zoneName": "TN"
+      },
+      "TO": {
+        "zoneName": "TO"
+      },
+      "TR": {
+        "zoneName": "TR"
+      },
+      "TT": {
+        "zoneName": "TT"
+      },
+      "TW": {
+        "zoneName": "TW"
+      },
+      "TZ": {
+        "zoneName": "TZ"
+      },
+      "UG": {
+        "zoneName": "UG"
+      },
+      "US": {
+        "zoneName": "US"
+      },
+      "US-AK": {
+        "zoneName": "US-AK"
+      },
+      "US-AK-SEAPA": {
+        "zoneName": "US-AK-SEAPA"
+      },
+      "US-CAL-BANC": {
+        "zoneName": "US-CAL-BANC"
+      },
+      "US-CAL-CISO": {
+        "zoneName": "US-CAL-CISO"
+      },
+      "US-CAL-IID": {
+        "zoneName": "US-CAL-IID"
+      },
+      "US-CAL-LDWP": {
+        "zoneName": "US-CAL-LDWP"
+      },
+      "US-CAL-TIDC": {
+        "zoneName": "US-CAL-TIDC"
+      },
+      "US-CAR-CPLE": {
+        "zoneName": "US-CAR-CPLE"
+      },
+      "US-CAR-CPLW": {
+        "zoneName": "US-CAR-CPLW"
+      },
+      "US-CAR-DUK": {
+        "zoneName": "US-CAR-DUK"
+      },
+      "US-CAR-SC": {
+        "zoneName": "US-CAR-SC"
+      },
+      "US-CAR-SCEG": {
+        "zoneName": "US-CAR-SCEG"
+      },
+      "US-CAR-YAD": {
+        "zoneName": "US-CAR-YAD"
+      },
+      "US-CENT-SPA": {
+        "zoneName": "US-CENT-SPA"
+      },
+      "US-CENT-SWPP": {
+        "zoneName": "US-CENT-SWPP"
+      },
+      "US-FLA-FMPP": {
+        "zoneName": "US-FLA-FMPP"
+      },
+      "US-FLA-FPC": {
+        "zoneName": "US-FLA-FPC"
+      },
+      "US-FLA-FPL": {
+        "zoneName": "US-FLA-FPL"
+      },
+      "US-FLA-GVL": {
+        "zoneName": "US-FLA-GVL"
+      },
+      "US-FLA-HST": {
+        "zoneName": "US-FLA-HST"
+      },
+      "US-FLA-JEA": {
+        "zoneName": "US-FLA-JEA"
+      },
+      "US-FLA-SEC": {
+        "zoneName": "US-FLA-SEC"
+      },
+      "US-FLA-TAL": {
+        "zoneName": "US-FLA-TAL"
+      },
+      "US-FLA-TEC": {
+        "zoneName": "US-FLA-TEC"
+      },
+      "US-HI": {
+        "zoneName": "US-HI"
+      },
+      "US-MIDA-PJM": {
+        "zoneName": "US-MIDA-PJM"
+      },
+      "US-MIDW-AECI": {
+        "zoneName": "US-MIDW-AECI"
+      },
+      "US-MIDW-LGEE": {
+        "zoneName": "US-MIDW-LGEE"
+      },
+      "US-MIDW-MISO": {
+        "zoneName": "US-MIDW-MISO"
+      },
+      "US-NE-ISNE": {
+        "zoneName": "US-NE-ISNE"
+      },
+      "US-NW-AVA": {
+        "zoneName": "US-NW-AVA"
+      },
+      "US-NW-BPAT": {
+        "zoneName": "US-NW-BPAT"
+      },
+      "US-NW-CHPD": {
+        "zoneName": "US-NW-CHPD"
+      },
+      "US-NW-DOPD": {
+        "zoneName": "US-NW-DOPD"
+      },
+      "US-NW-GCPD": {
+        "zoneName": "US-NW-GCPD"
+      },
+      "US-NW-GRID": {
+        "zoneName": "US-NW-GRID"
+      },
+      "US-NW-IPCO": {
+        "zoneName": "US-NW-IPCO"
+      },
+      "US-NW-NEVP": {
+        "zoneName": "US-NW-NEVP"
+      },
+      "US-NW-NWMT": {
+        "zoneName": "US-NW-NWMT"
+      },
+      "US-NW-PACE": {
+        "zoneName": "US-NW-PACE"
+      },
+      "US-NW-PACW": {
+        "zoneName": "US-NW-PACW"
+      },
+      "US-NW-PGE": {
+        "zoneName": "US-NW-PGE"
+      },
+      "US-NW-PSCO": {
+        "zoneName": "US-NW-PSCO"
+      },
+      "US-NW-PSEI": {
+        "zoneName": "US-NW-PSEI"
+      },
+      "US-NW-SCL": {
+        "zoneName": "US-NW-SCL"
+      },
+      "US-NW-TPWR": {
+        "zoneName": "US-NW-TPWR"
+      },
+      "US-NW-WACM": {
+        "zoneName": "US-NW-WACM"
+      },
+      "US-NW-WAUW": {
+        "zoneName": "US-NW-WAUW"
+      },
+      "US-NY-NYIS": {
+        "zoneName": "US-NY-NYIS"
+      },
+      "US-SE-SEPA": {
+        "zoneName": "US-SE-SEPA"
+      },
+      "US-SE-SOCO": {
+        "zoneName": "US-SE-SOCO"
+      },
+      "US-SW-AZPS": {
+        "zoneName": "US-SW-AZPS"
+      },
+      "US-SW-EPE": {
+        "zoneName": "US-SW-EPE"
+      },
+      "US-SW-PNM": {
+        "zoneName": "US-SW-PNM"
+      },
+      "US-SW-SRP": {
+        "zoneName": "US-SW-SRP"
+      },
+      "US-SW-TEPC": {
+        "zoneName": "US-SW-TEPC"
+      },
+      "US-SW-WALC": {
+        "zoneName": "US-SW-WALC"
+      },
+      "US-TEN-TVA": {
+        "zoneName": "US-TEN-TVA"
+      },
+      "US-TEX-ERCO": {
+        "zoneName": "US-TEX-ERCO"
+      },
+      "UY": {
+        "zoneName": "UY"
+      },
+      "UZ": {
+        "zoneName": "UZ"
+      },
+      "VC": {
+        "zoneName": "VC"
+      },
+      "VE": {
+        "zoneName": "VE"
+      },
+      "VI": {
+        "zoneName": "VI"
+      },
+      "VN": {
+        "zoneName": "VN"
+      },
+      "VU": {
+        "zoneName": "VU"
+      },
+      "WS": {
+        "zoneName": "WS"
+      },
+      "XK": {
+        "zoneName": "XK"
+      },
+      "YE": {
+        "zoneName": "YE"
+      },
+      "YT": {
+        "zoneName": "YT"
+      },
+      "ZA": {
+        "zoneName": "ZA"
+      },
+      "ZM": {
+        "zoneName": "ZM"
+      },
+      "ZW": {
+        "zoneName": "ZW"
+      }
+    },
+    "timestamp": "2026-01-28T18:11:17.552999",
+    "count": 352,
+    "source": "hardcoded_fallback"
+  },
+  "ci_ES": {
+    "carbonIntensity": 59,
+    "zone": "ES",
+    "timestamp": "2026-01-31T14:01:17.553613",
+    "source": "electricity_maps_api",
+    "fossilFreePercentage": null,
+    "renewablePercentage": null
+  },
+  "ci_IE": {
+    "carbonIntensity": 336,
+    "zone": "IE",
+    "timestamp": "2026-01-31T14:01:18.050557",
+    "source": "electricity_maps_api",
+    "fossilFreePercentage": null,
+    "renewablePercentage": null
+  },
+  "ci_US-MIDW-MISO": {
+    "carbonIntensity": 581,
+    "zone": "US-MIDW-MISO",
+    "timestamp": "2026-01-31T14:01:19.029842",
+    "source": "electricity_maps_api",
+    "fossilFreePercentage": null,
+    "renewablePercentage": null
+  },
+  "ci_DE": {
+    "carbonIntensity": 448,
+    "zone": "DE",
+    "timestamp": "2026-01-31T14:01:19.433433",
+    "source": "electricity_maps_api",
+    "fossilFreePercentage": null,
+    "renewablePercentage": null
+  },
+  "ci_BE": {
+    "carbonIntensity": 195,
+    "zone": "BE",
+    "timestamp": "2026-01-31T14:01:19.771916",
+    "source": "electricity_maps_api",
+    "fossilFreePercentage": null,
+    "renewablePercentage": null
+  }
+}
