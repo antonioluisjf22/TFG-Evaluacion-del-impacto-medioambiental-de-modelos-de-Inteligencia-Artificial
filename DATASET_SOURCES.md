@@ -184,10 +184,15 @@ Cada dato incluye:
 
 ---
 
-## � Tabla: `data_centers.csv`
+## 📋 Tabla: `data_centers.csv` (v2.0 + Enfoque Híbrido)
 
 ### Descripción
-Características de eficiencia de 10 data centers de 4 proveedores principales, incluyendo PUE (Power Usage Effectiveness), porcentaje de energía renovable, y detalles de refrigeración.
+Características de eficiencia de **71 data centers** de 6 proveedores principales, incluyendo PUE (Power Usage Effectiveness), porcentaje de energía renovable declarada, tipo de refrigeración, y datos de sostenibilidad verificados de reportes oficiales 2024-2025.
+
+**Nuevo en v2.0**: Integración con Electricity Maps API para obtener CI de cada DC mediante enfoque híbrido:
+- 38 DCs (53.5%) usan endpoint nativo de API: `dataCenterProvider + dataCenterRegion`
+- 33 DCs (46.5%) se mapean a zonas EM y se consultan genéricamente
+- Resultado: 2 nuevos CSVs relacionados (ver abajo)
 
 ### Fuentes Utilizadas
 
@@ -287,7 +292,28 @@ data_collected_date      : Fecha de extracción
 
 ---
 
-## ⚡ Tabla: `carbon_intensity.csv` (v1.0 - TIEMPO REAL)
+## ⚡ NUEVA SECCIÓN: Tablas de Carbon Intensity (v2.0 - Enfoque Híbrido)
+
+### 📋 Tabla: `carbon_intensity_datacenters.csv` (v2.0 - NUEVO)
+
+**Descripción**: Enriquecimiento automático de 71 DCs con CI de Electricity Maps API. 
+- Generado por: `carbon_intensity_api.py`
+- Método: 38 DCs via API nativo (api_native_datacenter) + 33 DCs via mapeo manual (manual_mapping)
+- Propósito: Tier 1 del sistema de 4-level fallback
+
+**Estadísticas**:
+- Total: 71 DCs
+- API nativo: 38 (53.5%) - máxima precisión
+- Mapeo manual: 33 (46.5%) - fallback robusto
+- CI rango: 21-589 gCO2/kWh
+- CI promedio: 361 gCO2/kWh
+- Zonas únicas: 39 (de 352 disponibles)
+
+**Campos**: dc_id, provider_name, region, country_code, electricity_maps_zone, carbon_intensity_gCO2/kWh, ci_method, renewable_percentage
+
+---
+
+## ⚡ Tabla: `carbon_intensity.csv` (v2.0 - FALLBACK TIER 2)
 
 ### Descripción
 Intensidades de carbono en tiempo real para **125+ zonas geográficas** (de 352 disponibles), obtenidas de Electricity Maps API v2.0. Incluye mapeo específico de **71 data centers** a sus zonas exactas. Se actualiza automáticamente con caché de 15 minutos y fallback de 352 zonas hardcodeadas cuando la API está rate-limited.
@@ -541,22 +567,29 @@ Donde:
 | Métrica | Valor |
 |---------|-------|
 | **Total Modelos** | 10 |
-| **Total Data Centers** | 71 |
-| **Total Dispositivos** | 20 |
+| **Total Data Centers** | 71 (AWS 25, GCP 15, Azure 12, Deep Green 8, Equinix 6, Oracle 5) |
+| **  - API nativo** | 38 (53.5%) |
+| **  - Mapeo manual** | 33 (46.5%) |
+| **Total Dispositivos** | 19 |
 | **Total Tipos de Red** | 15 |
-| **Total Zonas Carbon Intensity** | 32 (tiempo real) |
+| **Total Zonas EM (fallback tier 2)** | 125 (de 352 disponibles) |
+| **Total Zonas EM (DCs únicos)** | 39 |
 | **Total Tipos de Petición** | 13 |
 | **Modelos en HF** | 7 (70%) |
 | **Modelos NOT en HF** | 3 (30%) |
 | **Rango Parámetros** | 86M - 1.7T |
 | **Rango FLOPS** | 1.7e19 - 3.8e23 |
 | **Rango PUE** | 1.005 - 1.46 |
+| **PUE Promedio** | 1.17 (mejor que industria 1.22) |
 | **Rango TDP Dispositivos** | 4W - 620W |
-| **Rango Carbon Intensity** | 12 - 743 gCO2/kWh |
+| **Rango CI (DCs)** | 21 - 589 gCO2/kWh |
+| **Rango CI (zonas globales)** | 10 - 907 gCO2/kWh |
+| **CI Promedio DCs** | 361 gCO2/kWh |
 | **Tipos Representados** | LLM (8), Vision (1), Classification (1) |
-| **Confianza Promedio Global** | 91% |
+| **Confianza Promedio** | 92% |
 | **Cobertura Temporal** | 2018-2026 |
-| **Fuente CI** | Electricity Maps API (tiempo real) |
+| **Fuente CI** | Electricity Maps API v3 (tiempo real, flow-tracing) |
+| **Fallback System** | 4 tiers (garantizado 100%) |
 
 ---
 
@@ -569,9 +602,26 @@ Este documento debe ser actualizado cada vez que se:
 - Agreguen nuevos dispositivos o tipos de red
 - Se actualicen zonas de carbon intensity
 
-**Responsable**: Dataset Owner
-**Última revisión**: 2026-01-28
-**Próxima revisión planeada**: 2026-02-04
+**Responsable**: Dataset Owner / TFG Autor
+**Versión actual**: v2.0 + v2.1 (Enfoque Híbrido con Electricity Maps API)
+**Última revisión**: 2026-02-01
+**Cambios principales en v2.0-v2.1**: 
+  - 71 data centers (antes 10)
+  - 2 nuevos CSVs: carbon_intensity_datacenters.csv + carbon_intensity.csv mejorado
+  - 4-tier fallback system para garantizar CI siempre
+  - API nativo 38 DCs + mapeo manual 33 DCs
+  - 125 zonas EM disponibles como fallback
+**Próxima revisión planeada**: 2026-02-15
+
+---
+
+## 📚 Documentación de Arquitectura Híbrida
+
+Nueva documentación de v2.0-v2.1:
+- [ARQUITECTURA_COMPLETA_CARBON_INTENSITY.md](docs_for_dataset/ARQUITECTURA_COMPLETA_CARBON_INTENSITY.md) - Sistema completo explicado
+- [SISTEMA_FALLBACKS_Y_RELACION_CSVS.md](docs_for_dataset/SISTEMA_FALLBACKS_Y_RELACION_CSVS.md) - 4 niveles de fallback
+- [ORIGEN_71_DATACENTERS.md](docs_for_dataset/ORIGEN_71_DATACENTERS.md) - Procedencia de los datos
+- [ENFOQUE_HIBRIDO_DATACENTER_CI.md](docs_for_dataset/ENFOQUE_HIBRIDO_DATACENTER_CI.md) - Detalles técnicos
 
 ---
 
