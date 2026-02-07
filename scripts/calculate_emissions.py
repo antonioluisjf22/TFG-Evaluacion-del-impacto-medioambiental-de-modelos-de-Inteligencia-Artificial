@@ -67,6 +67,7 @@ DATA_CENTERS_CSV = os.path.join(DATASETS_DIR, "data_centers", "data_centers.csv"
 DEVICES_CSV = os.path.join(DATASETS_DIR, "devices", "devices.csv")
 NETWORK_CSV = os.path.join(DATASETS_DIR, "network", "network_types.csv")
 CI_DATACENTERS_CSV = os.path.join(DATASETS_DIR, "carbon_intensity", "carbon_intensity_datacenters.csv")
+CI_ZONES_CSV = os.path.join(DATASETS_DIR, "carbon_intensity", "carbon_intensity.csv")  # NUEVO: 125 zonas para fallback
 
 
 # ===== CONSTANTES =====
@@ -128,6 +129,10 @@ class EmissionResult:
     dc_renewable_provider_pct: float = None   # % renovables declarado por proveedor
     dc_carbon_intensity: float = None         # gCO2/kWh de la zona
     
+    # Información de procesador (nuevo v2.4)
+    processor_used: str = "cpu"                # "cpu", "gpu", o "npu"
+    processor_watts: float = 0.0               # Watts consumidos por el procesador
+    
     def to_dict(self) -> Dict[str, Any]:
         result = {
             "emissions_gCO2": {
@@ -148,7 +153,9 @@ class EmissionResult:
                 "network": self.network_type,
                 "data_center": self.data_center_name,
                 "inference_time_sec": self.inference_time_sec,
-                "tokens_processed": self.tokens_processed
+                "tokens_processed": self.tokens_processed,
+                "device_processor": self.processor_used,
+                "processor_watts": round(self.processor_watts, 2)
             },
             "breakdown_percentage": {
                 "device": round(self.co2_device_g / self.co2_total_g * 100, 1) if self.co2_total_g > 0 else 0,
@@ -184,7 +191,8 @@ class CarbonCalculator:
         self.data_centers_df = None
         self.devices_df = None
         self.network_df = None
-        self.dc_ci_df = None  # CSV con electricity_maps_zone por DC
+        self.dc_ci_df = None
+        self.ci_zones_df = None  # NUEVO: Zonas de fallback  # CSV con electricity_maps_zone por DC
         self.carbon_api = None
         self.use_realtime_ci = use_realtime_carbon_intensity
         
@@ -236,6 +244,13 @@ class CarbonCalculator:
                 print(f"[OK] CI por DC: {len(self.dc_ci_df)} con zonas de Electricity Maps")
             else:
                 print(f"[INFO] No se encontro CI por DC: {CI_DATACENTERS_CSV}")
+            
+            # NUEVO: Cargar CSV con IC por zonas (fallback para búsquedas por zona)
+            if os.path.exists(CI_ZONES_CSV):
+                self.ci_zones_df = pd.read_csv(CI_ZONES_CSV)
+                print(f"[OK] CI por Zonas: {len(self.ci_zones_df)} zonas de EM disponibles")
+            else:
+                print(f"[INFO] No se encontro CI por Zonas: {CI_ZONES_CSV}")
                 
         except Exception as e:
             print(f"[ERROR] Error cargando datasets: {e}")
@@ -267,6 +282,76 @@ class CarbonCalculator:
             return None
         matches = self.network_df[self.network_df['network_id'] == network_id]
         return matches.iloc[0] if len(matches) > 0 else None
+    
+    def get_valid_processors_for_device(self, device_id: str) -> list:
+        """
+        Obtiene los procesadores disponibles para inferencia en un dispositivo.
+        
+        Valida contra has_npu, has_gpu, etc. del CSV.
+        
+        Args:
+            device_id: ID del dispositivo
+            
+        Returns:
+            Lista de procesadores válidos: ["cpu"] o ["cpu", "gpu"] o ["cpu", "gpu", "npu"], etc.
+            
+        Raises:
+            ValueError si el dispositivo no existe
+        """
+        device = self.get_device(device_id)
+        if device is None:
+            raise ValueError(f"Dispositivo '{device_id}' no encontrado")
+        
+        valid_processors = ["cpu"]  # CPU siempre disponible
+        
+        # GPU disponible si tiene TDP > 0
+        gpu_tdp = device.get('gpu_tdp_watts', 0)
+        if gpu_tdp > 0:
+            valid_processors.append("gpu")
+        
+        # NPU disponible si has_npu es True
+        has_npu = device.get('has_npu', False)
+        if has_npu:
+            valid_processors.append("npu")
+        
+        return valid_processors
+    
+    def get_processor_watts(self, device_id: str, processor: str) -> float:
+        """
+        Obtiene el consumo en watts para un procesador específico.
+        
+        Args:
+            device_id: ID del dispositivo
+            processor: "cpu", "gpu", o "npu"
+            
+        Returns:
+            Consumo en watts durante inferencia
+            
+        Raises:
+            ValueError si el dispositivo no existe o el procesador no es válido
+        """
+        device = self.get_device(device_id)
+        if device is None:
+            raise ValueError(f"Dispositivo '{device_id}' no encontrado")
+        
+        processor = processor.lower()
+        
+        # Validar que el procesador sea válido para este dispositivo
+        valid_processors = self.get_valid_processors_for_device(device_id)
+        if processor not in valid_processors:
+            available = ", ".join(valid_processors)
+            raise ValueError(
+                f"Procesador '{processor}' no válido para {device_id}. "
+                f"Opciones disponibles: {available}"
+            )
+        
+        # Retornar consumo de inferencia del procesador
+        if processor == "gpu":
+            return device.get('inference_gpu_watts', 0)
+        elif processor == "npu":
+            return device.get('inference_npu_watts', 0)
+        else:  # cpu
+            return device.get('inference_cpu_watts', 0)
     
     def get_dc_electricity_maps_zone(self, dc_id: str) -> Optional[str]:
         """
@@ -314,14 +399,43 @@ class CarbonCalculator:
         
         return result
     
+    def get_carbon_intensity_for_zone(self, zone: str) -> Optional[float]:
+        """
+        NUEVO: Obtiene la intensidad de carbono para una zona específica de EM.
+        Busca en carbon_intensity.csv (125 zonas disponibles).
+        
+        Útil para búsquedas directas por zona sin pasar por DC.
+        Ej: buscar todos los DCs en zona 'US-NW-BPAT' y obtener su CI.
+        
+        Args:
+            zone: Código de zona de Electricity Maps (ej: 'US-NW-BPAT', 'IE')
+        
+        Returns:
+            CI en gCO2/kWh o None si no existe la zona
+        """
+        if self.ci_zones_df is None:
+            return None
+        
+        matches = self.ci_zones_df[self.ci_zones_df['zone'] == zone]
+        if len(matches) > 0:
+            ci = matches.iloc[0].get('carbon_intensity_gCO2_kWh')
+            return float(ci) if ci is not None and not pd.isna(ci) else None
+        
+        return None
+    
     def get_carbon_intensity_for_dc(self, dc_id: str, fallback_country: str = None) -> float:
         """
         Obtiene la intensidad de carbono específica para un data center.
         
-        PRIORIDAD:
+        PRIORIDAD (en orden):
         1. Zona específica de Electricity Maps para el DC (ej: US-NW-BPAT)
-        2. País del DC (fallback)
-        3. Valor global por defecto
+           → Busca en carbon_intensity_datacenters.csv
+        2. Búsqueda por zona desde carbon_intensity.csv (125 zonas)
+           → Fallback a zonas complementarias
+        3. País del DC (fallback)
+           → Si el DC no está en nuestros mapeos
+        4. Valor global por defecto
+           → Último recurso
         
         Esta mejora permite precisión mucho mayor. Por ejemplo:
         - aws-us-west-2 → US-NW-BPAT → 77 gCO2/kWh (Oregon hydro)
@@ -329,7 +443,7 @@ class CarbonCalculator:
         
         En lugar de usar 'US' genérico (380 gCO2/kWh) para ambos.
         """
-        # Intentar obtener zona específica del DC
+        # PASO 1: Intentar obtener zona específica del DC
         em_zone = self.get_dc_electricity_maps_zone(dc_id)
         
         if em_zone and self.carbon_api is not None:
@@ -339,10 +453,17 @@ class CarbonCalculator:
             except Exception:
                 pass
         
-        # Fallback a país
+        # PASO 2: Si tenemos la zona, buscar en carbon_intensity.csv
+        if em_zone and self.ci_zones_df is not None:
+            ci = self.get_carbon_intensity_for_zone(em_zone)
+            if ci is not None:
+                return ci
+        
+        # PASO 3: Fallback a país
         if fallback_country:
             return self.get_carbon_intensity(fallback_country)
         
+        # PASO 4: Valor global
         return DEFAULT_CARBON_INTENSITY["GLOBAL"]
     
     def get_carbon_intensity(self, country_code: str, use_api: bool = True) -> float:
@@ -530,16 +651,34 @@ class CarbonCalculator:
         utilization = max(0.0, min(1.0, utilization))  # Clamp entre 0 y 1
         
         if device is not None:
-            # Determinar qué procesador se usa para la inferencia
+            # ===== SELECCIÓN DE PROCESADOR (v2.4) =====
+            # Lógica mejorada con validación según dispositivo
+            
             if inference_processor == "auto":
+                # Usar target por defecto del dispositivo
                 processor = device.get('primary_inference_target', 'cpu').lower()
             else:
+                # Usuario especificó un procesador
                 processor = inference_processor.lower()
+                
+                # Validar que el procesador sea válido para este dispositivo
+                try:
+                    valid_processors = self.get_valid_processors_for_device(device_id)
+                    if processor not in valid_processors:
+                        available = ", ".join(valid_processors)
+                        raise ValueError(
+                            f"Procesador '{processor}' no válido para dispositivo '{device_id}'. "
+                            f"Opciones disponibles: {available}"
+                        )
+                except ValueError as e:
+                    print(f"[ERROR] {str(e)}")
+                    # Fallback a CPU como procesador seguro
+                    processor = "cpu"
             
             # Obtener P_idle (consumo en reposo del sistema)
             p_idle = device.get('system_idle_watts', 5.0)
             
-            # Seleccionar P_TDP según el procesador
+            # Seleccionar P_TDP y P_inference según el procesador seleccionado
             if processor == "gpu":
                 p_tdp = device.get('gpu_tdp_watts', 0)
                 p_inference_max = device.get('inference_gpu_watts', 0)
@@ -568,9 +707,14 @@ class CarbonCalculator:
             
             # Asegurar que no sea menor que idle ni mayor que TDP
             device_watts = max(p_idle, min(p_tdp, device_watts))
+            
+            # Guardar información del procesador para el resultado
+            processor_used = processor
+            processor_watts = p_inference_max
         else:
             device_watts = 50 * utilization  # Valor por defecto escalado
-            processor = "cpu"
+            processor_used = "cpu"
+            processor_watts = 50.0
             p_idle = 5.0
         
         # Energía del dispositivo (Wh)
@@ -658,7 +802,9 @@ class CarbonCalculator:
             tokens_processed=tokens_processed,
             dc_renewable_grid_pct=dc_renewable_info['renewable_grid_pct'],
             dc_renewable_provider_pct=dc_renewable_info['provider_renewable_pct'],
-            dc_carbon_intensity=ci_dc
+            dc_carbon_intensity=ci_dc,
+            processor_used=processor_used,
+            processor_watts=processor_watts
         )
     
     def list_available(self) -> Dict[str, list]:

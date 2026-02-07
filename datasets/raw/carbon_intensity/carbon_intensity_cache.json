@@ -1058,22 +1058,22 @@
         "zoneName": "ZW"
       }
     },
-    "timestamp": "2026-01-28T18:11:17.552999",
+    "timestamp": "2026-02-01T12:33:05.792779",
     "count": 352,
     "source": "hardcoded_fallback"
   },
   "ci_ES": {
-    "carbonIntensity": 59,
+    "carbonIntensity": 76,
     "zone": "ES",
-    "timestamp": "2026-01-31T14:01:17.553613",
+    "timestamp": "2026-02-06T20:57:28.192513",
     "source": "electricity_maps_api",
     "fossilFreePercentage": null,
     "renewablePercentage": null
   },
   "ci_IE": {
-    "carbonIntensity": 336,
+    "carbonIntensity": 277,
     "zone": "IE",
-    "timestamp": "2026-01-31T14:01:18.050557",
+    "timestamp": "2026-02-06T20:57:28.535217",
     "source": "electricity_maps_api",
     "fossilFreePercentage": null,
     "renewablePercentage": null

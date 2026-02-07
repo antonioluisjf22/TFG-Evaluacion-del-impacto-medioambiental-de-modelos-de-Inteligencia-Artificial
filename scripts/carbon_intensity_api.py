@@ -1,30 +1,42 @@
 #!/usr/bin/env python3
 """
-Módulo de Carbon Intensity API v2.3
+Módulo de Carbon Intensity API v2.4
 ===================================
 
 Integración con Electricity Maps API para obtener intensidad de carbono
 en tiempo real por zona/región.
 
-FUNCIONALIDADES v2.3:
+FUNCIONALIDADES v2.4:
+- **NUEVO: Enfoque HÍBRIDO para data centers**
+  * Intenta primero API nativa (dataCenterProvider + dataCenterRegion)
+  * Si falla, usa mapeo manual DATACENTER_REGION_TO_ZONE
+  * Soporta proveedores NO incluidos en Electricity Maps (ej: Deep Green)
 - Obtención DINÁMICA de todas las zonas (~350+) desde la API
 - Mapeo automático de data centers a zonas de Electricity Maps
-- Caché local para reducir llamadas API
-- Fallback a valores por defecto
+- Caché local para reducir llamadas API (TTL 15 min)
+- Fallback a valores por defecto cuando API no disponible
 - Generación de carbon_intensity_datacenters.csv (PRINCIPAL)
   * Con CI específica de cada DC
   * Con % renovables de red (fossil_free_pct, renewable_pct)
   * Con % renovables declarado por proveedor (provider_renewable_pct)
   * Con efectos PUE incluidos
+  * **NUEVO: ci_method indica si usó API nativa o mapeo manual**
 - Mapeo de 71 data centers a sus zonas específicas
 - Obtención de porcentajes renovables vía endpoint power-breakdown
 
 API Endpoints usados:
 - GET /v3/carbon-intensity/latest?zone={zone}
+- GET /v3/carbon-intensity/latest?dataCenterProvider={p}&dataCenterRegion={r}  **NUEVO**
 - GET /v3/power-breakdown/latest?zone={zone} (para porcentajes renovables)
 - GET /v3/zones (lista todas las zonas disponibles)
 
-Documentación: https://static.electricitymaps.com/api/docs/index.html
+ENFOQUE HÍBRIDO (nuevo en v2.4):
+1. Para proveedores cloud conocidos (AWS, GCP, Azure, etc.): usa API nativa
+2. Para proveedores especializados (Deep Green, Equinix, etc.): usa mapeo manual
+3. Fallback a país si no hay mapeo específico
+4. Fallback a valor global conservador (450 gCO2/kWh) como último recurso
+
+Documentación: https://app.electricitymaps.com/developer-hub/api/reference
 """
 
 import json
@@ -60,6 +72,49 @@ CACHE_TTL_SECONDS = 900  # 15 minutos de caché
 
 # Archivo JSON con las zonas de Electricity Maps (fallback cuando API rate-limited)
 ZONES_JSON_FILE = os.path.join(BASE_DIR, "datasets", "raw", "carbon_intensity", "electricity_maps_zones.json")
+
+# ========================================================================
+# MAPEO DE PROVEEDORES DE DATA CENTERS A API DE ELECTRICITY MAPS
+# ========================================================================
+# Este mapeo convierte los nombres de proveedores en nuestro dataset
+# a los identificadores que usa la API de Electricity Maps.
+#
+# La API soporta consultas con dataCenterProvider + dataCenterRegion
+# para obtener automáticamente la zona correcta.
+#
+# Formato: "provider_name_en_dataset": "api_provider_id"
+# ========================================================================
+
+PROVIDER_NAME_TO_API = {
+    # Grandes proveedores cloud (soportados por Electricity Maps)
+    "Google Cloud": "gcp",
+    "Amazon Web Services": "aws",
+    "AWS": "aws",
+    "Microsoft Azure": "azure",
+    "Azure": "azure",
+    "Oracle Cloud": "oracle",
+    "IBM Cloud": "ibm",
+    "Alibaba Cloud": "alibaba",
+    "DigitalOcean": "digitalocean",
+    "OVHcloud": "ovh",
+    "Scaleway": "scaleway",
+    "Hetzner": "hetzner",
+    "Vultr": "vultr",
+    "Linode": "linode",
+    
+    # Proveedores especializados (probablemente NO soportados por EM API)
+    # - Usarán fallback a nuestro mapeo manual DATACENTER_REGION_TO_ZONE
+    "Deep Green": None,  # Proveedor UK de inmersión, no en EM
+    "Equinix": None,     # Colocation, probablemente no mapeado
+    "Digital Realty": None,
+    "CyrusOne": None,
+    "CoreSite": None,
+    "QTS": None,
+    "Vantage": None,
+    "Switch": None,
+    "DataBank": None,
+    "Flexential": None,
+}
 
 
 def load_electricity_maps_zones() -> List[str]:
@@ -543,6 +598,7 @@ class CarbonIntensityAPI:
     def get_zone_for_datacenter(self, dc_region: str, country_code: str = None) -> str:
         """
         Obtiene la zona de Electricity Maps para un data center específico.
+        Método de mapeo manual usando DATACENTER_REGION_TO_ZONE.
         
         Args:
             dc_region: Región del data center (ej: "us-west-2", "eu-west-1", "oregon")
@@ -564,6 +620,102 @@ class CarbonIntensityAPI:
         
         # Último recurso
         return "GLOBAL"
+    
+    def get_carbon_intensity_for_datacenter_hybrid(
+        self, 
+        provider_name: str, 
+        dc_region: str, 
+        country_code: str = None,
+        include_power_breakdown: bool = True
+    ) -> Dict[str, Any]:
+        """
+        Obtiene la intensidad de carbono para un data center usando enfoque HÍBRIDO:
+        
+        1. Intenta primero con la API nativa (dataCenterProvider + dataCenterRegion)
+        2. Si falla, usa mapeo manual DATACENTER_REGION_TO_ZONE
+        3. Si falla, fallback a COUNTRY_TO_ZONE
+        4. Si falla, usa DEFAULT_CARBON_INTENSITY
+        
+        Este enfoque combina la comodidad de la API oficial con la flexibilidad
+        de soportar proveedores no incluidos en Electricity Maps (ej: Deep Green).
+        
+        Args:
+            provider_name: Nombre del proveedor (ej: "Google Cloud", "Deep Green")
+            dc_region: Región del data center (ej: "us-west1", "Exmouth (UK)")
+            country_code: Código de país para fallback
+            include_power_breakdown: Si True, intenta obtener % renovables
+        
+        Returns:
+            Dict con carbonIntensity, zone, source, method, fossilFreePercentage, etc.
+        """
+        # Determinar si el proveedor está soportado por la API de Electricity Maps
+        api_provider = PROVIDER_NAME_TO_API.get(provider_name)
+        
+        # === PASO 1: Intentar con API nativa (dataCenterProvider) ===
+        if api_provider:
+            # Limpiar la región para formato de API (ej: "us-west1 (Oregon)" -> "us-west1")
+            api_region = dc_region.lower().split('(')[0].strip().replace(' ', '-')
+            
+            data = self._make_request("carbon-intensity/latest", params={
+                "dataCenterProvider": api_provider,
+                "dataCenterRegion": api_region
+            })
+            
+            if data and 'carbonIntensity' in data:
+                result = {
+                    'carbonIntensity': data.get('carbonIntensity', 450),
+                    'zone': data.get('zone', api_region),
+                    'datetime': data.get('datetime'),
+                    'source': 'electricity_maps_api',
+                    'method': 'api_native_datacenter',
+                    'provider_api': api_provider,
+                    'region_api': api_region,
+                    'fossilFreePercentage': data.get('fossilFreePercentage'),
+                    'renewablePercentage': data.get('renewablePercentage'),
+                    'isEstimated': data.get('isEstimated', False)
+                }
+                
+                # Obtener power breakdown si no viene incluido
+                if include_power_breakdown and (result['fossilFreePercentage'] is None 
+                                                 or result['renewablePercentage'] is None):
+                    zone = result.get('zone')
+                    if zone:
+                        breakdown = self.get_power_breakdown(zone)
+                        if breakdown.get('fossilFreePercentage') is not None:
+                            result['fossilFreePercentage'] = breakdown['fossilFreePercentage']
+                        if breakdown.get('renewablePercentage') is not None:
+                            result['renewablePercentage'] = breakdown['renewablePercentage']
+                
+                return result
+        
+        # === PASO 2: Fallback a mapeo manual DATACENTER_REGION_TO_ZONE ===
+        zone = self.get_zone_for_datacenter(dc_region, country_code)
+        
+        if zone != "GLOBAL":
+            details = self.get_carbon_intensity_with_details(zone, include_power_breakdown)
+            details['method'] = 'manual_mapping'
+            details['fallback_reason'] = 'provider_not_in_api' if api_provider is None else 'api_request_failed'
+            return details
+        
+        # === PASO 3: Fallback a país ===
+        if country_code:
+            details = self.get_carbon_intensity_with_details(country_code, include_power_breakdown)
+            details['method'] = 'country_fallback'
+            details['fallback_reason'] = 'no_zone_mapping'
+            return details
+        
+        # === PASO 4: Último recurso - valores por defecto ===
+        return {
+            'carbonIntensity': 450,  # Promedio global conservador
+            'zone': 'GLOBAL',
+            'datetime': datetime.now().isoformat(),
+            'source': 'default_values',
+            'method': 'default_fallback',
+            'fallback_reason': 'no_mapping_available',
+            'fossilFreePercentage': None,
+            'renewablePercentage': None,
+            'isEstimated': True
+        }
     
     # ========================================================================
     # MÉTODOS DE CARBON INTENSITY
@@ -806,26 +958,30 @@ class CarbonIntensityAPI:
         
         for _, row in dc_df.iterrows():
             dc_id = row['dc_id']
+            provider = row['provider_name']
             region = row['region']
             country = row['country_code']
             
-            # Obtener zona de Electricity Maps
-            zone = self.get_zone_for_datacenter(region, country)
-            
-            # Obtener CI
-            details = self.get_carbon_intensity_with_details(zone)
+            # === ENFOQUE HÍBRIDO ===
+            # Intenta API nativa (dataCenterProvider), luego mapeo manual
+            details = self.get_carbon_intensity_for_datacenter_hybrid(
+                provider_name=provider,
+                dc_region=region,
+                country_code=country
+            )
             
             results.append({
                 'dc_id': dc_id,
-                'provider': row['provider_name'],
+                'provider': provider,
                 'region': region,
                 'country_code': country,
-                'electricity_maps_zone': zone,
+                'electricity_maps_zone': details.get('zone', 'UNKNOWN'),
                 'carbon_intensity_gCO2_kWh': details['carbonIntensity'],
                 'fossil_free_pct': details.get('fossilFreePercentage'),
                 'renewable_pct': details.get('renewablePercentage'),
                 'provider_renewable_pct': row.get('provider_renewable_pct', None),  # % declarado por proveedor
                 'ci_source': details['source'],
+                'ci_method': details.get('method', 'unknown'),  # api_native_datacenter | manual_mapping | country_fallback
                 'pue': row['pue'],
                 'effective_ci': details['carbonIntensity'] * row['pue'],  # CI × PUE
                 'timestamp': details.get('datetime', datetime.now().isoformat())
