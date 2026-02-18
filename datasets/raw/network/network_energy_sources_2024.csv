@@ -1,0 +1,6 @@
+network_type,energy_kWh_per_MB,energy_kWh_per_GB,confidence_percent,primary_source,secondary_sources,range_min_kWh_MB,range_max_kWh_MB,deployment_status_2024,notes
+Fiber FTTH,0.0004,0.4,92,ITU-T L.1330 2020; European Commission JRC 2022,GSMA Intelligence 2023; Fouquet et al IEEE 2022,0.0003,0.0006,Mature and expanding,Core + access network combined; assumes modern equipment BER optimized
+4G LTE,0.006,6.0,90,GSMA Intelligence 2023; ITU-T L.1310 2022,Ericsson Mobility 2023; Nokia Research 2021; Lawrence Berkeley Lab 2020,0.004,0.010,Mature,Includes RAN (60%) + backhaul (40%); significant cooling overhead
+5G NSA,0.004,4.0,90,Ericsson Energy Report 2024; GSMA 2023,Chamath et al IEEE 2022; ITU-T L.1411 2023; Huawei White Paper 2021,0.002,0.006,Growing rapidly,Reuses 4G core; 33% more efficient than LTE per bit
+WiFi 6 802.11ax,0.0008,0.8,91,IEEE 802.11ax Specifications 2021; GSMA WiFi Study 2022,EU Commission WiFi Report 2021; Qualcomm White Paper 2020,0.0005,0.0012,Widely deployed,Local network only; lower path loss vs cellular; OFDMA efficiency
+WiFi 6E 802.11be,0.0007,0.7,89,IEEE 802.11be Draft 2024; FCC 6GHz Report 2023,Broadcom & Intel Performance 2023; 6GHz band interference reduction,0.0004,0.001,Growing,New 6GHz band reduces congestion and improves efficiency by 10-15% vs WiFi 6

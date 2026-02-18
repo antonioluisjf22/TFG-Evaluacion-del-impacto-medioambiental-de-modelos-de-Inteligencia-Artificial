@@ -489,37 +489,40 @@ Catálogo de 15 tipos de conexión de red, desde Ethernet hasta satélite. Inclu
 | IEEE | Standards | https://www.ieee.org/ | Ethernet specs |
 | Wi-Fi Alliance | Technical | https://www.wi-fi.org/ | WiFi efficiency |
 
-### Campos del Dataset
+### Campos del Dataset (v2.1)
 
 | Campo | Tipo | Descripción |
 |-------|------|-------------|
-| `network_id` | string | Identificador único (ej: `4g-lte`, `wifi-5`) |
-| `network_name` | string | Nombre descriptivo |
-| `network_type` | string | Categoría (Fixed, Mobile, Wireless-Local, Satellite) |
-| `technology` | string | Tecnología específica (LTE, 5G NR, 802.11ac, etc.) |
-| `energy_per_mb_wh` | float | Energía por MB transferido (Wh) |
-| `energy_per_gb_wh` | float | Energía por GB transferido (Wh) |
-| `typical_latency_ms` | int | Latencia típica en milisegundos |
-| `bandwidth_mbps` | int | Ancho de banda típico (Mbps) |
-| `carbon_multiplier` | float | Multiplicador de carbono (infraestructura adicional) |
-| `confidence` | float | Nivel de confianza del dato (0-1) |
+| `network_type` | string | Identificador único (ej: `4G LTE`, `WiFi 6`) |
+| `energy_kWh_per_MB` | float | Energía por MB transferido (kWh) |
+| `energy_kWh_per_GB` | float | Energía por GB transferido (kWh) |
+| `confidence_percent` | int | Nivel de confianza del dato (0-100) |
+| `primary_source` | string | Fuente principal del dato (GSMA, ITU, etc.) |
+| `secondary_sources` | string | Fuentes secundarias de validación |
+| `range_min_kWh_MB` | float | Rango mínimo de energía (kWh/MB) |
+| `range_max_kWh_MB` | float | Rango máximo de energía (kWh/MB) |
+| `deployment_status_2024` | string | Estado de despliegue de la tecnología |
+| `notes` | string | Notas adicionales sobre el dato |
 
 ### Estadísticas
 
 | Métrica | Valor |
 |---------|-------|
-| **Total Tipos** | 15 |
-| **Categorías** | 5 (Fixed, Mobile, Wireless-Local, Wired-Local, Satellite) |
-| **Rango Energía** | 0.02 - 3.0 Wh/GB |
-| **Más Eficiente** | Ethernet 1G (0.02 Wh/GB) |
-| **Menos Eficiente** | Satélite GEO (3.0 Wh/GB) |
-| **Confianza Promedio** | 83.9% |
+| **Total Tipos** | 5 |
+| **Categorías** | 3 (Fiber, Mobile, Wireless-Local) |
+| **Rango Energía** | 0.4 - 6.0 kWh/GB |
+| **Más Eficiente** | Fiber FTTH (0.4 kWh/GB) |
+| **Menos Eficiente** | 4G LTE (6.0 kWh/GB) |
+| **Fuentes** | GSMA Intelligence, ITU-T L.1310/L.1330, Ericsson |
 
 ### Notas Metodológicas
 
-**Energía por MB/GB**: Los valores provienen principalmente del informe IEA 2020 "The carbon footprint of streaming video". Se ajustaron para tecnologías más recientes (5G, WiFi 6E) basándose en reportes de eficiencia de GSMA y Wi-Fi Alliance.
+**Energía por MB/GB**: Los valores provienen de GSMA Intelligence 2023, ITU-T L.1310/L.1330 y Ericsson Mobility Report 2023. Se incluyen solo tecnologías con mediciones verificables.
 
-**Carbon Multiplier**: Multiplicador que captura la infraestructura adicional necesaria (torres celulares, satélites). WiFi y Ethernet = 1.0 (usan infraestructura existente), 4G/5G = 1.1-1.3, Satélite = 1.8-2.0.
+**CO₂ calculado dinámicamente (v2.1)**: A partir de v2.1, el CO₂ de red se calcula en runtime usando el CI específico del país del usuario obtenido de **Electricity Maps API**:
+```
+carbon_kg_per_GB = energy_kWh_per_GB × CI_user_country / 1000
+```
 
 ---
 
@@ -528,15 +531,18 @@ Catálogo de 15 tipos de conexión de red, desde Ethernet hasta satélite. Inclu
 ### Descripción
 Calculadora principal que integra todos los datasets para estimar emisiones de CO2 de una consulta de IA.
 
-### Fórmula de Cálculo
+### Fórmula de Cálculo (v2.1)
 
 ```
 CO2_TOTAL = CO2_DISPOSITIVO + CO2_RED + CO2_DATACENTER
 
 Donde:
   CO2_DISPOSITIVO = (TDP_inferencia × tiempo_sec / 3600) × CI_local / 1000
-  CO2_RED = (energia_MB × MBs × carbon_multiplier) × CI_local / 1000
+  CO2_RED = energy_kWh_per_GB × CI_user_country / 1000 × data_transferred_gb × 1000
+          = data_transferred_gb × (energy_kWh_per_GB × CI_user_country) / 1000 × 1000
   CO2_DATACENTER = (FLOPS_inferencia / eficiencia_GPU × PUE) × CI_datacenter / 1000
+  
+Nota: CI_user_country se obtiene dinámicamente de Electricity Maps API
 ```
 
 ### Parámetros de Entrada
@@ -546,8 +552,8 @@ Donde:
 | `model_id` | string | ID del modelo AI | `gpt-4`, `llama2-70b` |
 | `data_center_id` | string | ID del data center | `aws-eu-west-1` |
 | `device_id` | string | ID del dispositivo | `laptop-macbook-air-m3` |
-| `network_id` | string | ID del tipo de red | `wifi-5`, `4g-lte` |
-| `user_country` | string | País del usuario | `ES`, `US`, `DE` |
+| `network_type` | string | Tipo de red | `WiFi 6`, `4G LTE` |
+| `user_country` | string | País del usuario (para CI dinámico) | `ES`, `US`, `DE` |
 | `inference_time_sec` | float | Tiempo de inferencia | 2.0 |
 | `tokens_processed` | int | Tokens procesados | 500 |
 | `data_transferred_mb` | float | Datos transferidos | 0.5 |

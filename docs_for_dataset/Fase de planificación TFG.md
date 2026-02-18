@@ -74,7 +74,7 @@ _Período: marzo 2026_
 | --- | --- | --- | --- | --- | --- |
 | EP-02.1 | Diseño de arquitectura software | Definición de la arquitectura del motor de cálculo incluyendo clases principales, estructuras de datos, dependencias de módulos e integración con APIs externas. | 6h | - | EP-01.6 |
 | EP-02.2 | Implementación fórmulas de dispositivo | Modelo de consumo dinámico: P = P_idle + (P_max - P_idle) × U. Implementación del selector de procesador (CPU/GPU/NPU). Conversión a emisiones de CO₂. | 8h | - | EP-02.1 |
-| EP-02.3 | Implementación fórmulas de red | Cálculo de energía por MB transferido. Aplicación de carbon_multiplier según tipo de infraestructura. | 5h | - | EP-02.1 |
+| EP-02.3 | Implementación fórmulas de red | Cálculo de energía por MB transferido. Uso de valores pre-calculados de CO₂/GB por región (columnas carbon_kg_per_GB_*). | 5h | - | EP-02.1 |
 | EP-02.4 | Implementación fórmulas de data center | Cálculo basado en tokens procesados y estimación empírica de la energía consumida por 1000 tokens (energy_wh_per_1k_tokens). Aplicación del factor PUE. Integración con datos de intensidad de carbono por zona (obtenidos de Electricity Maps API). | 7h | - | EP-02.1 |
 | EP-02.5 | Integración del motor de cálculo | Clase CarbonCalculator unificada. Método principal calculate_emissions(). Dataclass EmissionResult para estructurar resultados. | 9h | - | EP-02.2 a EP-02.4 |
 | EP-02.6 | Tests unitarios | Cobertura objetivo >80% del motor de cálculo. Tests de regresión. Validación de fórmulas con casos de prueba conocidos. | 8h | - | EP-02.5 |

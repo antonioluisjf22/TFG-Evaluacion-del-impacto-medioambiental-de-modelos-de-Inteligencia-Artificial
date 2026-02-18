@@ -30,9 +30,11 @@ FÓRMULAS DETALLADAS:
    - GPU: 2 - 10 TOPS/W (bueno para modelos grandes, CUDA)
    - NPU: 10 - 50 TOPS/W (optimizado para inferencia)
 
-2. RED:
-   E_red = energía_por_MB × MBs × carbon_multiplier
-   CO2_red = E_red × CI_local
+2. RED (v2.1 - CI dinámico por país):
+   E_red = energía_por_MB × MBs (en kWh)
+   carbon_kg_per_GB = energy_kWh_per_GB × CI_user_country / 1000
+   CO2_red = data_transferred_GB × carbon_kg_per_GB × 1000
+   (CI_user_country obtenido de Electricity Maps API)
 
 3. DATA CENTER:
    FLOPS_inferencia = 2 × parámetros × tokens
@@ -65,9 +67,10 @@ DATASETS_DIR = os.path.join(BASE_DIR, "datasets", "raw")
 MODELS_CSV = os.path.join(DATASETS_DIR, "models", "models.csv")
 DATA_CENTERS_CSV = os.path.join(DATASETS_DIR, "data_centers", "data_centers.csv")
 DEVICES_CSV = os.path.join(DATASETS_DIR, "devices", "devices.csv")
-NETWORK_CSV = os.path.join(DATASETS_DIR, "network", "network_types.csv")
+NETWORK_CSV = os.path.join(DATASETS_DIR, "network", "network_energy_sources_2024.csv")
 CI_DATACENTERS_CSV = os.path.join(DATASETS_DIR, "carbon_intensity", "carbon_intensity_datacenters.csv")
 CI_ZONES_CSV = os.path.join(DATASETS_DIR, "carbon_intensity", "carbon_intensity.csv")  # NUEVO: 125 zonas para fallback
+EM_ZONES_JSON = os.path.join(DATASETS_DIR, "carbon_intensity", "electricity_maps_zones.json")  # Regiones EM
 
 
 # ===== CONSTANTES =====
@@ -196,6 +199,11 @@ class CarbonCalculator:
         self.carbon_api = None
         self.use_realtime_ci = use_realtime_carbon_intensity
         
+        # Sets de zonas por región (se cargan desde electricity_maps_zones.json)
+        self._european_zones = set()
+        self._us_zones = set()
+        self._high_carbon_zones = set()
+        
         self._load_datasets()
         self._init_carbon_api()
     
@@ -251,6 +259,9 @@ class CarbonCalculator:
                 print(f"[OK] CI por Zonas: {len(self.ci_zones_df)} zonas de EM disponibles")
             else:
                 print(f"[INFO] No se encontro CI por Zonas: {CI_ZONES_CSV}")
+            
+            # Cargar regiones desde electricity_maps_zones.json
+            self._load_grid_mix_regions()
                 
         except Exception as e:
             print(f"[ERROR] Error cargando datasets: {e}")
@@ -277,17 +288,72 @@ class CarbonCalculator:
         return matches.iloc[0] if len(matches) > 0 else None
     
     def get_network(self, network_id: str) -> Optional[pd.Series]:
-        """Obtiene datos de un tipo de red por ID"""
+        """Obtiene datos de un tipo de red por ID (busca por network_type en CSV 2024)"""
         if self.network_df is None:
             return None
-        matches = self.network_df[self.network_df['network_id'] == network_id]
+        # El CSV 2024 usa 'network_type' en lugar de 'network_id'
+        matches = self.network_df[self.network_df['network_type'] == network_id]
         return matches.iloc[0] if len(matches) > 0 else None
+    
+    def _load_grid_mix_regions(self):
+        """
+        Carga las definiciones de regiones desde electricity_maps_zones.json
+        para obtener fallback de CI cuando la API de Electricity Maps no está disponible.
+        
+        Se construyen sets para búsqueda O(1):
+        - _european_zones: ~80 zonas de EU (AT, BE, DE, ES, FR, IT, ...)
+        - _us_zones: ~60 zonas de USA (US, US-CAL-CISO, US-NW-BPAT, ...)
+        - _high_carbon_zones: zonas de CN e IN (~alto carbono, ~550g CO2/kWh)
+        
+        NOTA v2.1: Estos sets se usan para fallback de CI regional cuando la API
+        no está disponible (ver DEFAULT_CARBON_INTENSITY en carbon_intensity_api.py).
+        """
+        if not os.path.exists(EM_ZONES_JSON):
+            print(f"[WARN] No se encontro: {EM_ZONES_JSON}. Grid mix usara fallback global.")
+            return
+        
+        try:
+            with open(EM_ZONES_JSON, 'r', encoding='utf-8') as f:
+                zones_data = json.load(f)
+            
+            regions = zones_data.get('regions', {})
+            self._european_zones = set(regions.get('europe', []))
+            self._us_zones = set(regions.get('usa', []))
+            
+            # De asia_pacific, CN e IN representan grids de alto carbono (~550g CO2/kWh)
+            # que usan un CI fallback mayor cuando la API no está disponible
+            self._high_carbon_zones = {
+                zone for zone in regions.get('asia_pacific', [])
+                if zone.startswith('CN') or zone.startswith('IN')
+            }
+            
+            total = len(self._european_zones) + len(self._us_zones) + len(self._high_carbon_zones)
+            print(f"[OK] Grid mix regions: {len(self._european_zones)} EU, "
+                  f"{len(self._us_zones)} US, {len(self._high_carbon_zones)} alto-carbono "
+                  f"(total: {total} zonas desde JSON)")
+        except Exception as e:
+            print(f"[WARN] Error cargando regiones de grid mix: {e}. Usando fallback global.")
     
     def get_valid_processors_for_device(self, device_id: str) -> list:
         """
         Obtiene los procesadores disponibles para inferencia en un dispositivo.
         
-        Valida contra has_npu, has_gpu, etc. del CSV.
+        ╔══════════════════════════════════════════════════════════════════════╗
+        ║ DETECCIÓN DE CAPABILITIES DEL DISPOSITIVO                           ║
+        ╚══════════════════════════════════════════════════════════════════════╝
+        
+        Valida contra has_npu, gpu_tdp_watts, etc. del CSV devices.csv.
+        
+        ALGORITMO DE DETECCIÓN:
+        1. CPU siempre disponible (fallback universal)
+        2. GPU disponible si gpu_tdp_watts > 0 (indica presencia físicade GPU)
+        3. NPU disponible si has_npu = True (indica presencia de Neural Processing Unit)
+        
+        EJEMPLOS:
+        - MacBook Pro (M3 Max): cpu, gpu → ["cpu", "gpu"]
+        - iPhone 16 Pro: cpu, gpu, npu → ["cpu", "gpu", "npu"]
+        - Laptop Windows (sin GPU): cpu → ["cpu"]
+        - Server GPU cluster: cpu, gpu → ["cpu", "gpu"]
         
         Args:
             device_id: ID del dispositivo
@@ -521,7 +587,7 @@ class CarbonCalculator:
         tokens_input: int = None,
         tokens_output: int = None,
         request_type: str = None,  # NUEVO: Tipo de petición
-        data_transferred_mb: float = 0.5,
+        data_transferred_mb: float = None,  # Ahora se calcula automáticamente en función de tokens
         inference_processor: str = "auto",
         utilization: float = 0.7
     ) -> EmissionResult:
@@ -529,10 +595,10 @@ class CarbonCalculator:
         Calcula las emisiones totales de una consulta de IA.
         
         Args:
-            model_id: ID del modelo (ej: 'gpt-4', 'llama-2-70b')
+            model_id: ID del modelo (ej: 'gpt-4', 'llama2-70b')
             data_center_id: ID del data center (ej: 'aws-eu-west-1')
             device_id: ID del dispositivo cliente (ej: 'laptop-macbook-air-m3')
-            network_id: ID del tipo de red (ej: 'wifi-5', '4g-lte')
+            network_id: Tipo de red (ej: 'WiFi 6 802.11ax', '4G LTE', 'Fiber FTTH')
             user_country: Código de país del usuario (para carbon intensity local)
             inference_time_sec: Tiempo de inferencia en segundos (si None, se calcula)
             tokens_input: Tokens del prompt (si None, usa request_type)
@@ -545,9 +611,11 @@ class CarbonCalculator:
                 - "summarization": Resumen (1000+200 tokens)
                 - "code_generation": Código (100+300 tokens)
                 - "translation": Traducción (200+220 tokens)
-            data_transferred_mb: MB transferidos en la consulta
-            inference_processor: Procesador para inferencia local (cpu/gpu/npu/auto)
-            utilization: Factor de utilización del procesador (0.0-1.0)
+            data_transferred_mb: MB transferidos por la red (si None, se calcula automáticamente)
+                Fórmula v2.7: data_transferred_mb = (1200 + tokens × 5) / 1,000,000
+                - 1200 bytes: overhead HTTP fijo estimado (RFC 7540 §4.1, RFC 7541, RFC 8446 §5.1)
+                - 5 bytes/token: payload (1 token ≈ 4 chars × ~1.2 UTF-8)
+                Ref: RFCs verificables, sin validación empírica en APIs LLM
         
         Returns:
             EmissionResult con el desglose de emisiones
@@ -616,6 +684,23 @@ class CarbonCalculator:
         
         tokens_processed = tokens_input + tokens_output
         
+        # CORREGIDO v2.7: Calcular data_transferred_mb con modelo realista
+        # El overhead HTTP es FIJO por request, NO proporcional a cada token
+        # Refs: RFC 7540 §4.1 (HTTP/2 frame=9 bytes), RFC 7541 (HPACK), RFC 8446 §5.1 (TLS)
+        if data_transferred_mb is None:
+            # Constantes fundamentadas en RFCs (valores exactos donde disponibles):
+            # - OVERHEAD_HTTP_BYTES: Estimación conservadora de overhead fijo
+            #   * HTTP/2 frame headers: 9 bytes (RFC 7540 §4.1 - exacto)
+            #   * HPACK headers comprimidos: ~400-600 bytes (RFC 7541 - variable)
+            #   * JSON wrappers: ~350 bytes (request+response)
+            #   * TLS overhead: ~100 bytes (~3-4 records × 21-37 bytes, RFC 8446)
+            # - BYTES_PER_TOKEN: 1 token ≈ 4 chars (OpenAI docs) × ~1.2 (UTF-8)
+            OVERHEAD_HTTP_BYTES = 1200  # Estimación conservadora (sin validación empírica)
+            BYTES_PER_TOKEN = 5  # Conservador para texto multilingüe (sin JSON escaping fijo)
+            
+            total_bytes = OVERHEAD_HTTP_BYTES + (tokens_processed * BYTES_PER_TOKEN)
+            data_transferred_mb = total_bytes / 1_000_000  # Estándar telecom decimal
+        
         # Calcular tiempo de inferencia si no se especifica
         if inference_time_sec is None:
             if model is not None:
@@ -655,10 +740,20 @@ class CarbonCalculator:
             # Lógica mejorada con validación según dispositivo
             
             if inference_processor == "auto":
-                # Usar target por defecto del dispositivo
+                # ╔══════════════════════════════════════════════════════════════╗
+                # ║ DETECCIÓN AUTOMÁTICA DE PROCESADOR                          ║
+                # ╚══════════════════════════════════════════════════════════════╝
+                # Lee de devices.csv la columna "primary_inference_target"
+                # que indica qué procesador es ÓPTIMO para este dispositivo.
+                # Ejemplos:
+                # - flagship_smartphone → "npu" (Qualcomm Snapdragon)
+                # - macbook_pro_16 → "gpu" (Apple Silicon GPU)
+                # - laptop_windows → "cpu" (sin GPU/NPU)
+                # - server_gpu_cluster → "gpu" (NVIDIA A100)
                 processor = device.get('primary_inference_target', 'cpu').lower()
             else:
-                # Usuario especificó un procesador
+                # Usuario especificó un procesador manualmente (ej: "gpu", "npu", "cpu")
+                # Validamos que esté disponible en este dispositivo
                 processor = inference_processor.lower()
                 
                 # Validar que el procesador sea válido para este dispositivo
@@ -672,17 +767,18 @@ class CarbonCalculator:
                         )
                 except ValueError as e:
                     print(f"[ERROR] {str(e)}")
-                    # Fallback a CPU como procesador seguro
+                    # Fallback a CPU como procesador seguro si hay error de validación
                     processor = "cpu"
             
             # Obtener P_idle (consumo en reposo del sistema)
             p_idle = device.get('system_idle_watts', 5.0)
             
             # Seleccionar P_TDP y P_inference según el procesador seleccionado
+            # (ya sea por auto-detección o especificado manualmente)
             if processor == "gpu":
                 p_tdp = device.get('gpu_tdp_watts', 0)
                 p_inference_max = device.get('inference_gpu_watts', 0)
-                # Fallback a CPU si no hay GPU
+                # Fallback a CPU si no hay GPU disponible (TDP = 0)
                 if p_tdp == 0:
                     processor = "cpu"
                     p_tdp = device.get('cpu_tdp_watts', 50)
@@ -690,12 +786,12 @@ class CarbonCalculator:
             elif processor == "npu":
                 p_tdp = device.get('npu_tdp_watts', 0)
                 p_inference_max = device.get('inference_npu_watts', 0)
-                # Fallback a CPU si no hay NPU
+                # Fallback a CPU si no hay NPU disponible (TDP = 0)
                 if p_tdp == 0:
                     processor = "cpu"
                     p_tdp = device.get('cpu_tdp_watts', 50)
                     p_inference_max = device.get('inference_cpu_watts', 50)
-            else:  # CPU por defecto
+            else:  # CPU por defecto (fallback universal)
                 p_tdp = device.get('cpu_tdp_watts', 50)
                 p_inference_max = device.get('inference_cpu_watts', 50)
             
@@ -726,18 +822,40 @@ class CarbonCalculator:
         co2_device_g = (energy_device_wh / 1000) * ci_local
         
         # ===== 2. EMISIONES DE LA RED =====
+        # ╔══════════════════════════════════════════════════════════════════════╗
+        # ║ CÁLCULO DINÁMICO DE CO₂ DE RED (v2.1)                                ║
+        # ║ Usa CI específico del país del usuario desde Electricity Maps API   ║
+        # ╚══════════════════════════════════════════════════════════════════════╝
+        # 
+        # energy_kWh_per_MB: Energía por MB transferido (en kWh)
+        #   Fuente: GSMA 2023, ITU-T 2022, IEEE, European Commission JRC
+        #
+        # carbon_kg_per_GB: Calculado dinámicamente como:
+        #   carbon_kg_per_GB = energy_kWh_per_GB × CI_user_country / 1000
+        #
+        # Ventajas sobre modelo pre-calculado por región:
+        #   - CI específico por país (ej: Francia ~50 vs Polonia ~650 gCO₂/kWh)
+        #   - Actualización en tiempo real si API disponible
+        #   - Fallback a valores por defecto si API no disponible
+        
         if network is not None:
-            energy_per_mb = network['energy_per_mb_wh']  # Wh/MB
-            carbon_multiplier = network.get('carbon_multiplier', 1.0)
+            energy_per_mb = network['energy_kWh_per_MB']  # kWh/MB
+            energy_per_gb = network['energy_kWh_per_GB']  # kWh/GB
+            # Calcular CO₂/GB dinámicamente usando CI del país del usuario
+            carbon_per_gb = energy_per_gb * ci_local / 1000  # kg CO₂/GB
         else:
-            energy_per_mb = 0.00025  # 4G LTE por defecto
-            carbon_multiplier = 1.3
+            # Fallback a 4G LTE (más común) con CI del usuario
+            energy_per_mb = 0.006  # kWh/MB
+            energy_per_gb = 6.0    # kWh/GB
+            carbon_per_gb = energy_per_gb * ci_local / 1000  # kg CO₂/GB
         
         # Energía de red (Wh)
-        energy_network_wh = energy_per_mb * data_transferred_mb * 1000  # Convertir a Wh
+        energy_network_wh = energy_per_mb * data_transferred_mb * 1000
         
-        # CO2 de red (gCO2)
-        co2_network_g = (energy_network_wh / 1000) * ci_local * carbon_multiplier
+        # CO2 de red (gCO2) - carbon_per_gb ya incluye energía × CI del grid regional
+        # Conversión: MB → GB (decimal, estándar telecom) y kg → g
+        data_transferred_gb = data_transferred_mb / 1000
+        co2_network_g = data_transferred_gb * carbon_per_gb * 1000  # kg CO2/GB → g CO2
         
         # ===== 3. EMISIONES DEL DATA CENTER =====
         # NUEVA LÓGICA v2.0: Usar energy_wh_per_1k_tokens del modelo si está disponible
@@ -796,7 +914,7 @@ class CarbonCalculator:
             energy_total_wh=energy_total_wh,
             model_name=model['model_name'] if model is not None else model_id,
             device_name=device['device_name'] if device is not None else device_id,
-            network_type=network['network_name'] if network is not None else network_id,
+            network_type=network['network_type'] if network is not None else network_id,
             data_center_name=dc['region'] if dc is not None else data_center_id,
             inference_time_sec=inference_time_sec,
             tokens_processed=tokens_processed,
@@ -821,7 +939,7 @@ class CarbonCalculator:
             result['devices'] = self.devices_df['device_id'].tolist()
         
         if self.network_df is not None:
-            result['network_types'] = self.network_df['network_id'].tolist()
+            result['network_types'] = self.network_df['network_type'].tolist()
         
         return result
 
@@ -859,7 +977,7 @@ def main():
         model_id="gpt-4",
         data_center_id="aws-eu-west-1",
         device_id="phone-iphone-15-pro",
-        network_id="4g-lte",
+        network_id="4G LTE",
         user_country="ES",
         request_type="chat_simple",  # 50+100 tokens, tiempo automático
         inference_processor="auto"
@@ -875,7 +993,7 @@ def main():
         model_id="llama2-70b",
         data_center_id="gcp-us-central1",
         device_id="laptop-macbook-air-m3",
-        network_id="wifi-5",
+        network_id="WiFi 6 802.11ax",
         user_country="US-CA",
         request_type="code_generation",  # 100+300 tokens
         inference_processor="cpu"
@@ -891,7 +1009,7 @@ def main():
         model_id="mistral-7b",
         data_center_id="gcp-europe-west1",
         device_id="desktop-gaming-rtx4090",
-        network_id="fiber-ftth",
+        network_id="Fiber FTTH",
         user_country="DE",
         tokens_input=100,
         tokens_output=2000,  # Generación larga personalizada
@@ -911,9 +1029,9 @@ def main():
     for proc in ["cpu", "gpu", "npu"]:
         r = calc.calculate_emissions(
             model_id="gpt-4",
-            data_center_id="azure-west-europe",
+            data_center_id="azure-westeurope",
             device_id="laptop-macbook-pro-m3-max",
-            network_id="fiber-home",
+            network_id="Fiber FTTH",
             user_country="ES",
             request_type="chat_simple",
             inference_processor=proc,
@@ -931,7 +1049,7 @@ def main():
             model_id="gpt-4",
             data_center_id="aws-eu-west-1",
             device_id="laptop-macbook-pro-m3-max",
-            network_id="wifi-5",
+            network_id="WiFi 6 802.11ax",
             user_country="ES",
             request_type=req_type
         )
@@ -947,7 +1065,7 @@ def main():
             model_id=model_id,
             data_center_id="gcp-europe-west1",
             device_id="laptop-macbook-pro-m3-max",
-            network_id="wifi-5",
+            network_id="WiFi 6 802.11ax",
             user_country="DE",
             request_type="chat_simple"
         )
@@ -965,7 +1083,7 @@ def main():
             model_id="llama2-70b",
             data_center_id="gcp-europe-west1",
             device_id="desktop-gaming-rtx4090",
-            network_id="fiber-ftth",
+            network_id="Fiber FTTH",
             user_country="DE",
             request_type="generation_long",
             inference_processor="gpu",

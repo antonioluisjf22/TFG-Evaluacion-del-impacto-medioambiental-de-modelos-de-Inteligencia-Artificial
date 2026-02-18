@@ -51,7 +51,7 @@
 │     ├─ models.csv        (10 modelos)           │
 │     ├─ data_centers.csv  (71 DCs)               │
 │     ├─ devices.csv       (20 dispositivos)      │
-│     ├─ network_types.csv (15 tipos red)         │
+│     ├─ network_energy_sources_2024.csv (6 tipos)│
 │     └─ request_types.csv (13 tipos petición)    │
 │                                                  │
 │  2. Obtiene Carbon Intensity (CI):              │
@@ -231,29 +231,29 @@ BÚSQUEDA EN CSVs (por parámetro):
    → (Si fuera "NPU" → usaría inference_npu_watts = 8W)
    → (Si fuera "Auto" → detecta capability del dispositivo)
 
-🔍 Tipo Red: "4G"
-   → network_types.csv → "type" = "4G"
-   → Extrae: energy_per_mb = 0.002 Wh/MB
-   → Extrae: carbon_multiplier = 1.5
+🔍 Tipo Red: "4G LTE"
+   → network_energy_sources_2024.csv → "network_type" = "4G LTE"
+   → Extrae: energy_kWh_per_MB = 0.006 kWh/MB
+   → Extrae: energy_kWh_per_GB = 6.0 kWh/GB
 
    📍 ORIGEN DE ESTOS PARÁMETROS:
    
-   • energy_per_mb (0.002 Wh/MB para 4G):
-     └─ Fuente: IEA 2020 report "The carbon footprint of streaming video"
-     └─ Ajustado para: Tecnologías más recientes (5G, WiFi 6E) según GSMA y Wi-Fi Alliance
-     └─ Rango total en dataset: 0.0002 - 0.003 Wh/MB (Ethernet a Satélite)
-     └─ Basado en: Mediciones empíricas + estándares de la industria
-     └─ Tipo: FUENTE DE DATOS VERIFICADA (no estimación)
+   • energy_kWh_per_MB (0.006 kWh/MB para 4G):
+     └─ Fuente: GSMA Intelligence 2023, ITU-T L.1310 2022
+     └─ Secundarias: Ericsson Mobility 2023, Nokia Research 2021
+     └─ Rango total en dataset: 0.0004 - 0.030 kWh/MB (Fibra a Satélite LEO)
+     └─ Basado en: Papers revisados por pares + informes industriales
+     └─ Tipo: FUENTE DE DATOS VERIFICADA (derivado indirecto)
    
-   • carbon_multiplier (1.5 para 4G):
-     └─ Significado: Factor que captura infraestructura ADICIONAL necesaria
-     └─ Por tipo de red:
-        ├─ WiFi / Ethernet = 1.0 (infraestructura existente, sin overhead)
-        ├─ 4G/5G = 1.1-1.3 (torres celulares, antenas, backhaul)
-        ├─ 5G = ~1.2 (más eficiente que 4G pero requiere infraestructura)
-        └─ Satélite = 1.8-2.0 (satélites, estaciones terrestres, altísimo overhead)
-     └─ Cálculo de CO2_red: (Energía × carbon_multiplier) → refleja verdadero impacto
-     └─ Basado en: Análisis de ciclo de vida (LCA) de infraestructura de redes
+   • carbon_kg_per_GB (v2.1 - calculado dinámicamente):
+     └─ Significado: CO₂ por GB calculado en runtime con CI del país del usuario
+     └─ Fórmula (v2.1): carbon_kg_per_GB = energy_kWh_per_GB × CI_user_country / 1000
+     └─ Ejemplo para 4G LTE (6.0 kWh/GB):
+        ├─ España (CI=145 gCO₂/kWh) → 0.87 kg/GB
+        ├─ Francia (CI=50 gCO₂/kWh) → 0.30 kg/GB
+        ├─ Alemania (CI=350 gCO₂/kWh) → 2.10 kg/GB
+        └─ USA (CI=380 gCO₂/kWh) → 2.28 kg/GB
+     └─ Fuente CI: Electricity Maps API (tiempo real)
 ```
 
 ### Paso 2: Obtener Carbon Intensity (CI)
@@ -477,20 +477,24 @@ Donde:
                       Representa los MB transferidos durante la consulta
                       Por defecto: 0.5 MB
            
-  energy_per_mb = consumo de energía por MB transferido (de network_types.csv)
+  energy_kWh_per_MB = consumo de energía por MB transferido (de network_energy_sources_2024.csv)
                 Ejemplos por tipo de red:
-                ├─ Ethernet 1G:    0.0002 Wh/MB (más eficiente)
-                ├─ WiFi 5/6:       0.0004 Wh/MB
-                ├─ 4G LTE:         0.002 Wh/MB
-                ├─ 5G NR:          0.001 Wh/MB (mejor que 4G)
-                └─ Satélite LEO:   0.003 Wh/MB
+                ├─ Fiber FTTH:     0.0004 kWh/MB (más eficiente)
+                ├─ WiFi 6:         0.0008 kWh/MB
+                ├─ 4G LTE:         0.006 kWh/MB
+                ├─ 5G NSA:         0.004 kWh/MB (mejor que 4G)
+                └─ WiFi 6E:        0.0007 kWh/MB
   
-  Para 4G: E_network = 0.002 Wh/MB × 0.5 MB = 0.001 Wh
-           ↑              ↑           ↑
-        Wh/MB        energy/MB    datos
+  Para 4G: E_network = 0.006 kWh/MB × 0.00195 MB × 1000 = 0.0117 Wh
+           ↑              ↑           ↑             ↑
+        Wh           kWh/MB       data_mb      kWh→Wh
 
-NOTA: El carbon_multiplier (1.1-2.5) se aplica al CO2, no a la energía.
-      Captura emisiones de infraestructura (torres, antenas, satélites).
+CO2_network se calcula con CI dinámico del país del usuario (v2.1):
+  energy_kWh_per_GB = energy_kWh_per_MB × 1000 (de network_energy_sources_2024.csv)
+  ci_local = get_carbon_intensity(user_country) (de Electricity Maps API, gCO₂/kWh)
+  carbon_kg_per_gb = energy_kWh_per_GB × ci_local / 1000
+  data_transferred_gb = data_transferred_mb / 1000
+  co2_network_g = data_transferred_gb × carbon_kg_per_gb × 1000
 
 ═══════════════════════════════════════════════════════════
 

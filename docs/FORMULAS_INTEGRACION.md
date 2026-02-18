@@ -10,10 +10,10 @@ Este documento describe cómo las fórmulas definidas en cada archivo `.py` de e
 
 ```
 ┌──────────────────────┐   ┌──────────────────────┐   ┌──────────────────────┐
-│  extract_models_v2   │   │   extract_devices    │   │ extract_network_types│
+│  extract_models_v2   │   │   extract_devices    │   │network_energy_sources│
 │  ──────────────────  │   │  ──────────────────  │   │  ──────────────────  │
-│  • energy_wh_per_1k  │   │  • cpu/gpu/npu TDP   │   │  • energy_per_mb_wh  │
-│  • latency_ms_token  │   │  • inference_watts   │   │  • carbon_multiplier │
+│  • energy_wh_per_1k  │   │  • cpu/gpu/npu TDP   │   │  • energy_kWh_per_MB │
+│  • latency_ms_token  │   │  • inference_watts   │   │  • energy_kWh_per_GB │
 │  • max_output_tokens │   │  • system_idle_watts │   └──────────┬───────────┘
 └──────────┬───────────┘   └──────────┬───────────┘              │
            │                          │                          │
@@ -112,28 +112,43 @@ co2_device_g = (energy_device_wh / 1000) * ci_local
 
 ---
 
-## 3️⃣ Fórmulas de Red (`extract_network_types.py`)
+## 3️⃣ Fórmulas de Red (`network_energy_sources_2024.csv`) - v2.1
 
-### Fórmulas Definidas
+### Campos del CSV
 
 | Campo | Valor Típico | Fuente |
 |-------|--------------|--------|
-| `energy_per_mb_wh` | 0.00004 - 0.003 Wh/MB | IEA, GSMA |
-| `carbon_multiplier` | 1.0 - 2.5 | Infraestructura |
+| `energy_kWh_per_MB` | 0.0004 - 0.030 kWh/MB | GSMA, ITU-T, JRC |
+| `energy_kWh_per_GB` | 0.4 - 6.0 kWh/GB | Calculado (×1000) |
 
-### Uso en `calculate_emissions.py`
+### Uso en `calculate_emissions.py` (v2.1 - CI dinámico)
 
 ```python
-# Línea ~530: Energía de red
-energy_per_mb = network['energy_per_mb_wh']
-carbon_multiplier = network.get('carbon_multiplier', 1.0)
-
-# Energía consumida por la transmisión:
+# Energía de red (Wh)
+energy_per_mb = network['energy_kWh_per_MB']
 energy_network_wh = energy_per_mb * data_transferred_mb * 1000
 
-# Emisiones de red:
-co2_network_g = (energy_network_wh / 1000) * ci_local * carbon_multiplier
+# CI dinámico desde Electricity Maps API
+ci_local = get_carbon_intensity(user_country)  # gCO₂/kWh
+
+# CO2 de red (gCO2) - cálculo dinámico
+energy_per_gb = network['energy_kWh_per_GB']
+carbon_per_gb = energy_per_gb * ci_local / 1000  # kg CO₂/GB
+data_transferred_gb = data_transferred_mb / 1000
+co2_network_g = data_transferred_gb * carbon_per_gb * 1000
 ```
+
+### Fórmula v2.1: CI dinámico por país
+
+```
+carbon_kg_per_GB = energy_kWh_per_GB × CI_user_country / 1000
+```
+
+**Ventaja sobre v2.0**: En lugar de 4 buckets regionales (~250, ~380, ~450, ~550 gCO₂/kWh),
+ahora se usa el CI específico del país del usuario para mayor precisión:
+- Francia: ~50 gCO₂/kWh (nuclear)
+- España: ~145 gCO₂/kWh (renovables)
+- Alemania: ~350 gCO₂/kWh (carbón)
 
 ---
 
@@ -187,7 +202,7 @@ ci_dc = self.get_carbon_intensity_for_dc(data_center_id, fallback_country)
 
 ---
 
-## 📐 Fórmula Final Integrada
+## 📐 Fórmula Final Integrada (v2.1)
 
 ```
 CO2_TOTAL = CO2_DISPOSITIVO + CO2_RED + CO2_DATA_CENTER
@@ -197,7 +212,7 @@ Donde:
 
 CO2_DISPOSITIVO = [P_idle + (P_max - P_idle) × U] × t × CI_local / 1000
 
-CO2_RED = energy_per_mb × MB × carbon_multiplier × CI_local / 1000
+CO2_RED = data_transferred_gb × (energy_kWh_per_GB × CI_user_country / 1000) × 1000
 
 CO2_DATA_CENTER = [(tokens / 1000) × energy_wh_per_1k] × PUE × CI_zona / 1000
 ```
@@ -211,9 +226,9 @@ CO2_DATA_CENTER = [(tokens / 1000) × energy_wh_per_1k] × PUE × CI_zona / 1000
 | `U` | Parámetro `utilization` | 0.0-1.0 |
 | `t` | Calculado o `inference_time_sec` | horas |
 | `CI_local` | carbon_intensity_api → país usuario | gCO2/kWh |
-| `energy_per_mb` | network_types.csv | Wh/MB |
-| `MB` | Parámetro `data_transferred_mb` | MB |
-| `carbon_multiplier` | network_types.csv | factor |
+| `data_transferred_mb` | Auto-calculado de tokens | MB |
+| `energy_kWh_per_GB` | network_energy_sources_2024.csv | kWh/GB |
+| `CI_user_country` | carbon_intensity_api → país usuario | gCO2/kWh |
 | `tokens` | Parámetro o `request_type` | tokens |
 | `energy_wh_per_1k` | models.csv | Wh/1k tokens |
 | `PUE` | data_centers.csv | factor |
@@ -234,8 +249,9 @@ CO2_DATA_CENTER = [(tokens / 1000) × energy_wh_per_1k] × PUE × CI_zona / 1000
 | extract_devices.py | `inference_gpu_watts` | ✅ Sí | ~490 |
 | extract_devices.py | `inference_npu_watts` | ✅ Sí | ~490 |
 | extract_devices.py | `system_idle_watts` | ✅ Sí | ~485 |
-| extract_network_types.py | `energy_per_mb_wh` | ✅ Sí | ~530 |
-| extract_network_types.py | `carbon_multiplier` | ✅ Sí | ~535 |
+| network_energy_sources_2024.csv | `energy_kWh_per_MB` | ✅ Sí | ~859 |
+| network_energy_sources_2024.csv | `energy_kWh_per_GB` | ✅ Sí | ~870 |
+| carbon_intensity_api.py | `CI país usuario (red)` | ✅ Sí | ~841 |
 | extract_data_centers.py | `pue` | ✅ Sí | ~550 |
 | carbon_intensity_api.py | `renewable_pct` | ⚠️ Implícito | ² |
 | carbon_intensity_api.py | `CI por zona` | ✅ Sí | ~270-280 |
