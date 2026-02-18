@@ -1065,15 +1065,15 @@
   "ci_ES": {
     "carbonIntensity": 76,
     "zone": "ES",
-    "timestamp": "2026-02-06T20:57:28.192513",
+    "timestamp": "2026-02-18T19:16:35.388448",
     "source": "electricity_maps_api",
     "fossilFreePercentage": null,
     "renewablePercentage": null
   },
   "ci_IE": {
-    "carbonIntensity": 277,
+    "carbonIntensity": 264,
     "zone": "IE",
-    "timestamp": "2026-02-06T20:57:28.535217",
+    "timestamp": "2026-02-18T19:16:36.617371",
     "source": "electricity_maps_api",
     "fossilFreePercentage": null,
     "renewablePercentage": null
@@ -1087,17 +1087,57 @@
     "renewablePercentage": null
   },
   "ci_DE": {
-    "carbonIntensity": 448,
+    "carbonIntensity": 578,
     "zone": "DE",
-    "timestamp": "2026-01-31T14:01:19.433433",
+    "timestamp": "2026-02-18T19:16:36.952882",
     "source": "electricity_maps_api",
     "fossilFreePercentage": null,
     "renewablePercentage": null
   },
   "ci_BE": {
-    "carbonIntensity": 195,
+    "carbonIntensity": 223,
     "zone": "BE",
-    "timestamp": "2026-01-31T14:01:19.771916",
+    "timestamp": "2026-02-07T18:58:57.971550",
+    "source": "electricity_maps_api",
+    "fossilFreePercentage": null,
+    "renewablePercentage": null
+  },
+  "ci_US-MIDA-PJM": {
+    "carbonIntensity": 357,
+    "zone": "US-MIDA-PJM",
+    "timestamp": "2026-02-10T19:41:13.274676",
+    "source": "electricity_maps_api",
+    "fossilFreePercentage": null,
+    "renewablePercentage": null
+  },
+  "ci_NL": {
+    "carbonIntensity": 353,
+    "zone": "NL",
+    "timestamp": "2026-02-07T18:58:58.111500",
+    "source": "electricity_maps_api",
+    "fossilFreePercentage": null,
+    "renewablePercentage": null
+  },
+  "ci_CN": {
+    "carbonIntensity": 546,
+    "zone": "CN",
+    "timestamp": "2026-02-10T19:41:13.572138",
+    "source": "electricity_maps_api",
+    "fossilFreePercentage": null,
+    "renewablePercentage": null
+  },
+  "ci_FR": {
+    "carbonIntensity": 31,
+    "zone": "FR",
+    "timestamp": "2026-02-18T19:16:35.756196",
+    "source": "electricity_maps_api",
+    "fossilFreePercentage": null,
+    "renewablePercentage": null
+  },
+  "ci_PL": {
+    "carbonIntensity": 654,
+    "zone": "PL",
+    "timestamp": "2026-02-18T19:16:36.110786",
     "source": "electricity_maps_api",
     "fossilFreePercentage": null,
     "renewablePercentage": null

@@ -11,13 +11,6 @@ MEJORAS v2.0:
 - Energía por 1000 tokens (Wh/1k tokens)
 - Latencia promedio por token
 
-FUENTES DE DATOS ENERGÉTICOS:
-- Luccioni et al. 2023: "Power Hungry Processing: Watts Driving the Cost of AI"
-- Patterson et al. 2021: "Carbon Emissions and Large Neural Network Training"
-- Strubell et al. 2019: "Energy and Policy Considerations for Deep Learning"
-- Dodge et al. 2022: "Measuring the Carbon Intensity of AI in Cloud Instances"
-- Reportes de sostenibilidad: Google, Microsoft, Meta
-
 FÓRMULAS USADAS:
 ================
 
@@ -77,10 +70,7 @@ def get_gpu_efficiency(params_billions):
 def estimate_energy_per_1k_tokens(params, model_type="LLM"):
     """
     Estima energía en Wh por 1000 tokens de inferencia.
-    
-    Basado en:
-    - Luccioni et al. 2023 (mediciones reales de Bloom, GPT-J, etc.)
-    - Patterson et al. 2021 (Google estimaciones)
+
     """
     params_b = params / 1e9  # Convertir a billones
     efficiency = get_gpu_efficiency(params_b)
