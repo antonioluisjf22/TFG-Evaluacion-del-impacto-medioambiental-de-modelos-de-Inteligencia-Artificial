@@ -183,29 +183,30 @@ BÚSQUEDA EN CSVs (por parámetro):
      └─ Fuente: models.csv → columna "energy_wh_per_1k_tokens" 
      └─ Valor original para GPT-4: 0.0048 Wh/1k tokens
      └─ Cálculo: 0.0048 / 1000 = 0.0000048 Wh/token
-     └─ Para petición típica de 150 tokens: 0.0000048 × 150 = 0.00072 Wh ≈ 0.00512 Wh/req
+     └─ Para petición típica de 285 tokens (chat_simple v2.1): 0.0048 × (285/1000) = 0.001368 Wh/req
      └─ Basado en: Reportes de sostenibilidad de OpenAI (empírico/medido)
    
    • latency_ms (800 ms):
      └─ Fuente: models.csv → columna "latency_ms_per_token"
      └─ Valor original para GPT-4: 35.0 ms/token
-     └─ Cálculo: 35 ms/token × ~150 tokens output = 5250 ms ≈ 800 ms promedio por batch
+     └─ Cálculo: 35 ms/token × 285 tokens = 9975 ms ≈ 9.98s para chat_simple
      └─ Basado en: Mediciones empíricas de latencia de API (tiempo real)
 
 🔍 Tipo petición: "chat_simple"
    → request_types.csv → "type" = "chat_simple"
-   → Extrae: tokens_input (50)
-   → Extrae: tokens_output (100)
-   → Extrae: tokens_total (150)
+   → Extrae: tokens_input (70)
+   → Extrae: tokens_output (215)
+   → Extrae: tokens_total (285)
 
-   📍 ORIGEN DE ESTOS PARÁMETROS:
+   📍 ORIGEN DE ESTOS PARÁMETROS (v2.1 - actualizado):
    
-   • tokens_input (50), tokens_output (100), tokens_total (150):
+   • tokens_input (70), tokens_output (215), tokens_total (285):
      └─ Fuente: request_types.csv → columnas "tokens_input_avg" y "tokens_output_avg"
      └─ Definición de "chat_simple": Pregunta-respuesta corta típica
-     └─ Valores: 50 tokens promedio para entrada + 100 tokens promedio para salida
-     └─ Cálculo: tokens_total = tokens_input (50) + tokens_output (100) = 150
-     └─ Basado en: Análisis estadístico de patrones reales de uso de LLMs
+     └─ Valores: 70 tokens promedio para entrada + 215 tokens promedio para salida
+     └─ Cálculo: tokens_total = tokens_input (70) + tokens_output (215) = 285
+     └─ Basado en: LMSYS-Chat-1M dataset (Zheng et al., 2024) - datos reales verificables
+     └─ Paper: https://arxiv.org/abs/2309.11998
      └─ Nota: Valores predefinidos por tipo, pero pueden ser sobrescritos por el usuario en calculate_emissions.py
 
 🔍 Data Center: "AWS EU-West-1"
@@ -658,10 +659,10 @@ Interpretación:
 ║  2️⃣ TIPO DE PETICIÓN                                          ║
 ║  ┌────────────────────────────────────────────────────────┐   ║
 ║  │ ¿Qué hace tu usuario? [▼ Chat Simple ▼]             │   ║
-║  │                        ├─ Chat simple (50+100 tokens) │   ║
-║  │                        ├─ Chat largo (500+1000)       │   ║
-║  │                        ├─ Clasificación (50 tokens)   │   ║
-║  │                        ├─ Resumen (200+300)           │   ║
+║  │                        ├─ Chat simple (70+215 tokens) │   ║
+║  │                        ├─ Chat extendido (296+441)    │   ║
+║  │                        ├─ Clasificación (128+1)       │   ║
+║  │                        ├─ Resumen (781+56)            │   ║
 ║  │                        └─ [Ver todos (13)]            │   ║
 ║  └────────────────────────────────────────────────────────┘   ║
 ║                                                                ║

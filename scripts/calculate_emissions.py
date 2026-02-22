@@ -604,7 +604,7 @@ class CarbonCalculator:
             tokens_input: Tokens del prompt (si None, usa request_type)
             tokens_output: Tokens generados (si None, usa request_type)
             request_type: Tipo de petición. Opciones para LLM:
-                - "chat_simple": Pregunta-respuesta corta (50+100 tokens)
+                - "chat_simple": Pregunta-respuesta corta (70+215 tokens)
                 - "chat_extended": Conversación extendida (200+500 tokens)
                 - "generation_short": Texto corto (20+256 tokens)
                 - "generation_long": Texto largo (50+2048 tokens)
@@ -631,20 +631,21 @@ class CarbonCalculator:
         # Ahora usamos los datos del modelo para calcular automáticamente
         
         # Diccionario de tipos de petición (sincronizado con request_types.csv)
+        # Fuentes: LMSYS-Chat-1M, WildChat, CNN/DailyMail, ViT paper, BERT paper
         REQUEST_TYPES = {
-            "chat_simple": {"tokens_input": 50, "tokens_output": 100},
-            "chat_extended": {"tokens_input": 200, "tokens_output": 500},
-            "generation_short": {"tokens_input": 20, "tokens_output": 256},
-            "generation_long": {"tokens_input": 50, "tokens_output": 2048},
-            "summarization": {"tokens_input": 1000, "tokens_output": 200},
-            "code_generation": {"tokens_input": 100, "tokens_output": 300},
-            "translation": {"tokens_input": 200, "tokens_output": 220},
-            "image_classification": {"tokens_input": 196, "tokens_output": 10},
-            "image_captioning": {"tokens_input": 196, "tokens_output": 50},
-            "visual_qa": {"tokens_input": 250, "tokens_output": 100},
-            "text_classification": {"tokens_input": 128, "tokens_output": 1},
-            "sentiment_analysis": {"tokens_input": 64, "tokens_output": 1},
-            "ner": {"tokens_input": 100, "tokens_output": 50}
+            "chat_simple": {"tokens_input": 70, "tokens_output": 215},      # LMSYS-Chat-1M
+            "chat_extended": {"tokens_input": 296, "tokens_output": 441},   # WildChat
+            "generation_short": {"tokens_input": 20, "tokens_output": 65},  # Alpaca
+            "generation_long": {"tokens_input": 50, "tokens_output": 2048}, # API limit
+            "summarization": {"tokens_input": 781, "tokens_output": 56},    # CNN/DailyMail
+            "code_generation": {"tokens_input": 100, "tokens_output": 300}, # Sin evidencia
+            "translation": {"tokens_input": 200, "tokens_output": 220},     # Ratio ~1.1x
+            "image_classification": {"tokens_input": 196, "tokens_output": 10},  # ViT
+            "image_captioning": {"tokens_input": 196, "tokens_output": 15},      # ViT + COCO
+            "visual_qa": {"tokens_input": 196, "tokens_output": 100},            # ViT
+            "text_classification": {"tokens_input": 128, "tokens_output": 1},    # BERT
+            "sentiment_analysis": {"tokens_input": 64, "tokens_output": 1},      # SST-2
+            "ner": {"tokens_input": 100, "tokens_output": 50}                    # Estimación
         }
         
         # Determinar tokens según prioridad:
@@ -979,12 +980,12 @@ def main():
         device_id="phone-iphone-15-pro",
         network_id="4G LTE",
         user_country="ES",
-        request_type="chat_simple",  # 50+100 tokens, tiempo automático
+        request_type="chat_simple",  # 70+215 tokens, tiempo automático
         inference_processor="auto"
     )
     
     print("\nEscenario 1: GPT-4 + iPhone 15 Pro + Chat Simple")
-    print("          [request_type=chat_simple → 150 tokens, tiempo auto]")
+    print("          [request_type=chat_simple → 285 tokens, tiempo auto]")
     print("-" * 50)
     print(result1)
     

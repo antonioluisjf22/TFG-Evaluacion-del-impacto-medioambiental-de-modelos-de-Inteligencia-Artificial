@@ -396,11 +396,11 @@ Fórmula:
   data_transferred_mb = (1200 + tokens_processed × 5) / 1,000,000
 
 Ejemplos:
-  • 50 input + 100 output = 150 tokens
-    → (1200 + 750) / 1M = 0.00195 MB ≈ 2 KB
+  • 70 input + 215 output = 285 tokens (chat_simple v2.1)
+    → (1200 + 1425) / 1M = 0.002625 MB ≈ 2.6 KB
     
-  • 500 input + 1000 output = 1500 tokens
-    → (1200 + 7500) / 1M = 0.0087 MB ≈ 8.7 KB
+  • 296 input + 441 output = 737 tokens (chat_extended v2.1)
+    → (1200 + 3685) / 1M = 0.004885 MB ≈ 4.9 KB
 
 ⚠️ LIMITACIÓN: Modelo NO validado empíricamente contra tráfico real de APIs LLM.
 

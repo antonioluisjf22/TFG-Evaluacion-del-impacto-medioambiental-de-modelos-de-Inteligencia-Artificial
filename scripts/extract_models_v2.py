@@ -125,23 +125,28 @@ def get_request_types(model_type):
     """
     Define tipos de petición soportados por cada tipo de modelo.
     
-    Cada tipo tiene un multiplicador de tokens estimado.
+    Valores basados en datasets académicos:
+    - chat_simple: LMSYS-Chat-1M (Zheng et al., 2024) https://arxiv.org/abs/2309.11998
+    - chat_extended: WildChat (Zhao et al., 2024) https://arxiv.org/abs/2405.01470
+    - summarization: CNN/DailyMail (See et al., 2017) https://arxiv.org/abs/1704.04368
+    - image_*: ViT (Dosovitskiy et al., 2020) https://arxiv.org/abs/2010.11929
+    - text_classification: BERT (Devlin et al., 2018) https://arxiv.org/abs/1810.04805
     """
     if model_type == "LLM":
         return {
-            "chat_simple": {"tokens_input": 50, "tokens_output": 100, "description": "Pregunta-respuesta corta"},
-            "chat_extended": {"tokens_input": 200, "tokens_output": 500, "description": "Conversación extendida"},
-            "generation_short": {"tokens_input": 20, "tokens_output": 256, "description": "Generación de texto corto"},
+            "chat_simple": {"tokens_input": 70, "tokens_output": 215, "description": "Pregunta-respuesta corta"},
+            "chat_extended": {"tokens_input": 296, "tokens_output": 441, "description": "Conversación extendida"},
+            "generation_short": {"tokens_input": 20, "tokens_output": 65, "description": "Generación de texto corto"},
             "generation_long": {"tokens_input": 50, "tokens_output": 2048, "description": "Generación de texto largo"},
-            "summarization": {"tokens_input": 1000, "tokens_output": 200, "description": "Resumen de documento"},
+            "summarization": {"tokens_input": 781, "tokens_output": 56, "description": "Resumen de documento"},
             "code_generation": {"tokens_input": 100, "tokens_output": 300, "description": "Generación de código"},
             "translation": {"tokens_input": 200, "tokens_output": 220, "description": "Traducción de texto"}
         }
     elif model_type == "Vision":
         return {
             "image_classification": {"tokens_input": 196, "tokens_output": 10, "description": "Clasificación de imagen"},
-            "image_captioning": {"tokens_input": 196, "tokens_output": 50, "description": "Descripción de imagen"},
-            "visual_qa": {"tokens_input": 250, "tokens_output": 100, "description": "Pregunta sobre imagen"}
+            "image_captioning": {"tokens_input": 196, "tokens_output": 15, "description": "Descripción de imagen"},
+            "visual_qa": {"tokens_input": 196, "tokens_output": 100, "description": "Pregunta sobre imagen"}
         }
     elif model_type == "Classification":
         return {
@@ -201,9 +206,10 @@ models_data = [
         "release_date": "2022-05-18",
         "source_url": "https://arxiv.org/abs/2205.01068",
         "hf_url": "https://huggingface.co/intlsy/opt-175b-hyperparam",
-        "confidence": 0.92,
-        "notes": "Meta OPT Paper - Table 2",
-        "empirical_energy_wh_per_1k": 0.0035,  # Luccioni et al. 2023
+        "confidence": 0.85,
+        "notes": "Meta OPT Paper. Estimación teórica (paper solo reporta entrenamiento)",
+        "preset_energy_wh_per_1k": 0.0035,  # Estimación teórica 2N FLOPs (no publicado por Meta)
+        "energy_source_override": "calculated",  # Es teórico, no empírico
         "empirical_latency_ms_per_token": 45,
         "context_window": 2048,
         "max_output_tokens": 2048
@@ -235,10 +241,11 @@ models_data = [
         "release_date": "2023-07-18",
         "source_url": "https://arxiv.org/abs/2307.09288",
         "hf_url": "https://huggingface.co/meta-llama/Llama-2-70b",
-        "confidence": 0.92,
-        "notes": "Meta Research Paper - Table 3",
-        # Datos de benchmarks públicos
-        "empirical_energy_wh_per_1k": 0.0021,  # Estimado de benchmarks
+        "confidence": 0.80,
+        "notes": "Estimación teórica 2N FLOPs (Meta no publica consumo inferencia)",
+        # Estimación teórica - Meta no publica consumo por token
+        "preset_energy_wh_per_1k": 0.0021,  # Estimación teórica 2N FLOPs
+        "energy_source_override": "calculated",  # Es teórico, no empírico
         "empirical_latency_ms_per_token": 28,
         "context_window": 4096,
         "max_output_tokens": 4096
@@ -305,9 +312,9 @@ models_data = [
         "release_date": "2018-10-11",
         "source_url": "https://arxiv.org/abs/1810.04805",
         "hf_url": "https://huggingface.co/google-bert/bert-base-uncased",
-        "confidence": 0.95,
-        "notes": "Google BERT Paper - Table 1",
-        "empirical_energy_wh_per_1k": 0.000012,  # Muy eficiente
+        "confidence": 0.85,
+        "notes": "Mediciones empíricas verificables (Cao et al. 2020 ACL SustaiNLP)",
+        "empirical_energy_wh_per_1k": 0.000012,  # Cao et al. 2020 - medición directa
         "empirical_latency_ms_per_token": 0.5,
         "context_window": 512,
         "max_output_tokens": 1  # Solo clasificación
@@ -341,13 +348,20 @@ for model in models_data:
     params = model['num_parameters']
     model_type = model['model_type']
     
-    # Calcular valores si no hay empíricos
-    if model.get('empirical_energy_wh_per_1k') is None:
-        model['energy_wh_per_1k_tokens'] = estimate_energy_per_1k_tokens(params, model_type)
-        model['energy_source'] = 'calculated'
-    else:
+    # Calcular valores de energía
+    # Prioridad: preset_energy > empirical_energy > calculado
+    if model.get('preset_energy_wh_per_1k') is not None:
+        # Valor preestablecido (puede ser teórico o empírico)
+        model['energy_wh_per_1k_tokens'] = model['preset_energy_wh_per_1k']
+        model['energy_source'] = model.get('energy_source_override', 'calculated')
+    elif model.get('empirical_energy_wh_per_1k') is not None:
+        # Valor empírico medido
         model['energy_wh_per_1k_tokens'] = model['empirical_energy_wh_per_1k']
         model['energy_source'] = 'empirical'
+    else:
+        # Calcular usando fórmula 2N FLOPs
+        model['energy_wh_per_1k_tokens'] = estimate_energy_per_1k_tokens(params, model_type)
+        model['energy_source'] = 'calculated'
     
     if model.get('empirical_latency_ms_per_token') is None:
         model['latency_ms_per_token'] = estimate_latency_per_token_ms(params, model_type)
@@ -384,9 +398,11 @@ for model in models_data:
         (model['latency_ms_per_token'] * total_tokens) / 1000, 3
     )
     
-    # Limpiar campos temporales
-    del model['empirical_energy_wh_per_1k']
-    del model['empirical_latency_ms_per_token']
+    # Limpiar campos temporales (pueden no existir en todos los modelos)
+    model.pop('empirical_energy_wh_per_1k', None)
+    model.pop('preset_energy_wh_per_1k', None)
+    model.pop('energy_source_override', None)
+    model.pop('empirical_latency_ms_per_token', None)
 
 # Crear DataFrame
 df = pd.DataFrame(models_data)

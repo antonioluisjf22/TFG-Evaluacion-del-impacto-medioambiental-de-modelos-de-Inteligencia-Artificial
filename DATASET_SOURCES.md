@@ -123,23 +123,25 @@ tokens_output_avg  : Tokens de salida promedio
 description        : Descripción del tipo de petición
 ```
 
-### Tipos de Petición Disponibles
+### Tipos de Petición Disponibles (v2.1 - Actualizado con datos empíricos)
 
-| Tipo | Modelo | Tokens In | Tokens Out | Descripción |
-|------|--------|-----------|------------|-------------|
-| chat_simple | LLM | 50 | 100 | Pregunta-respuesta corta |
-| chat_extended | LLM | 200 | 500 | Conversación extendida |
-| generation_short | LLM | 20 | 256 | Generación de texto corto |
-| generation_long | LLM | 50 | 2048 | Generación de texto largo |
-| summarization | LLM | 1000 | 200 | Resumen de documento |
-| code_generation | LLM | 100 | 300 | Generación de código |
-| translation | LLM | 200 | 220 | Traducción de texto |
-| image_classification | Vision | 196 | 10 | Clasificación de imagen |
-| image_captioning | Vision | 196 | 50 | Descripción de imagen |
-| visual_qa | Vision | 250 | 100 | Pregunta sobre imagen |
-| text_classification | Classification | 128 | 1 | Clasificación de texto |
-| sentiment_analysis | Classification | 64 | 1 | Análisis de sentimiento |
-| ner | Classification | 100 | 50 | Reconocimiento de entidades |
+| Tipo | Modelo | Tokens In | Tokens Out | Descripción | Fuente |
+|------|--------|-----------|------------|-------------|--------|
+| chat_simple | LLM | **70** | **215** | Pregunta-respuesta corta | LMSYS-Chat-1M |
+| chat_extended | LLM | **296** | **441** | Conversación extendida | WildChat |
+| generation_short | LLM | 20 | **65** | Generación de texto corto | Alpaca |
+| generation_long | LLM | 50 | 2048 | Generación de texto largo | API limit |
+| summarization | LLM | **781** | **56** | Resumen de documento | CNN/DailyMail |
+| code_generation | LLM | 100 | 300 | Generación de código | Sin evidencia |
+| translation | LLM | 200 | 220 | Traducción de texto | Ratio ~1.1x |
+| image_classification | Vision | 196 | 10 | Clasificación de imagen | ViT paper |
+| image_captioning | Vision | 196 | **15** | Descripción de imagen | ViT + COCO |
+| visual_qa | Vision | **196** | 100 | Pregunta sobre imagen | ViT paper |
+| text_classification | Classification | 128 | 1 | Clasificación de texto | BERT |
+| sentiment_analysis | Classification | 64 | 1 | Análisis de sentimiento | SST-2 |
+| ner | Classification | 100 | 50 | Reconocimiento de entidades | — |
+
+**Nota v2.3**: Valores actualizados con datasets académicos verificables. Ver `docs/ORIGEN_FORMULAS_CONSUMO_TOKENS_FINAL.md` para fuentes completas.
 
 ### Validación de Datos
 

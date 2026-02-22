@@ -71,7 +71,7 @@ Estas puedes completar rápidamente porque ya tienes los datos calculados.
 ```
 ╔════════════════════════════════════╗
 ║     GPT-4 EN AWS EU-WEST-1        ║
-║     Chat Simple (50+100 tokens)    ║
+║     Chat Simple (70+215 tokens)    ║
 ╠════════════════════════════════════╣
 ║  EFICIENCIA ENERGÉTICA:     [B]    ║
 ║  ═══════════════════════          ║

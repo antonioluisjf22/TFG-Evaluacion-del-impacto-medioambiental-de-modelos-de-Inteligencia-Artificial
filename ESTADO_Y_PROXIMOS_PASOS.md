@@ -61,10 +61,12 @@
 - `system_idle_watts` - Consumo base del sistema
 
 **4. Calculadora `calculate_emissions.py` v2.2:**
-- **Parámetro `request_type`** (v2.0):
-  - `"chat_simple"` → 50+100 tokens
+- **Parámetro `request_type`** (v2.1 - actualizado con datos empíricos):
+  - `"chat_simple"` → 70+215 tokens (LMSYS-Chat-1M)
+  - `"chat_extended"` → 296+441 tokens (WildChat)
   - `"code_generation"` → 100+300 tokens
   - `"generation_long"` → 50+2048 tokens
+  - `"summarization"` → 781+56 tokens (CNN/DailyMail)
   - etc.
 - **Parámetros `tokens_input` y `tokens_output`**:
   - Permite especificar tokens exactos
@@ -110,7 +112,7 @@ result = calc.calculate_emissions(
     data_center_id="aws-eu-west-1",
     device_id="phone-iphone-15-pro",
     network_id="4g-lte",
-    request_type="chat_simple"  # 50+100 tokens, tiempo auto
+    request_type="chat_simple"  # 70+215 tokens (v2.1), tiempo auto
 )
 # Resultado: 0.0334 gCO2
 
@@ -133,9 +135,9 @@ bert-base            0.00        0.00            0.05s
 **7. Efecto del tipo de petición (GPT-4):**
 ```
 Tipo                 Tokens  Tiempo   CO2
-chat_simple          150     3.5s     0.0094 gCO2
-chat_extended        700     17.5s    0.0296 gCO2
-generation_long      2098    71.7s    0.1061 gCO2
+chat_simple          285     9.98s    0.0179 gCO2  (v2.1 - actualizado)
+chat_extended        737     25.8s    0.0469 gCO2  (v2.1 - actualizado)
+generation_long      2098    73.4s    0.1061 gCO2
 ```
 
 ---
