@@ -166,8 +166,8 @@ Algunos modelos **no publican métricas energéticas**:
   - Valor calculado teórico: 0.001139 Wh/1k tokens (conservador, coherente con otros modelos)
 
 **Referencias académicas para contexto**:
-- [21] Sardana, N., et al. (2025). "Insights from Benchmarking Inference Energy in Large Language Models." *NAACL 2025*
-- [22] TokenPowerBench (2025). "Benchmarking the Power Consumption of LLM Inference." *arXiv:2512.03024*
+- [21] Poddar, S., Koley, P., Misra, J., Ganguly, N., & Ghosh, S. (2025). "Towards Sustainable NLP: Insights from Benchmarking Inference Energy in Large Language Models." *Proceedings of NAACL 2025*, pages 12688–12704, Albuquerque, New Mexico.
+- [22]  Yang, R., Zhan, L., et al. (2025). "Benchmarking the Power Consumption of LLM Inference." arXiv:2512.03024. https://arxiv.org/abs/2512.03024
 
 > ✅ **Decisión metodológica**: Usar valor calculado teóricamente (0.001139 Wh/1k) en lugar del empírico inconsistente para mantener coherencia interna en la calculadora. Esto sacrifica precisión empírica a favor de consistencia metodológica.
 
@@ -523,7 +523,7 @@ Cada modelo en `models.csv` tiene un campo `typical_request_type` que determina 
 
 | Sección | Cambio | Motivo |
 |---------|--------|--------|
-| **2.5** - Tabla sin datos empíricos | Eliminado "Mistral" de la fila "Falcon, Mistral" | Mistral-7B SÍ tiene datos empíricos (benchmarks comunidad) |
+| **2.5** - Tabla sin datos empíricos | Eliminado "Mistral" de la fila "Falcon, Mistral" | Mistral-7B SÍ tiene datos empíricos (benchmarks comunidad) ⚠️ → *reclasificado como calculated en v2.7, ver §7.5* |
 | **3.1** - Mistral-7B | Añadida nota "Limitación" explicando ausencia de cita formal | Transparencia sobre fuentes informales (foros, no papers) |
 | **3.3** - ViT-base | Añadida nota "Limitación" explicando ausencia de paper específico | Transparencia sobre fuentes informales (benchmarks técnicos) |
 | **3.4** - Nueva sección | Creada tabla "Resumen de Calidad de Fuentes Empíricas" | Clasificar nivel de trazabilidad (Alto/Medio/Bajo) |
@@ -645,9 +645,9 @@ Cada modelo en `models.csv` tiene un campo `typical_request_type` que determina 
 
 [20] Lin, T., et al. (2014). "Microsoft COCO: Common Objects in Context." *arXiv:1405.0312*. https://arxiv.org/abs/1405.0312
 
-[21] Sardana, N., et al. (2025). "Insights from Benchmarking Inference Energy in Large Language Models." *NAACL 2025*. https://aclanthology.org/2025.naacl-long.632v2.pdf
+[21] Poddar, S., Koley, P., Misra, J., Ganguly, N., & Ghosh, S. (2025). "Towards Sustainable NLP: Insights from Benchmarking Inference Energy in Large Language Models." *Proceedings of NAACL 2025*, pages 12688–12704, Albuquerque, New Mexico. https://aclanthology.org/2025.naacl-long.632/
 
-[22] TokenPowerBench (2025). "Benchmarking the Power Consumption of LLM Inference." *arXiv:2512.03024*. https://arxiv.org/abs/2512.03024
+[22]  Yang, R., Zhan, L., et al. (2025). "Benchmarking the Power Consumption of LLM Inference." arXiv:2512.03024. https://arxiv.org/abs/2512.03024
 
 [23] Amanzhol, N. & Park, J. (2025). "Energy-Efficient Vision Transformer Inference for Edge-AI Deployment." *arXiv:2511.23166*. https://arxiv.org/abs/2511.23166
 
@@ -658,6 +658,3 @@ Cada modelo en `models.csv` tiene un campo `typical_request_type` que determina 
 **FLUJO_CALCULADORA_BR.md**: Documentación interna que detalla el flujo completo de la calculadora, incluyendo el desglose del valor 0.0048 Wh/1k tokens de GPT-4 en componentes (cómputo puro 0.001 + overhead 0.0038). Ver sección "1️⃣ IMPACTO POR LLM: ORIGEN DE `energy_wh_per_1k_tokens`".
 
 ---
-
-*Documento generado: Febrero 2026*  
-*Versión: 2.7 - Mistral-7B Reclasificado como Calculated*
