@@ -20,9 +20,9 @@ Características técnicas y energéticas de 10 modelos de IA representativos, i
 | **Llama 2 70B** | Meta Research Paper | https://arxiv.org/abs/2307.09288 | 2026-01-10 | 80% | Energía: 2.1 mWh/1k tokens (calculado 2N FLOPs) |
 | **Falcon 40B** | TII Hugging Face | https://huggingface.co/tiiuae/falcon-40b | 2026-01-10 | 80% | Energía: calculada |
 | **MPT 30B** | MosaicML Hugging Face | https://huggingface.co/mosaicml/mpt-30b | 2026-01-10 | 82% | Energía: calculada |
-| **Mistral 7B** | Mistral Research Paper | https://arxiv.org/abs/2310.06825 | 2026-01-10 | 85% | Energía: 0.45 mWh/1k tokens (empírico benchmarks) |
+| **Mistral 7B** | Mistral Research Paper | https://arxiv.org/abs/2310.06825 | 2026-01-10 | 85% | Energía: 1.139 mWh/1k tokens (calculado teórico - v2.7) |
 | **BERT Base** | Google Research Paper | https://arxiv.org/abs/1810.04805 | 2026-01-10 | 85% | Energía: 0.012 mWh/1k tokens (empírico Cao 2020) |
-| **Vision Transformer (ViT)** | Google DeepMind Paper | https://arxiv.org/abs/2010.11929 | 2026-01-10 | 93% | Energía: 0.018 mWh/1k tokens (empírico edge devices) |
+| **Vision Transformer (ViT)** | Google DeepMind Paper | https://arxiv.org/abs/2010.11929 | 2026-01-10 | 93% | Energía: 0.408 mWh/1k tokens (calculado teórico - v2.8) |
 
 ### Fuentes para Datos Energéticos (v2.4)
 
@@ -161,12 +161,14 @@ description        : Descripción del tipo de petición
    - `E_1k = (2 × params × 1000) / (GPU_TFLOPS × 10^12) × GPU_TDP / 3600`
    - GPU de referencia: NVIDIA A100 (312 TFLOPS FP16, 400W TDP)
 
-### Metodología de Cálculo Energético (v2.4)
+### Metodología de Cálculo Energético (v2.8 - Actualizado)
 
-#### **Datos Empíricos (3 modelos)**
-- Mistral 7B: Benchmarks públicos de inferencia
-- BERT: Mediciones directas (Cao et al. 2020)
-- ViT: Mediciones en edge devices
+#### **Datos Empíricos (1 modelo)**
+- **BERT**: Mediciones directas (Cao et al. 2020)
+
+#### **Modelos Reclasificados a Calculado (2 modelos)**
+- **Mistral 7B** (v2.7): Paper de referencia muestra discrepancia 420× → calculado con fórmula 2N FLOPs
+- **ViT-base** (v2.8): Paper arXiv:2511.23166 no mide ViT-base (86M params, solo <23M) → calculado con fórmula 2N FLOPs
 
 #### **Datos Calculados (7 modelos)**
 - GPT-4: Calculado desde TDP H100 + overhead estimado

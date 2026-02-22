@@ -303,11 +303,12 @@ models_data = [
         "source_url": "https://arxiv.org/abs/2310.06825",
         "hf_url": "https://huggingface.co/mistralai/Mistral-7B-v0.1",
         "confidence": 0.85,
-        "notes": "Empirical from inference benchmarks",
-        # Muy eficiente - datos de benchmarks
-        "empirical_energy_wh_per_1k": 0.00045,
-        "empirical_latency_ms_per_token": 8,
-        "energy_methodology": "Empirical from benchmarks",
+        "notes": "Reclassified to calculated due to empirical value discrepancy with published papers",
+        # Calculado teóricamente usando fórmula 2N FLOPs
+        "preset_energy_wh_per_1k": 0.001139,  # Calculado teóricamente (2N FLOPs)
+        "energy_source_override": "calculated",
+        "empirical_latency_ms_per_token": 8,  # Mantener latency empírica para referencia
+        "energy_methodology": "Theoretical 2N FLOPs formula (GPU efficiency 0.25)",
         "context_window": 32000,
         "max_output_tokens": 8192
     },
@@ -339,11 +340,13 @@ models_data = [
         "release_date": "2020-10-22",
         "source_url": "https://arxiv.org/abs/2010.11929",
         "hf_url": "https://huggingface.co/google/vit-base-patch16-224",
-        "confidence": 0.93,
-        "notes": "Mediciones empíricas en edge devices (NVIDIA Jetson TX2, RTX 3050)",
-        "empirical_energy_wh_per_1k": 0.000018,  # Por imagen (como 196 tokens)
-        "empirical_latency_ms_per_token": 0.3,
-        "energy_methodology": "Hardware power measurement on edge devices",
+        "confidence": 0.85,
+        "notes": "Reclassified to calculated - paper arXiv:2511.23166 does not measure ViT-base (86M params)",
+        # Calculado teóricamente usando fórmula 2N FLOPs
+        "preset_energy_wh_per_1k": 0.000408,  # Calculado teóricamente (2N FLOPs, efficiency 0.15)
+        "energy_source_override": "calculated",
+        "empirical_latency_ms_per_token": 0.3,  # Mantener latency empírica para referencia
+        "energy_methodology": "Theoretical 2N FLOPs formula (GPU efficiency 0.15, vision model)",
         "context_window": 196,  # Patches de imagen
         "max_output_tokens": 10  # Clasificación
     },
