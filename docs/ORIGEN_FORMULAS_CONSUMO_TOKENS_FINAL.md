@@ -1,6 +1,6 @@
 # Origen de Fórmulas y Valores de Consumo por Token
 
-> **Versión**: 2.3 (Febrero 2026)  
+> **Versión**: 2.4 (Febrero 2026)  
 > **Estado**: Documento consolidado con referencias verificadas
 
 ---
@@ -126,31 +126,23 @@ Algunos modelos **no publican métricas energéticas**:
 
 ## 3. Modelos con Mediciones Empíricas Verificables
 
-**4 modelos** en la calculadora tienen datos empíricos (energy_source="empirical"):
+**3 modelos** en la calculadora tienen datos empíricos (energy_source="empirical"):
 
-### 3.1 GPT-4 — ~1.76T parámetros (estimado)
-
-- **Origen**: Estimación propia basada en specs técnicos de infraestructura OpenAI [3]
-- **Dato en CSV**: 0.0048 Wh/1k tokens (componente GPU + overhead básico)
-- **Metodología**: Cálculo basado en TDP de H100 (700W), rendimiento estimado y overhead operativo
-- **Discrepancia importante**: Epoch AI [3] reporta 0.6-1.2 Wh/1k tokens incluyendo infraestructura completa (ver sección 2.1)
-- **Confianza**: 70% (arquitectura no pública, valores derivados de estimaciones)
-
-### 3.2 Mistral-7B — 7B parámetros
+### 3.1 Mistral-7B — 7B parámetros
 
 - **Origen**: Datos empíricos de benchmarks de la comunidad open-source
-- **Dato en CSV**: 0.0005 Wh/1k tokens
+- **Dato en CSV**: 0.00045 Wh/1k tokens
 - **Metodología**: Mediciones directas reportadas por usuarios con hardware de consumo
 - **Confianza**: 75% (datos empíricos pero sin publicación formal revisada)
 
-### 3.3 BERT (Base, Uncased) — 110M parámetros
+### 3.2 BERT (Base, Uncased) — 110M parámetros
 
 - **Origen**: Cao, Q., et al. (2020) [7]
 - **Dato medido**: 0.000012 Wh/1k tokens
 - **Metodología**: Medición directa con CodeCarbon y power meters durante inferencia real
 - **Confianza**: 85% (paper revisado por pares, medición directa sobre hardware real)
 
-### 3.4 Vision Transformer (ViT-base) — 86M parámetros
+### 3.3 Vision Transformer (ViT-base) — 86M parámetros
 
 - **Origen**: Benchmarks de eficiencia energética en edge devices (2024–2025)
 - **Dato medido**: 0.000018 Wh/1k tokens (196 patches por imagen 224×224)
@@ -169,7 +161,7 @@ Algunos modelos **no publican métricas energéticas**:
 
 | Modelo | energy_wh_per_1k | energy_source | energy_methodology | Usa 2N FLOPs |
 |--------|------------------|---------------|-------------------|--------------|
-| **GPT-4** | 0.0048 | empirical | Empirical from OpenAI API | ❌ NO |
+| **GPT-4** | 0.0048 | calculated | Calculated from H100 TDP specs | ❌ NO |
 | **PaLM 2** | 0.538 | calculated | Theoretical 2N FLOPs formula scaled by efficiency | ✅ SÍ |
 | **OPT-175B** | 0.0035 | calculated | Theoretical 2N FLOPs formula | ✅ SÍ |
 | **Claude 2** | 0.204 | calculated | Theoretical 2N FLOPs formula scaled by efficiency | ✅ SÍ |
@@ -185,10 +177,12 @@ Algunos modelos **no publican métricas energéticas**:
 #### Resumen de Metodologías
 
 **Modelos con datos empíricos (NO usan 2N FLOPs):**
-- ✅ GPT-4: Mediciones de OpenAI API
 - ✅ Mistral 7B: Benchmarks de inferencia
 - ✅ BERT-base: CodeCarbon + power meters [7]
 - ✅ ViT-base: Mediciones en edge devices
+
+**Modelos con cálculo teórico (estimación desde specs):**
+- GPT-4: Calculado desde TDP de H100 + estimaciones de overhead
 
 **Modelos con fórmula teórica 2N FLOPs:**
 - PaLM 2, OPT-175B, Claude 2, Llama 2-70B
@@ -244,8 +238,8 @@ El script que genera `models.csv` aplica una **jerarquía de prioridad** para de
 
 | Prioridad | Campo en script | Descripción | Ejemplo |
 |-----------|-----------------|-------------|---------|
-| **1** | `preset_energy_wh_per_1k` | Valor fijo preestablecido. Puede ser teórico o empírico según `energy_source_override`. | OPT-175B (0.0035, teórico), Llama2-70B (0.0021, teórico) |
-| **2** | `empirical_energy_wh_per_1k` | Valor medido directamente en hardware o benchmarks reales. | GPT-4 (0.0048), BERT (0.000012), Mistral-7B (0.00045) |
+| **1** | `preset_energy_wh_per_1k` | Valor fijo preestablecido. Puede ser teórico o empírico según `energy_source_override`. | GPT-4 (0.0048, calculado), OPT-175B (0.0035, teórico), Llama2-70B (0.0021, teórico) |
+| **2** | `empirical_energy_wh_per_1k` | Valor medido directamente en hardware o benchmarks reales. | BERT (0.000012), Mistral-7B (0.00045), ViT (0.000018) |
 | **3** | `estimate_energy_per_1k_tokens()` | Cálculo dinámico usando fórmula 2N FLOPs × eficiencia × TDP. | PaLM 2, Claude 2, Falcon 40B, MPT 30B |
 
 #### ¿Por qué existe `preset_energy`?
@@ -281,7 +275,7 @@ else:
 
 | Modelo | Nivel usado | Campo en script | energy_source resultante |
 |--------|-------------|-----------------|--------------------------|
-| GPT-4 | 2 (empírico) | `empirical_energy_wh_per_1k: 0.0048` | empirical |
+| GPT-4 | 1 (preset) | `preset_energy: 0.0048, override: "calculated"` | calculated |
 | OPT-175B | 1 (preset) | `preset_energy: 0.0035, override: "calculated"` | calculated |
 | Llama2-70B | 1 (preset) | `preset_energy: 0.0021, override: "calculated"` | calculated |
 | BERT | 2 (empírico) | `empirical_energy_wh_per_1k: 0.000012` | empirical |
@@ -310,7 +304,7 @@ else:
 
 ### 5.3 Método 3: Benchmarks Publicados
 
-- Luccioni et al. (2023) [10] incluye medidas reales de 15+ modelos en tareas de NLP
+- Luccioni et al. (2024) [10] incluye medidas reales de 15+ modelos en tareas de NLP
 - Nuestras estimaciones teóricas se sitúan en el **mismo orden de magnitud** para los modelos comparables (BERT-base, T5)
 - **Limitación**: Para LLMs grandes propietarios no hay datos publicados contra los que validar de forma sistemática
 
@@ -362,7 +356,7 @@ Existen datasets académicos con **estadísticas REALES verificables** de longit
 | Dataset | Paper | tokens_input (avg) | tokens_output (avg) | Referencia |
 |---------|-------|-------------------|---------------------|------------|
 | **LMSYS-Chat-1M** | Zheng et al., 2024 | **69.5** | **214.5** | [13] |
-| **Chatbot Arena** | LMSYS, 2024 | **52.3** | **189.5** | [14] |
+| **Chatbot Arena** | Chiang et al., 2024 | **94.9** | **269.0** | [14] |
 | **WildChat** | Zhao et al., 2024 | 295.6 ± 1609 | 441.3 ± 411 | [15] |
 | **ShareGPT** | (via WildChat) | 94.5 ± 626 | 348.5 ± 270 | Citado en [15] |
 | **Anthropic HH-RLHF** | (via LMSYS) | **18.9** | **78.9** | [16] |
@@ -450,9 +444,9 @@ Cada modelo en `models.csv` tiene un campo `typical_request_type` que determina 
 
 ---
 
-## 7. Resumen de Cambios CSV (v2.2)
+## 7. Resumen de Cambios CSV
 
-### 7.1 Correcciones en models.csv
+### 7.1 Correcciones en models.csv (v2.2)
 
 | Modelo | Campo | Antes | Ahora | Motivo |
 |--------|-------|-------|-------|--------|
@@ -463,17 +457,16 @@ Cada modelo en `models.csv` tiene un campo `typical_request_type` que determina 
 | BERT | confidence | 0.95 | 0.85 | Referencia Li (2023) no verificable |
 | BERT | notes | "Li 2023, Cao et al. 2020" | "Cao et al. 2020" | Solo fuente verificable |
 
-### 7.2 Valor GPT-4 Mantenido
+### 7.2 Correcciones en v2.4
 
-**GPT-4**: `energy_wh_per_1k_tokens = 0.0048` **SIN CAMBIOS**
+| Campo | Antes | Ahora | Motivo |
+|-------|-------|-------|--------|
+| GPT-4 energy_source | "empirical" | "calculated" | Era calculado desde TDP, no medido empíricamente |
+| GPT-4 energy_methodology | "Empirical from OpenAI API" | "Calculated from H100 TDP specs" | Descripción correcta |
+| Chatbot Arena (tabla 6.3) | 52.3 / 189.5 | **94.9 / 269.0** | Paper Chiang et al. 2024 [14] Tabla 1 |
+| Referencia [14] | LMSYS website | arXiv:2403.04132 | Paper académico correcto |
 
-**Justificación**:
-- El valor 0.0048 Wh/1k es consistente con la metodología 2N FLOPs aplicada a todos los modelos
-- El PUE del datacenter se aplica correctamente por separado desde `data_centers.csv`
-- La discrepancia con Epoch AI (0.6-1.2 Wh/1k con PUE) refleja overhead de infraestructura real que va más allá del alcance de la fórmula teórica
-- Mantener 0.0048 asegura coherencia interna en la calculadora
-
-Ver sección 2.1 para análisis detallado de la discrepancia.
+**Nota GPT-4**: El valor numérico `energy_wh_per_1k_tokens = 0.0048` **NO cambió**, solo se corrigió la clasificación de `energy_source`. El valor 0.0048 siempre fue una estimación calculada desde specs de H100 TDP, no una medición empírica directa.
 
 ### 7.3 Sin cambios
 
@@ -502,7 +495,7 @@ Ver sección 2.1 para análisis detallado de la discrepancia.
 
 [9] Lacoste, A., et al. (2019). "Quantifying the Carbon Emissions of Machine Learning." *NeurIPS Climate Change Workshop*. https://mlco2.github.io/impact/
 
-[10] Luccioni, A. S., et al. (2023). "Power Hungry Processing: Watts Driving the Cost of AI Deployment?" *ACL 2023*. https://arxiv.org/abs/2311.16863
+[10] Luccioni, A. S., Jernite, Y., & Strubell, E. (2024). "Power Hungry Processing: Watts Driving the Cost of AI Deployment?" Proceedings of ACM FAccT '24, June 3–6, 2024, Rio de Janeiro. https://arxiv.org/abs/2311.16863
 
 [11] Dosovitskiy, A., et al. (2020). "An Image is Worth 16x16 Words: Transformers for Image Recognition at Scale." *arXiv:2010.11929*. https://arxiv.org/abs/2010.11929
 
@@ -510,7 +503,7 @@ Ver sección 2.1 para análisis detallado de la discrepancia.
 
 [13] Zheng, L., et al. (2024). "LMSYS-Chat-1M: A Large-Scale Real-World LLM Conversation Dataset." *arXiv:2309.11998*. https://arxiv.org/abs/2309.11998
 
-[14] LMSYS (2024). "Chatbot Arena: Benchmarking LLMs in the Wild." https://chat.lmsys.org/
+[14] Chiang, W., et al. (2024). "Chatbot Arena: An Open Platform for Evaluating LLMs by Human Preference." *arXiv:2403.04132*. https://arxiv.org/abs/2403.04132
 
 [15] Zhao, Y., et al. (2024). "WildChat: 1M ChatGPT Interaction Logs in the Wild." *arXiv:2405.01470*. https://arxiv.org/abs/2405.01470
 
@@ -533,4 +526,4 @@ Ver sección 2.1 para análisis detallado de la discrepancia.
 ---
 
 *Documento generado: Febrero 2026*  
-*Versión: 2.3 Final Consolidada*
+*Versión: 2.4 Final Consolidada*

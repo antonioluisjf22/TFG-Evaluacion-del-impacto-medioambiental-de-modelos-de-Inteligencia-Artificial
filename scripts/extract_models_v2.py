@@ -172,9 +172,11 @@ models_data = [
         "source_url": "https://openai.com/research/gpt-4",
         "hf_url": None,
         "confidence": 0.95,
-        "notes": "OpenAI Technical Report - MoE architecture estimated",
-        # Datos empíricos de OpenAI API
-        "empirical_energy_wh_per_1k": 0.0048,  # Medido en API
+        "notes": "Calculated from H100 TDP specs and estimated overhead",
+        # Calculado desde specs de H100 TDP (NO empírico)
+        "preset_energy_wh_per_1k": 0.0048,  # Calculado desde TDP + overhead
+        "energy_source_override": "calculated",  # NO es empírico
+        "energy_methodology": "Calculated from H100 TDP specs",
         "empirical_latency_ms_per_token": 35,
         "context_window": 128000,
         "max_output_tokens": 4096
@@ -193,6 +195,7 @@ models_data = [
         "notes": "Google PaLM 2 Technical Report",
         "empirical_energy_wh_per_1k": None,  # Se calculará
         "empirical_latency_ms_per_token": None,
+        "energy_methodology": "Theoretical 2N FLOPs formula scaled by efficiency",
         "context_window": 32000,
         "max_output_tokens": 8192
     },
@@ -209,6 +212,7 @@ models_data = [
         "confidence": 0.85,
         "notes": "Meta OPT Paper. Estimación teórica (paper solo reporta entrenamiento)",
         "preset_energy_wh_per_1k": 0.0035,  # Estimación teórica 2N FLOPs (no publicado por Meta)
+        "energy_methodology": "Theoretical 2N FLOPs formula",
         "energy_source_override": "calculated",  # Es teórico, no empírico
         "empirical_latency_ms_per_token": 45,
         "context_window": 2048,
@@ -227,6 +231,7 @@ models_data = [
         "confidence": 0.65,
         "notes": "Anthropic - parámetros estimados",
         "empirical_energy_wh_per_1k": None,
+        "energy_methodology": "Theoretical 2N FLOPs formula scaled by efficiency",
         "empirical_latency_ms_per_token": None,
         "context_window": 100000,
         "max_output_tokens": 4096
@@ -246,6 +251,7 @@ models_data = [
         # Estimación teórica - Meta no publica consumo por token
         "preset_energy_wh_per_1k": 0.0021,  # Estimación teórica 2N FLOPs
         "energy_source_override": "calculated",  # Es teórico, no empírico
+        "energy_methodology": "Theoretical 2N FLOPs formula",
         "empirical_latency_ms_per_token": 28,
         "context_window": 4096,
         "max_output_tokens": 4096
@@ -262,6 +268,7 @@ models_data = [
         "hf_url": "https://huggingface.co/tiiuae/falcon-40b",
         "confidence": 0.80,
         "notes": "Model card en HF",
+        "energy_methodology": "Scaling from similar models using efficiency factors",
         "empirical_energy_wh_per_1k": None,
         "empirical_latency_ms_per_token": None,
         "context_window": 2048,
@@ -278,6 +285,7 @@ models_data = [
         "source_url": "https://www.databricks.com/blog/mpt-30b",
         "hf_url": "https://huggingface.co/Abzu/mpt-30b-q8",
         "confidence": 0.82,
+        "energy_methodology": "Scaling from similar models using efficiency factors",
         "notes": "MosaicML documentation",
         "empirical_energy_wh_per_1k": None,
         "empirical_latency_ms_per_token": None,
@@ -295,10 +303,11 @@ models_data = [
         "source_url": "https://arxiv.org/abs/2310.06825",
         "hf_url": "https://huggingface.co/mistralai/Mistral-7B-v0.1",
         "confidence": 0.85,
-        "notes": "Mistral Research Paper",
+        "notes": "Empirical from inference benchmarks",
         # Muy eficiente - datos de benchmarks
         "empirical_energy_wh_per_1k": 0.00045,
         "empirical_latency_ms_per_token": 8,
+        "energy_methodology": "Empirical from benchmarks",
         "context_window": 32000,
         "max_output_tokens": 8192
     },
@@ -312,6 +321,7 @@ models_data = [
         "release_date": "2018-10-11",
         "source_url": "https://arxiv.org/abs/1810.04805",
         "hf_url": "https://huggingface.co/google-bert/bert-base-uncased",
+        "energy_methodology": "Hardware power measurement (CodeCarbon)",
         "confidence": 0.85,
         "notes": "Mediciones empíricas verificables (Cao et al. 2020 ACL SustaiNLP)",
         "empirical_energy_wh_per_1k": 0.000012,  # Cao et al. 2020 - medición directa
@@ -330,9 +340,10 @@ models_data = [
         "source_url": "https://arxiv.org/abs/2010.11929",
         "hf_url": "https://huggingface.co/google/vit-base-patch16-224",
         "confidence": 0.93,
-        "notes": "ViT Original Paper - Appendix A",
+        "notes": "Mediciones empíricas en edge devices (NVIDIA Jetson TX2, RTX 3050)",
         "empirical_energy_wh_per_1k": 0.000018,  # Por imagen (como 196 tokens)
         "empirical_latency_ms_per_token": 0.3,
+        "energy_methodology": "Hardware power measurement on edge devices",
         "context_window": 196,  # Patches de imagen
         "max_output_tokens": 10  # Clasificación
     },
@@ -398,6 +409,14 @@ for model in models_data:
         (model['latency_ms_per_token'] * total_tokens) / 1000, 3
     )
     
+    # Preservar energy_methodology si existe
+    if 'energy_methodology' not in model:
+        # Inferir la metodología según la fuente de energía
+        if model['energy_source'] == 'empirical':
+            model['energy_methodology'] = 'Empirical measurement'
+        else:
+            model['energy_methodology'] = 'Calculated or estimated'
+    
     # Limpiar campos temporales (pueden no existir en todos los modelos)
     model.pop('empirical_energy_wh_per_1k', None)
     model.pop('preset_energy_wh_per_1k', None)
@@ -447,7 +466,8 @@ output_columns = [
     'hf_url',
     'confidence',
     'notes',
-    'data_collected_date'
+    'data_collected_date',
+    'energy_methodology'
 ]
 
 df = df[output_columns]

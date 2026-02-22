@@ -13,25 +13,26 @@ Características técnicas y energéticas de 10 modelos de IA representativos, i
 
 | Modelo | Fuente Principal | URL | Fecha Consulta | Confianza | Notas |
 |--------|-----------------|-----|-----------------|-----------|-------|
-| **GPT-4** | OpenAI Official | https://openai.com/research/gpt-4 | 2026-01-10 | 95% | Energía: 4.8 mWh/1k tokens (empírico) |
+| **GPT-4** | OpenAI Official | https://openai.com/research/gpt-4 | 2026-01-10 | 95% | Energía: 4.8 mWh/1k tokens (calculado desde TDP H100) |
 | **PaLM 2** | Google Technical Report | https://ai.google/static/documents/palm2techreport.pdf | 2026-01-10 | 70% | Energía: calculada |
-| **OPT 175B** | Meta Research Paper | https://arxiv.org/abs/2205.01068 | 2026-01-10 | 92% | Energía: 3.5 mWh/1k tokens (Luccioni 2023) |
+| **OPT 175B** | Meta Research Paper | https://arxiv.org/abs/2205.01068 | 2026-01-10 | 85% | Energía: 3.5 mWh/1k tokens (calculado 2N FLOPs) |
 | **Claude 2** | Anthropic Official | https://www.anthropic.com/index/claude-2 | 2026-01-10 | 65% | Energía: calculada |
-| **Llama 2 70B** | Meta Research Paper | https://arxiv.org/abs/2307.09288 | 2026-01-10 | 92% | Energía: 2.1 mWh/1k tokens (benchmarks) |
+| **Llama 2 70B** | Meta Research Paper | https://arxiv.org/abs/2307.09288 | 2026-01-10 | 80% | Energía: 2.1 mWh/1k tokens (calculado 2N FLOPs) |
 | **Falcon 40B** | TII Hugging Face | https://huggingface.co/tiiuae/falcon-40b | 2026-01-10 | 80% | Energía: calculada |
 | **MPT 30B** | MosaicML Hugging Face | https://huggingface.co/mosaicml/mpt-30b | 2026-01-10 | 82% | Energía: calculada |
-| **Mistral 7B** | Mistral Research Paper | https://arxiv.org/abs/2310.06825 | 2026-01-10 | 85% | Energía: 0.45 mWh/1k tokens (benchmarks) |
-| **BERT Base** | Google Research Paper | https://arxiv.org/abs/1810.04805 | 2026-01-10 | 95% | Energía: 0.012 mWh/1k tokens (empírico) |
-| **Vision Transformer (ViT)** | Google DeepMind Paper | https://arxiv.org/abs/2010.11929 | 2026-01-10 | 93% | Energía: 0.018 mWh/1k tokens (empírico) |
+| **Mistral 7B** | Mistral Research Paper | https://arxiv.org/abs/2310.06825 | 2026-01-10 | 85% | Energía: 0.45 mWh/1k tokens (empírico benchmarks) |
+| **BERT Base** | Google Research Paper | https://arxiv.org/abs/1810.04805 | 2026-01-10 | 85% | Energía: 0.012 mWh/1k tokens (empírico Cao 2020) |
+| **Vision Transformer (ViT)** | Google DeepMind Paper | https://arxiv.org/abs/2010.11929 | 2026-01-10 | 93% | Energía: 0.018 mWh/1k tokens (empírico edge devices) |
 
-### Fuentes para Datos Energéticos (v2.0)
+### Fuentes para Datos Energéticos (v2.4)
 
 | Fuente | Descripción | URL | Datos Obtenidos |
 |--------|-------------|-----|-----------------|
-| Luccioni et al. 2023 | "Power Hungry Processing" | https://arxiv.org/abs/2311.16863 | energy_wh_per_1k_tokens para OPT-175B |
+| Luccioni et al. 2023 | "Power Hungry Processing" | https://arxiv.org/abs/2311.16863 | Metodología de medición, validación de orden de magnitud |
 | Patterson et al. 2021 | "Carbon Emissions and Large Neural Network Training" | https://arxiv.org/abs/2104.10350 | Fórmulas de estimación energética |
 | Strubell et al. 2019 | "Energy and Policy Considerations for Deep Learning" | https://arxiv.org/abs/1906.02243 | Metodología de cálculo |
 | Dodge et al. 2022 | "Measuring the Carbon Intensity of AI in Cloud Instances" | https://arxiv.org/abs/2206.05229 | Benchmarks de latencia |
+| Cao et al. 2020 | "Towards Accurate Energy Measurement of NLP Models" | https://aclanthology.org/2020.sustainlp-1.19/ | energy_wh_per_1k_tokens para BERT (empírico) |
 
 ### Metodología de Recopilación
 
@@ -141,7 +142,7 @@ description        : Descripción del tipo de petición
 | sentiment_analysis | Classification | 64 | 1 | Análisis de sentimiento | SST-2 |
 | ner | Classification | 100 | 50 | Reconocimiento de entidades | — |
 
-**Nota v2.3**: Valores actualizados con datasets académicos verificables. Ver `docs/ORIGEN_FORMULAS_CONSUMO_TOKENS_FINAL.md` para fuentes completas.
+**Nota v2.4**: Valores actualizados con datasets académicos verificables. Ver `docs/ORIGEN_FORMULAS_CONSUMO_TOKENS_FINAL.md` para fuentes completas.
 
 ### Validación de Datos
 
@@ -160,19 +161,17 @@ description        : Descripción del tipo de petición
    - `E_1k = (2 × params × 1000) / (GPU_TFLOPS × 10^12) × GPU_TDP / 3600`
    - GPU de referencia: NVIDIA A100 (312 TFLOPS FP16, 400W TDP)
 
-### Metodología de Cálculo Energético (v2.0)
+### Metodología de Cálculo Energético (v2.4)
 
-#### **Datos Empíricos (6 modelos)**
-- GPT-4: Mediciones de API OpenAI
-- OPT-175B: Paper Luccioni et al. 2023
-- Llama 2 70B: Benchmarks públicos
-- Mistral 7B: Benchmarks públicos
-- BERT: Mediciones en hardware de referencia
-- ViT: Mediciones en hardware de referencia
+#### **Datos Empíricos (3 modelos)**
+- Mistral 7B: Benchmarks públicos de inferencia
+- BERT: Mediciones directas (Cao et al. 2020)
+- ViT: Mediciones en edge devices
 
-#### **Datos Calculados (4 modelos)**
-- PaLM 2, Claude 2, Falcon 40B, MPT 30B
-- Fórmula basada en FLOPS y eficiencia de GPU
+#### **Datos Calculados (7 modelos)**
+- GPT-4: Calculado desde TDP H100 + overhead estimado
+- OPT-175B, Llama 2 70B: Fórmula teórica 2N FLOPs
+- PaLM 2, Claude 2, Falcon 40B, MPT 30B: Fórmula basada en FLOPS y eficiencia de GPU
 - Confianza: 65-82%
 
 ### Trazabilidad Completa
