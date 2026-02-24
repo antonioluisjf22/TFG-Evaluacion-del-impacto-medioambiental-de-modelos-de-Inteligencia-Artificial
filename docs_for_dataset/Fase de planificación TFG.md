@@ -4,7 +4,7 @@
 
 Para garantizar el cumplimiento de los objetivos académicos y técnicos de este Trabajo de Fin de Grado, se ha definido una estrategia de gestión empleando un ciclo de vida ágil que combina metodologías del ciclo de tipo iterativo e incremental. Esta metodología permite que el desarrollo se articule en iteraciones (sprints) de aproximadamente 3-4 semanas, donde cada ciclo generará un incremento funcional del prototipo, permitiendo la validación continua por parte de los tutores académicos por medio de reuniones periódicas a lo largo de los sprints.
 
-La gestión de las tareas (sprint backlog) así como el seguimiento de los Sprints, cuya duración es de aproximadamente un mes, aunque pueda presentar fluctuaciones, será gestionada por la herramienta de Zenhub. Adicionalmente, se hará uso de la herramienta de Clockify para registrar el tiempo invertido en las sesiones de trabajo realizadas a lo largo de cada Sprint. Al final de cada Sprint, se generará un informe con el tiempo invertido, que servirá de ayuda para la sesión de planificación temporal.
+La gestión de las tareas (sprint backlog) así como el seguimiento de los Sprints, cuya duración es de aproximadamente un mes, aunque pueda presentar fluctuaciones, será gestionada por la herramienta de Github Projects. Adicionalmente, se hará uso de la herramienta de Clockify para registrar el tiempo invertido en las sesiones de trabajo realizadas a lo largo de cada Sprint. Al final de cada Sprint, se generará un informe con el tiempo invertido, que servirá de ayuda para la sesión de planificación temporal.
 
 **Diagrama de la EDT**
 
@@ -232,11 +232,11 @@ Para el cálculo de los costes de hardware se utiliza el precio real de adquisic
 
 Se ha priorizado una arquitectura basada en tecnologías Open Source y servicios Cloud con planes gratuitos para optimizar el presupuesto. Las herramientas utilizadas disponen de planes gratuitos para uso académico y desarrollo individual:
 
-Para el desarrollo de código y gestión del repositorio se emplean VS Code y Git, herramientas estándar de código abierto sin coste de licencia. La gestión ágil del proyecto se centraliza en Zenhub, aprovechando su plan gratuito para repositorios públicos y uso académico; y Clockify, una herramienta gratuita para registrar el tiempo invertido en las distintas sesiones de trabajo para cada Sprint. En el ámbito de los datos, la API de Electricity Maps proporciona acceso gratuito a información de intensidad de carbono para fines no comerciales y académicos. Finalmente, el despliegue de la aplicación se realiza sobre Render, cuya capa gratuita (Plan Individual) resulta idónea para alojar servicios web y aplicaciones con requisitos de recursos contenidos durante la fase de prototipado.
+Para el desarrollo de código y gestión del repositorio se emplean VS Code y Git, herramientas estándar de código abierto sin coste de licencia. La gestión ágil del proyecto se centraliza en Github Projects, aprovechando su plan gratuito para repositorios públicos y uso académico; y Clockify, una herramienta gratuita para registrar el tiempo invertido en las distintas sesiones de trabajo para cada Sprint. En el ámbito de los datos, la API de Electricity Maps proporciona acceso gratuito a información de intensidad de carbono para fines no comerciales y académicos. Finalmente, el despliegue de la aplicación se realiza sobre Render, cuya capa gratuita (Plan Individual) resulta idónea para alojar servicios web y aplicaciones con requisitos de recursos contenidos durante la fase de prototipado.
 
 | Concepto | Descripción | Coste Mensual | Coste Total (5 meses) |
 | --- | --- | --- | --- |
-| IDE y Herramientas | VS Code, Git, Zenhub | 0,00 € | 0,00 € |
+| IDE y Herramientas | VS Code, Git, Github Projects | 0,00 € | 0,00 € |
 | APIs de Datos | Electricity Maps (Free Tier) | 0,00 € | 0,00 € |
 | Infraestructura Cloud | Render (Plan Free) | 0,00 € | 0,00 € |
 | Subtotal Software |  |  | 0,00 € |
@@ -312,7 +312,7 @@ La siguiente tabla recoge las estimaciones iniciales del proyecto tras la revisi
 | Fase de Cierre (CI) | 48 h | Horas |
 | Metodología y Recursos |  |  |
 | Ciclo de vida del proyecto | Ágil iterativo (Sprints mensuales) | — |
-| Herramienta de gestión de tareas | Zenhub [TODO: Por ver si se arregla] | — |
+| Herramienta de gestión de tareas | Github Projects | — |
 | Herramienta de registro de tiempo | Clockify | — |
 | Lenguaje de programación | Python | — |
 | Framework frontend | Streamlit (o similar) | — |
@@ -342,12 +342,10 @@ Referencias:
 
 \[2\] Cómo cobran las consultorías tecnológicas - [https://asest.es/story/como-cobrar-consultoria-informatica/](https://asest.es/story/como-cobrar-consultoria-informatica/)
 
-\[3\] **¿Cuáles son los límites de la amortización?** [**https://www.openges.es/blog/importe-obligatorio-amortizar/**](https://www.openges.es/blog/importe-obligatorio-amortizar/)
+\[3\] ¿Cuáles son los límites de la amortización? [https://www.openges.es/blog/importe-obligatorio-amortizar/](https://www.openges.es/blog/importe-obligatorio-amortizar/)
 
-**\[TODAS LAS REFERENCIAS PARA COSTES DE INGENIERO JUNIOR\]**
+\[4\] iLERNA. (2025, 26 marzo). _¿Cuánto cobra un ingeniero informático en España en 2025?_ [https://www.ilerna.es/blog/cuanto-cobra-ingeniero-informatico](https://www.ilerna.es/blog/cuanto-cobra-ingeniero-informatico)**​**
 
-**iLERNA. (2025, 26 marzo). _¿Cuánto cobra un ingeniero informático en España en 2025?_** [**https://www.ilerna.es/blog/cuanto-cobra-ingeniero-informatico**](https://www.ilerna.es/blog/cuanto-cobra-ingeniero-informatico)**​**
+\[5\] España. Ministerio de la Presidencia, Justicia y Relaciones con las Cortes. (2025, 26 febrero). _Orden PJC/178/2025, de 25 de febrero, por la que se desarrollan las normas legales de cotización… para el ejercicio 2025_ (BOE-A-2025-3780). Boletín Oficial del Estado. [https://www.boe.es/buscar/doc.php?id=BOE-A-2025-3780](https://www.boe.es/buscar/doc.php?id=BOE-A-2025-3780)​
 
-**España. Ministerio de la Presidencia, Justicia y Relaciones con las Cortes. (2025, 26 febrero). _Orden PJC/178/2025, de 25 de febrero, por la que se desarrollan las normas legales de cotización… para el ejercicio 2025_ (BOE-A-2025-3780). Boletín Oficial del Estado.** [**https://www.boe.es/buscar/doc.php?id=BOE-A-2025-3780**](https://www.boe.es/buscar/doc.php?id=BOE-A-2025-3780)**​**
-
-**España. Dirección General de Trabajo. (2025, 15 abril). _Resolución de 4 de abril de 2025, por la que se registra y publica el XIX Convenio colectivo estatal de empresas de consultoría…_ (BOE-A-2025-7766). Boletín Oficial del Estado.** [**https://www.boe.es/buscar/doc.php?id=BOE-A-2025-7766**](https://www.boe.es/buscar/doc.php?id=BOE-A-2025-7766)
+\[6\] España. Dirección General de Trabajo. (2025, 15 abril). _Resolución de 4 de abril de 2025, por la que se registra y publica el XIX Convenio colectivo estatal de empresas de consultoría…_ (BOE-A-2025-7766). Boletín Oficial del Estado. [https://www.boe.es/buscar/doc.php?id=BOE-A-2025-7766](https://www.boe.es/buscar/doc.php?id=BOE-A-2025-7766)
