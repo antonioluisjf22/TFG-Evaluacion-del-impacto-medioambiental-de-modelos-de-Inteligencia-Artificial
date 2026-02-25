@@ -1,0 +1,71 @@
+%%{init: {'theme': 'base', 'themeVariables': {'primaryColor':'#FF6B6B', 'primaryBorderColor':'#222222', 'primaryTextColor':'#ffffff', 'lineColor':'#222222', 'secondaryColor':'#4ECDC4', 'secondaryBorderColor':'#222222', 'secondaryTextColor':'#ffffff', 'tertiaryColor':'#FFE66D', 'tertiaryTextColor':'#ffffff', 'tertiaryBorderColor':'#222222', 'background':'#ffffff', 'mainBkg':'#ffffff', 'clusterBkg':'#ffffff', 'fontSize':'16px'}, 'gantt': {'fontSize': 16, 'fontFamily': 'Arial', 'sectionLabelBackground':'transparent', 'sectionLabelFontSize': '36px'}}}%%
+gantt
+    title Diagrama de Gantt - Cronograma del TFG
+    dateFormat YYYY-MM-DD
+    
+    section FASE 1: INICIO
+    INI-01 Estudio dominio (10h) :ini01, 2026-01-06, 5d
+    INI-02 Definir objetivo (5h) :ini02, after ini01, 3d
+    INI-03 Investigación herramientas (12h) :ini03, after ini01, 6d
+    INI-04 Hitos clave (1h) :ini04, after ini03, 1d
+    MEM-01 Redacción Introducción (5h) :mem01, after ini04, 3d
+    
+    section FASE 2: PLANIFICACIÓN
+    PLAN-01 Definición fases (4h) :plan01, after mem01, 2d
+    PLAN-02 Planificación temporal (6h) :plan02, after plan01, 3d
+    PLAN-03 Estimación cronograma (4h) :plan03, after plan02, 2d
+    PLAN-04 Estimación costes (5h) :plan04, after plan03, 3d
+    PLAN-05 Gestión riesgos (5h) :plan05, after plan04, 3d
+    PLAN-06 Desviaciones (2h) :plan06, after plan05, 1d
+    MEM-02 Redacción Planificación (4h) :mem02, after plan06, 2d
+    
+    section FASE 3: EJECUCIÓN
+    EP-01.1 Diseño esquema (5h) :ep0101, after mem02, 3d
+    EP-01.2 Datos modelos (8h) :ep0102, after ep0101, 4d
+    EP-01.3 Datos dispositivos (7h) :ep0103, after ep0102, 4d
+    EP-01.4 Datos red (5h) :ep0104, after ep0103, 3d
+    EP-01.5 Datos data centers (8h) :ep0105, after ep0104, 4d
+    EP-01.6 Validación limpieza (6h) :ep0106, after ep0105, 3d
+    
+    EP-02.1 Arquitectura software (6h) :ep0201, after ep0106, 3d
+    EP-02.2 Fórmulas dispositivo (8h) :ep0202, after ep0201, 4d
+    EP-02.3 Fórmulas red (5h) :ep0203, after ep0202, 3d
+    EP-02.4 Fórmulas data center (7h) :ep0204, after ep0203, 4d
+    EP-02.5 Integración motor (9h) :ep0205, after ep0204, 5d
+    EP-02.6 Tests unitarios (8h) :ep0206, after ep0205, 4d
+    
+    EP-03.1 Estudio API (3h) :ep0301, after ep0206, 2d
+    EP-03.2 Cliente API (6h) :ep0302, after ep0301, 3d
+    EP-03.3 Sistema caché (4h) :ep0303, after ep0302, 2d
+    EP-03.4 Mapeo DC-Zonas (6h) :ep0304, after ep0303, 3d
+    EP-03.5 % renovables (5h) :ep0305, after ep0304, 3d
+    EP-03.6 CSV enriquecido (3h) :ep0306, after ep0305, 2d
+    EP-03.7 Fallback offline (3h) :ep0307, after ep0306, 2d
+    
+    EP-04.1 Diseño wireframes (6h) :ep0401, after ep0307, 3d
+    EP-04.2 Stack frontend (3h) :ep0402, after ep0401, 2d
+    EP-04.3 Formulario entrada (11h) :ep0403, after ep0402, 6d
+    EP-04.4 Visualización resultados (11h) :ep0404, after ep0403, 6d
+    EP-04.5 Comparador escenarios (8h) :ep0405, after ep0404, 4d
+    EP-04.6 Integración frontend-backend (9h) :ep0406, after ep0405, 5d
+    
+    EP-05.1 Validación CodeCarbon (6h) :ep0501, after ep0406, 3d
+    EP-05.2 Validación literatura (5h) :ep0502, after ep0501, 3d
+    EP-05.3 Tests integración (6h) :ep0503, after ep0502, 3d
+    EP-05.4 Pruebas usabilidad (4h) :ep0504, after ep0503, 2d
+    EP-05.5 Corrección bugs (6h) :ep0505, after ep0504, 3d
+    EP-05.6 Documentación técnica (4h) :ep0506, after ep0505, 2d
+    
+    EP-06.1 Config repositorio (2h) :ep0601, after ep0506, 1d
+    EP-06.2 Config Render (3h) :ep0602, after ep0601, 2d
+    EP-06.3 Adaptación app (3h) :ep0603, after ep0602, 2d
+    EP-06.4 Pruebas producción (2h) :ep0604, after ep0603, 1d
+    EP-06.5 Doc despliegue (2h) :ep0605, after ep0604, 1d
+    MEM-03 Redacción Diseño Impl Pruebas (18h) :mem03, after ep0605, 9d
+    
+    section FASE 4: CIERRE
+    CI-01 Terminar redacción memoria (6h) :ci01, after mem03, 3d
+    CI-02 Revisión tutores (5h) :ci02, after ci01, 3d
+    CI-03 Maquetación final (6h) :ci03, after ci02, 3d
+    CI-04 Presentación (11h) :ci04, after ci03, 6d
+    CI-05 Defensa cierre (4h) :crit, ci05, after ci04, 2d
