@@ -292,49 +292,83 @@ Para cada uno de los riesgos identificados, se ha diseñado una estrategia de re
 
 En esta sección se documentan las desviaciones detectadas entre las estimaciones iniciales realizadas durante la fase de planificación y los resultados finales obtenidos al cierre del proyecto. Este análisis comparativo es fundamental para evaluar la precisión de las estimaciones, identificar factores que influyeron en las variaciones, y extraer lecciones aprendidas que permitan mejorar futuras planificaciones.
 
-**Estimaciones Iniciales Revisadas**
+**1\. Estimaciones Iniciales**
 
-La siguiente tabla recoge las estimaciones iniciales del proyecto tras la revisión de horas realizada durante la fase de planificación (enero 2026):
+Durante la fase de planificación (enero 2026), se realizó una estimación detallada del esfuerzo temporal necesario para completar el proyecto. La siguiente tabla resume las horas estimadas inicialmente para cada fase del ciclo de vida del TFG:
 
-| Concepto | Valor Estimado Inicial | Unidad |
+| Fase del Proyecto | Código EDT | Horas Estimadas |
 | --- | --- | --- |
-| Planificación Temporal |  |  |
-| Duración total del proyecto | 5 meses (enero - mayo 2026) | Meses |
-| Horas totales estimadas | 305 h | Horas |
-| Fase de Inicio (INI) | 28 h | Horas |
-| Fase de Planificación (PLAN) | 26 h | Horas |
-| Fase de Ejecución - Creación Dataset (EP-01) | 39 h | Horas |
-| Fase de Ejecución - Motor de Cálculo (EP-02) | 43 h | Horas |
-| Fase de Ejecución - Integración API (EP-03) | 30 h | Horas |
-| Fase de Ejecución - Dashboard UI/UX (EP-04) | 48 h | Horas |
-| Fase de Ejecución - QA y Verificación (EP-05) | 31 h | Horas |
-| Fase de Ejecución - Despliegue (EP-06) | 12 h | Horas |
-| Fase de Cierre (CI) | 48 h | Horas |
-| Metodología y Recursos |  |  |
-| Ciclo de vida del proyecto | Ágil iterativo (Sprints mensuales) | — |
-| Herramienta de gestión de tareas | Github Projects | — |
-| Herramienta de registro de tiempo | Clockify | — |
-| Lenguaje de programación | Python | — |
-| Framework frontend | Streamlit (o similar) | — |
-| Framework backend | FastAPI / Flask | — |
-| Base de datos | JSON / CSV | — |
-| Herramienta de versionado | Git + GitHub | — |
-| Entorno de despliegue | Render (Plan Free) | — |
-| Riesgos Identificados |  |  |
-| Número total de riesgos identificados | 9 riesgos | Cantidad |
-| Riesgos Críticos | 1 (R2) | Cantidad |
-| Riesgos Altos | 2 (R1, R6) | Cantidad |
-| Riesgos Medios | 4 (R3, R4, R7, R9) | Cantidad |
-| Riesgos Bajos | 2 (R5, R8) | Cantidad |
+| Inicio | INI | 28 h |
+| Planificación | PLAN | 26 h |
+| Ejecución – Creación del Dataset | EP-01 | 39 h |
+| Ejecución – Motor de Cálculo | EP-02 | 43 h |
+| Ejecución – Integración API Electricity Maps | EP-03 | 30 h |
+| Ejecución – Dashboard UI/UX | EP-04 | 48 h |
+| Ejecución – QA y Verificación | EP-05 | 31 h |
+| Ejecución – Despliegue | EP-06 | 12 h |
+| Cierre | CI | 48 h |
+| TOTAL PROYECTO |  | 305 h |
 
-**Sección de Análisis de Desviaciones (Estimaciones Finales)**
+**Contexto metodológico:**
 
-_Espacio reservado para completar al finalizar el proyecto con:_
+El proyecto adopta un ciclo de vida ágil iterativo e incremental, organizado en sprints mensuales. Las estimaciones se realizaron considerando una jornada de trabajo efectivo de aproximadamente 2 horas diarias, compatible con la dedicación parcial del alumno que compatibiliza el desarrollo del TFG con otras actividades académicas, laborales y personales.
 
-*   _Horas reales invertidas por fase_
-*   _Desviaciones porcentuales (Estimado vs Real)_
-*   _Factores que influyeron en las desviaciones_
-*   _Lecciones aprendidas para futuras estimaciones_
+Las herramientas de gestión y seguimiento del proyecto incluyen:
+
+*   **Gestión de tareas:** Github Projects
+*   **Registro de tiempo:** Clockify
+*   **Control de versiones:** Git + GitHub
+
+| Fase del Proyecto | Código EDT | Horas Estimadas | Horas Reales | Desviación (h) | Desviación (%) | Observaciones |
+| --- | --- | --- | --- | --- | --- | --- |
+| Inicio | INI | 28 h | — | — | — |  |
+| Planificación | PLAN | 26 h | — | — | — |  |
+| Ejecución – Creación del Dataset | EP-01 | 39 h | — | — | — |  |
+| Ejecución – Motor de Cálculo | EP-02 | 43 h | — | — | — |  |
+| Ejecución – Integración API Electricity Maps | EP-03 | 30 h | — | — | — |  |
+| Ejecución – Dashboard UI/UX | EP-04 | 48 h | — | — | — |  |
+| Ejecución – QA y Verificación | EP-05 | 31 h | — | — | — |  |
+| Ejecución – Despliegue | EP-06 | 12 h | — | — | — |  |
+| Cierre | CI | 48 h | — | — | — |  |
+| TOTAL PROYECTO |  | 305 h | — | — | — |  |
+
+*   **Stack tecnológico:** Python (backend), Streamlit/Flask (frontend), JSON/CSV (persistencia de datos)
+*   **Despliegue:** Render (Plan Free)
+
+**Riesgos identificados:**
+
+Como parte del proceso de planificación, se identificaron **9 riesgos** que podrían afectar al desarrollo del proyecto, clasificados según su nivel de criticidad:
+
+*   **Riesgos Críticos:** 1 (R2 – Limitaciones de hardware para medición real)
+*   **Riesgos Altos:** 2 (R1 – Inaccesibilidad de datos PUE; R6 – Inconsistencia entre fuentes de datos)
+*   **Riesgos Medios:** 4 (R3, R4, R7, R9)
+*   **Riesgos Bajos:** 2 (R5, R8)
+
+Para cada uno de estos riesgos, se definieron planes de contingencia específicos descritos en la sección de Gestión de Riesgos.
+
+**2\. Análisis de Desviaciones (Estimaciones Finales)**
+
+**Tabla comparativa de estimaciones vs. resultados reales**
+
+_Nota: Esta sección se completará al cierre del proyecto con los datos reales registrados en Clockify y Github Projects._
+
+**3\. Factores que Influyeron en las Desviaciones**
+
+_Esta subsección se completará al finalizar el proyecto, analizando:_
+
+*   **Factores técnicos:** Dificultades encontradas durante la implementación (ej. complejidad del mapeo DC→Zona, limitaciones de la API de Electricity Maps, problemas de rendimiento del dashboard).
+*   **Factores metodológicos:** Efectividad de la planificación ágil, precisión de las estimaciones iniciales, frecuencia de las reuniones de seguimiento con tutores.
+*   **Factores externos:** Disponibilidad de datos públicos, cambios en las condiciones de uso de servicios de terceros, eventos imprevistos que afectaron la dedicación temporal.
+*   **Riesgos materializados:** Identificación de cuáles de los 9 riesgos identificados se materializaron y cómo se gestionaron mediante los planes de contingencia.
+
+**4\. Lecciones Aprendidas**
+
+_Esta subsección se completará al finalizar el proyecto, documentando:_
+
+*   **Precisión de las estimaciones:** Evaluación de la desviación global del proyecto y por fase. Identificación de las fases con mayor precisión y aquellas que presentaron mayores desviaciones.
+*   **Mejoras para futuras planificaciones:** Recomendaciones específicas basadas en la experiencia del proyecto (ej. ajuste de factores de corrección, técnicas de estimación más precisas, buffers de contingencia recomendados).
+*   **Metodología ágil:** Valoración de la efectividad de los sprints mensuales, utilidad de las herramientas de seguimiento (Github Projects, Clockify), adecuación del ritmo de trabajo.
+*   **Gestión de riesgos:** Efectividad de los planes de contingencia aplicados, identificación de riesgos no previstos que surgieron durante el desarrollo.
 
 Referencias:
 
