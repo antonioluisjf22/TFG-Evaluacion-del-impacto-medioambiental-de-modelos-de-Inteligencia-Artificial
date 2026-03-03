@@ -34,6 +34,9 @@ FÓRMULAS DETALLADAS:
    E_red = energía_por_MB × MBs (en kWh)
    carbon_kg_per_GB = energy_kWh_per_GB × CI_user_country / 1000
    CO2_red = data_transferred_GB × carbon_kg_per_GB × 1000
+   (el ×1000 cumple dos funciones: convierte la unidad final de kg CO₂ → g CO₂,
+   y cancela el /1000 de la línea anterior, que existe únicamente para expresar
+   la variable intermedia carbon_kg_per_GB en unidades semánticas de kg CO₂/GB)
    (CI_user_country obtenido de Electricity Maps API)
 
 3. DATA CENTER:
@@ -97,11 +100,16 @@ DEFAULT_CARBON_INTENSITY = {
 }
 
 # Eficiencia de GPU en data centers (FLOPS útiles / FLOPS totales)
+# Coherente con extract_models_v2.py: varía entre 0.15 y 0.45 según tamaño.
+# Para el fallback usamos 0.35 como valor medio para modelos ~30-100B params.
 GPU_EFFICIENCY = 0.35  # ~35% de eficiencia típica en inferencia
 
-# Consumo energético por TFLOP/s (Wh)
-# Basado en NVIDIA A100: 400W TDP, 312 TFLOPS FP16 = 1.28 W/TFLOP
-WATTS_PER_TFLOP = 1.5  # Conservador, incluye overhead
+# Consumo energético por TFLOP/s (W/TFLOP)
+# Basado en NVIDIA A100 SXM4: 400W TDP, 312 TFLOPS FP16 = 1.28 W/TFLOP
+# Se usa 1.28 (valor real A100) en lugar de 1.5 para mantener coherencia con
+# extract_models_v2.py, que calcula:  energy = (TDP × time) / 3600
+# donde TDP=400W y TFLOPS=312 → ratio implícito = 400/312 = 1.28 W/TFLOP
+WATTS_PER_TFLOP = 1.28  # NVIDIA A100: 400W / 312 TFLOPS (coherente con extract_models_v2.py)
 
 
 @dataclass

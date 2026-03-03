@@ -97,30 +97,32 @@ Para 1000 tokens de GPT-4:
 **NIVEL 3: VALORES EMPÍRICOS VERIFICADOS**
 
 ```
-Parámetros energy_wh_per_1k_tokens (de models.csv):
+Parámetros energy_wh_per_1k_tokens (de models.csv — sincronizado v3.0, fórmula unificada):
 
-┌──────────────────────┬──────────────┬────────────────────┐
-│ Modelo               │ Parámetros   │ energy_wh/1k       │
-├──────────────────────┼──────────────┼────────────────────┤
-│ BERT-base            │ 110M         │ 0.0005 Wh/1k       │
-│ Mistral-7b           │ 7B           │ 0.0015 Wh/1k       │
-│ Claude 2             │ 100B         │ 0.0035 Wh/1k       │
-│ GPT-3.5-turbo        │ ~175B        │ 0.0040 Wh/1k       │
-│ GPT-4                │ ~1.76T       │ 0.0048 Wh/1k       │
-│ PaLM (Google)        │ 540B         │ 0.0042 Wh/1k       │
-└──────────────────────┴──────────────┴────────────────────┘
+┌──────────────────────┬──────────────┬────────────────────┬────────────────────────┐
+│ Modelo               │ Parámetros   │ energy_wh/1k       │ Metodología            │
+├──────────────────────┼──────────────┼────────────────────┼────────────────────────┤
+│ BERT-base            │ 110M         │ 0.000012 Wh/1k     │ Empírico (CodeCarbon)  │
+│ ViT-base             │ 86M          │ 0.000613 Wh/1k     │ 2N FLOPs (η=0.15)     │
+│ Mistral-7B           │ 7.3B         │ 0.020798 Wh/1k     │ 2N FLOPs (η=0.25)     │
+│ Falcon 40B           │ 40B          │ 0.0814 Wh/1k       │ 2N FLOPs (η=0.35)     │
+│ MPT 30B              │ 30B          │ 0.08547 Wh/1k      │ 2N FLOPs (η=0.25)     │
+│ Llama 2 (70B)        │ 70B          │ 0.14245 Wh/1k      │ 2N FLOPs (η=0.35)     │
+│ Claude 2             │ 100B         │ 0.2035 Wh/1k       │ 2N FLOPs (η=0.45)     │
+│ OPT 175B             │ 175B         │ 0.276986 Wh/1k     │ 2N FLOPs (η=0.45)     │
+│ GPT-4                │ ~280B activos│ 0.443178 Wh/1k     │ 2N FLOPs MoE (η=0.45)│
+│ PaLM 2               │ 340B         │ 0.538145 Wh/1k     │ 2N FLOPs (η=0.45)     │
+└──────────────────────┴──────────────┴────────────────────┴────────────────────────┘
 
-Relación tamaño ↔ energía:
-  • BERT (110M) → 0.0005
-  • GPT-4 (1.76T) → 0.0048
-  • Razón: 1.76T / 110M = 16000x
-  • Energía: 0.0048 / 0.0005 = 9.6x (sublineal porque GPUs son eficientes)
+Relación tamaño ↔ energía (modelos calculados, ordenados por params activos):
+  • Mistral 7B (7.3B, η=0.25) → 0.020798
+  • PaLM 2 (340B, η=0.45) → 0.538145
+  • Razón parámetros: 340B / 7.3B = 46.6x
+  • Razón energía: 0.538145 / 0.020798 = 25.9x
 
-INTERPRETACIÓN: Un modelo 16000x más grande consume ~10x más energía.
-                No es lineal porque:
-                  • Paralelismo en las GPUs
-                  • Caches y optimizaciones
-                  • Batch processing amortiza overhead
+NOTA: La relación es sublineal porque los modelos grandes
+tienen mejor eficiencia GPU (η mayor). BERT es el único
+valor medido empíricamente y queda fuera de la comparación.
 ```
 
 ### 🎯 Característica Crítica: INVARIANZA
@@ -527,18 +529,19 @@ Sensibilidad a tokens (LINEAL):
 
 CLAVE: E_compute ∝ tokens (perfectamente LINEAL)
 
-Sensibilidad al MODELO (150 tokens):
+Sensibilidad al MODELO (150 tokens, sincronizado con models.csv v3.0):
   ┌──────────────────┬─────────────┬──────────────────┐
   │ Modelo           │ en_wh/1k    │ E_compute @ 150t │
   ├──────────────────┼─────────────┼──────────────────┤
-  │ BERT-base        │ 0.0005      │ 0.000075 Wh      │
-  │ Mistral-7b       │ 0.0015      │ 0.000225 Wh      │
-  │ Claude 2         │ 0.0035      │ 0.000525 Wh      │
-  │ GPT-3.5-turbo    │ 0.0040      │ 0.0006 Wh        │
-  │ GPT-4            │ 0.0048      │ 0.00072 Wh       │
+  │ BERT-base        │ 0.000012    │ 0.0000018 Wh     │
+  │ ViT-base         │ 0.000613    │ 0.0000920 Wh     │
+  │ Mistral-7B       │ 0.020798    │ 0.003120 Wh      │
+  │ Llama 2 (70B)    │ 0.14245     │ 0.021368 Wh      │
+  │ GPT-4 (MoE 280B) │ 0.443178    │ 0.066477 Wh      │
+  │ PaLM 2           │ 0.538145    │ 0.080722 Wh      │
   └──────────────────┴─────────────┴──────────────────┘
 
-FACTOR: GPT-4 usa 64x más energía que BERT
+FACTOR: PaLM 2 usa ~44845x más energía que BERT
         Esto es la MAYOR fuente de variabilidad en CO2_dc
 ```
 

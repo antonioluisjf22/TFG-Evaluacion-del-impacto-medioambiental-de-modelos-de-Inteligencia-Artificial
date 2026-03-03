@@ -166,17 +166,15 @@ models_data = [
         "model_name": "GPT-4",
         "organization": "OpenAI",
         "model_type": "LLM",
-        "num_parameters": 1700000000000,  # 1.7 Trillion (MoE estimado)
+        "num_parameters": 1700000000000,  # 1.7 Trillion (MoE total)
+        "active_parameters_inference": 280000000000,  # ~280B activos por token (MoE: ~16% de expertos activos)
         "flops_training": 2.1e25,
         "release_date": "2024-03-14",
         "source_url": "https://openai.com/research/gpt-4",
         "hf_url": None,
-        "confidence": 0.95,
-        "notes": "Calculated from H100 TDP specs and estimated overhead",
-        # Calculado desde specs de H100 TDP (NO empírico)
-        "preset_energy_wh_per_1k": 0.0048,  # Calculado desde TDP + overhead
-        "energy_source_override": "calculated",  # NO es empírico
-        "energy_methodology": "Calculated from H100 TDP specs",
+        "confidence": 0.80,
+        "notes": "MoE architecture (~1.7T total, ~280B active per token). Calculated using 2N FLOPs formula with active parameters",
+        "energy_methodology": "Theoretical 2N FLOPs formula (MoE active params ~280B, GPU efficiency 0.45)",
         "empirical_latency_ms_per_token": 35,
         "context_window": 128000,
         "max_output_tokens": 4096
@@ -210,10 +208,8 @@ models_data = [
         "source_url": "https://arxiv.org/abs/2205.01068",
         "hf_url": "https://huggingface.co/intlsy/opt-175b-hyperparam",
         "confidence": 0.85,
-        "notes": "Meta OPT Paper. Estimación teórica (paper solo reporta entrenamiento)",
-        "preset_energy_wh_per_1k": 0.0035,  # Estimación teórica 2N FLOPs (no publicado por Meta)
-        "energy_methodology": "Theoretical 2N FLOPs formula",
-        "energy_source_override": "calculated",  # Es teórico, no empírico
+        "notes": "Meta OPT Paper. Paper solo reporta entrenamiento, no consumo inferencia",
+        "energy_methodology": "Theoretical 2N FLOPs formula scaled by efficiency",
         "empirical_latency_ms_per_token": 45,
         "context_window": 2048,
         "max_output_tokens": 2048
@@ -247,11 +243,8 @@ models_data = [
         "source_url": "https://arxiv.org/abs/2307.09288",
         "hf_url": "https://huggingface.co/meta-llama/Llama-2-70b",
         "confidence": 0.80,
-        "notes": "Estimación teórica 2N FLOPs (Meta no publica consumo inferencia)",
-        # Estimación teórica - Meta no publica consumo por token
-        "preset_energy_wh_per_1k": 0.0021,  # Estimación teórica 2N FLOPs
-        "energy_source_override": "calculated",  # Es teórico, no empírico
-        "energy_methodology": "Theoretical 2N FLOPs formula",
+        "notes": "Meta no publica consumo inferencia. Calculado con fórmula 2N FLOPs",
+        "energy_methodology": "Theoretical 2N FLOPs formula scaled by efficiency",
         "empirical_latency_ms_per_token": 28,
         "context_window": 4096,
         "max_output_tokens": 4096
@@ -268,7 +261,7 @@ models_data = [
         "hf_url": "https://huggingface.co/tiiuae/falcon-40b",
         "confidence": 0.80,
         "notes": "Model card en HF",
-        "energy_methodology": "Scaling from similar models using efficiency factors",
+        "energy_methodology": "Theoretical 2N FLOPs formula scaled by efficiency",
         "empirical_energy_wh_per_1k": None,
         "empirical_latency_ms_per_token": None,
         "context_window": 2048,
@@ -285,7 +278,7 @@ models_data = [
         "source_url": "https://www.databricks.com/blog/mpt-30b",
         "hf_url": "https://huggingface.co/Abzu/mpt-30b-q8",
         "confidence": 0.82,
-        "energy_methodology": "Scaling from similar models using efficiency factors",
+        "energy_methodology": "Theoretical 2N FLOPs formula scaled by efficiency",
         "notes": "MosaicML documentation",
         "empirical_energy_wh_per_1k": None,
         "empirical_latency_ms_per_token": None,
@@ -303,12 +296,9 @@ models_data = [
         "source_url": "https://arxiv.org/abs/2310.06825",
         "hf_url": "https://huggingface.co/mistralai/Mistral-7B-v0.1",
         "confidence": 0.85,
-        "notes": "Reclassified to calculated due to empirical value discrepancy with published papers",
-        # Calculado teóricamente usando fórmula 2N FLOPs
-        "preset_energy_wh_per_1k": 0.001139,  # Calculado teóricamente (2N FLOPs)
-        "energy_source_override": "calculated",
+        "notes": "Empirical value discrepancy with published papers. Calculado con fórmula 2N FLOPs",
         "empirical_latency_ms_per_token": 8,  # Mantener latency empírica para referencia
-        "energy_methodology": "Theoretical 2N FLOPs formula (GPU efficiency 0.25)",
+        "energy_methodology": "Theoretical 2N FLOPs formula scaled by efficiency",
         "context_window": 32000,
         "max_output_tokens": 8192
     },
@@ -341,12 +331,9 @@ models_data = [
         "source_url": "https://arxiv.org/abs/2010.11929",
         "hf_url": "https://huggingface.co/google/vit-base-patch16-224",
         "confidence": 0.85,
-        "notes": "Reclassified to calculated - paper arXiv:2511.23166 does not measure ViT-base (86M params)",
-        # Calculado teóricamente usando fórmula 2N FLOPs
-        "preset_energy_wh_per_1k": 0.000408,  # Calculado teóricamente (2N FLOPs, efficiency 0.15)
-        "energy_source_override": "calculated",
+        "notes": "Paper arXiv:2511.23166 does not measure ViT-base (86M params). Calculado con fórmula 2N FLOPs",
         "empirical_latency_ms_per_token": 0.3,  # Mantener latency empírica para referencia
-        "energy_methodology": "Theoretical 2N FLOPs formula (GPU efficiency 0.15, vision model)",
+        "energy_methodology": "Theoretical 2N FLOPs formula scaled by efficiency (vision model)",
         "context_window": 196,  # Patches de imagen
         "max_output_tokens": 10  # Clasificación
     },
@@ -359,7 +346,8 @@ print("=" * 70)
 print("\nCalculando métricas energéticas...\n")
 
 for model in models_data:
-    params = model['num_parameters']
+    # Usar active_parameters_inference si existe (para MoE como GPT-4)
+    params = model.get('active_parameters_inference', model['num_parameters'])
     model_type = model['model_type']
     
     # Calcular valores de energía
@@ -425,6 +413,7 @@ for model in models_data:
     model.pop('preset_energy_wh_per_1k', None)
     model.pop('energy_source_override', None)
     model.pop('empirical_latency_ms_per_token', None)
+    model.pop('active_parameters_inference', None)
 
 # Crear DataFrame
 df = pd.DataFrame(models_data)
