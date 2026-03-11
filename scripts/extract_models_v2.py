@@ -365,8 +365,11 @@ for model in models_data:
     model['typical_energy_wh'] = round(
         model['energy_wh_per_1k_tokens'] * (total_tokens / 1000), 8
     )
+    # Latencia basada en tokens_output (generación autoregresiva):
+    # Los tokens de input se procesan en paralelo (prefill), solo los de output
+    # se generan secuencialmente. Coherente con calculate_emissions.py.
     model['typical_latency_sec'] = round(
-        (model['latency_ms_per_token'] * total_tokens) / 1000, 3
+        (model['latency_ms_per_token'] * typical['tokens_output']) / 1000, 3
     )
     
     # Preservar energy_methodology si existe

@@ -58,7 +58,9 @@ Los datos transferidos se estiman automáticamente según el número de tokens p
 
 $datos_{MB} = \frac{1200 + (tokens \times 5)}{1.000.000}$
 
-Donde 1200 bytes corresponde al *overhead* HTTP fijo y 5 bytes/token al *payload* promedio. El divisor 1.000.000 realiza la conversión de unidades a Mega Bytes.
+Donde 1200 bytes corresponde al *overhead* HTTP fijo estimado (cabeceras HTTP/2, HPACK, JSON wrappers, TLS) y 5 bytes/token al *payload* promedio. El divisor 1.000.000 realiza la conversión de unidades a megabytes.
+
+El factor de 5 bytes por token se fundamenta en la convención documentada por OpenAI ("What are tokens & how to count them?"): 1 token ≈ 4 caracteres en inglés, multiplicado por un factor de ~1.2 para codificación UTF-8 multilingüe. Esta heurística se aplica **únicamente en esta fórmula** para convertir tokens a bytes de red. La cantidad de tokens que consume cada tipo de petición (por ejemplo, 70 de entrada y 215 de salida para `chat_simple`) no se deriva de esta regla de 4 caracteres, sino del análisis de datasets académicos públicos como LMSYS-Chat-1M (Zheng et al., 2024) y WildChat (Zhao et al., 2024), que registran distribuciones reales de longitud de prompt y respuesta en interacciones con LLMs.
 
 #### 2.1.3. Emisiones del Data Center
 

@@ -116,6 +116,63 @@ Ningún modelo en la calculadora v3.0 tiene datos empíricos directos de consumo
 
 ---
 
+## 2.6 Estimación de Tokens por Consulta y su Conversión a Bytes de Red
+
+Un token es siempre lo mismo: la unidad mínima de texto que procesa un modelo LLM, definida por su tokenizer (BPE = *Byte Pair Encoding* en OpenAI y Claude, SentencePiece en LLaMA, etc.). No hay "dos tipos de tokens". Lo que sí existe son **dos preguntas distintas** que se responden con fuentes diferentes:
+
+### Pregunta 1: ¿Cuántos tokens consume una consulta?
+
+Los tokens por tipo de petición se obtienen del análisis de **datasets académicos públicos** que registran interacciones reales con LLMs:
+
+| Tipo de Petición | Input | Output | Total | Fuente |
+|------------------|-------|--------|-------|--------|
+| **chat_simple** | 70 | 215 | 285 | LMSYS-Chat-1M (Zheng et al., 2024) |
+| **chat_extended** | 296 | 441 | 737 | WildChat (Zhao et al., 2024) |
+| **summarization** | 781 | 56 | 837 | CNN/DailyMail (See et al., 2017) |
+| **generation_short** | 20 | 65 | 85 | Alpaca dataset |
+| **generation_long** | 50 | 2048 | 2098 | Límite API (diseño) |
+| **code_generation** | 100 | 300 | 400 | Decisión de diseño (sin validación empírica) |
+| **translation** | 200 | 220 | 420 | Ratio empírico ~1.1x |
+
+Estos valores no se derivan de contar caracteres. Son medianas/medias de distribuciones reales de longitud de prompt y respuesta medidas directamente en tokens por los propios datasets.
+
+### Pregunta 2: ¿Cuántos bytes de red ocupa un token?
+
+Una vez determinados los tokens (Pregunta 1), se necesita estimar el tráfico de red. Para ello se usa la heurística de OpenAI ("What are tokens and how to count them?"):
+
+- 1 token ≈ 4 caracteres (inglés) × ~1.2 (UTF-8 multilingüe) = **5 bytes/token**
+
+**Fórmula**: $datos_{MB} = \frac{1200 \text{ (HTTP overhead fijo)} + tokens \times 5}{1.000.000}$
+
+**Ejemplo con chat_simple** (285 tokens):
+- Bytes = 1200 + 285 × 5 = 2625 bytes = 0.002625 MB
+
+### ¿Por qué no se usa la heurística de caracteres para la Pregunta 1?
+
+**Razón corta**: La heurística "1 token ≈ 4 caracteres" es una **aproximación estadística grosera**, no una regla determinista. Los tokenizers BPE (*Byte Pair Encoding*) no dividen el texto en bloques fijos de 4 caracteres.
+
+**Razón detallada con ejemplos**:
+
+La heurística funciona "en promedio" en textos largos (miles de caracteres), pero falla en textos cortos y puntuales:
+
+- `"Hello world"` = 11 caracteres → heurística predice 11÷4 ≈ 2.75 → 3 tokens
+- Pero en realidad = **2 tokens** (porque "Hello" es 1 token y "world" es 1 token, el espacio se maneja especialmente)
+
+- `"¿Cuántos?"` = 9 caracteres (español) → heurística predice 9÷4 ≈ 2.25 → 2-3 tokens
+- Pero en realidad = **5-6 tokens** (porque los caracteres acentuados y puntuación se tokenizaban ineficientemente en BPE)
+
+La heurística es un **promedio global** útil para estimar volumen en agregados grandes, no para contar exactamente.
+
+**Comparación**: 
+- Contar 100 millones de tweets con la heurística: probablemente genera un error <5% (bueno)
+- Contar tokens en una consulta individual de 285 caracteres: error puede llegar a 20-30% (malo)
+
+Por eso, para determinar cuántos tokens consume cada tipo de petición, se **miden directamente** en datasets reales (LMSYS-Chat-1M, WildChat) en lugar de calcular. Los papers de esos datasets ya hicieron el trabajo de tokenizar millones de interacciones y reportar las distribuciones.
+
+En cambio, para estimar **bytes de red** la heurística es aceptable: tratamos con volúmenes en megabytes (agregados de miles de consultas), donde ±5% de error es negligible comparado con el overhead de red fijo (1200 bytes HTTP).
+
+---
+
 ## 3. Historial de Reclasificaciones
 
 ### 3.1 Mistral-7B — Reclasificado como "Calculated" (v2.7)

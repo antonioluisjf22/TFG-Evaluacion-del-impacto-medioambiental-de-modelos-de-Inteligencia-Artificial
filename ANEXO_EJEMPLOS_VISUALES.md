@@ -91,7 +91,7 @@ fig.show()
 <div class="energy-card">
   <div class="card-header">
     <h2>GPT-4</h2>
-    <p>Chat Simple (50+100 tokens)</p>
+    <p>Chat Simple (70+215 tokens)</p>
   </div>
   
   <div class="card-body">
@@ -242,7 +242,7 @@ fig.show()
 ```
 ╔════════════════════════════════════════╗
 ║          GPT-4                         ║
-║   Chat Simple (50+100 tokens)          ║
+║   Chat Simple (70+215 tokens)          ║
 ╠════════════════════════════════════════╣
 ║                                        ║
 ║              ╔═════════╗               ║
@@ -419,10 +419,10 @@ CONSUMO TOTAL: 35.20 Wh
 │     └─ Pérdidas térmicas: 0.16 Wh
 │
 ├─ TRANSMISIÓN RED: 4.55 Wh (13%)
-│  ├─ Upload (50 tokens): 0.50 Wh
+│  ├─ Upload (70 tokens): 0.50 Wh
 │  │  └─ Codificación: 0.08 Wh
 │  │  └─ Transmisión: 0.42 Wh
-│  └─ Download (100 tokens): 4.05 Wh
+│  └─ Download (215 tokens): 4.05 Wh
 │     └─ Codificación: 0.15 Wh
 │     └─ Transmisión: 3.90 Wh
 │

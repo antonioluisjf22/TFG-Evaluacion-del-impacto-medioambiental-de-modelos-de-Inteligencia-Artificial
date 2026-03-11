@@ -623,10 +623,10 @@ class CarbonCalculator:
             tokens_output: Tokens generados (si None, usa request_type)
             request_type: Tipo de petición. Opciones para LLM:
                 - "chat_simple": Pregunta-respuesta corta (70+215 tokens)
-                - "chat_extended": Conversación extendida (200+500 tokens)
-                - "generation_short": Texto corto (20+256 tokens)
+                - "chat_extended": Conversación extendida (296+441 tokens)
+                - "generation_short": Texto corto (20+65 tokens)
                 - "generation_long": Texto largo (50+2048 tokens)
-                - "summarization": Resumen (1000+200 tokens)
+                - "summarization": Resumen (781+56 tokens)
                 - "code_generation": Código (100+300 tokens)
                 - "translation": Traducción (200+220 tokens)
             data_transferred_mb: MB transferidos por la red (si None, se calcula automáticamente)
