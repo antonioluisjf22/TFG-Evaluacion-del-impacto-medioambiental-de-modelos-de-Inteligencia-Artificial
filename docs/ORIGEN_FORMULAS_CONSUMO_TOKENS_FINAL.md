@@ -1,7 +1,7 @@
 # Origen de Fórmulas y Valores de Consumo por Token
 
-> **Versión**: 2.8 (Febrero 2026)  
-> **Estado**: Mistral-7B y ViT-base reclasificados como "calculated" por discrepancias con valores publicados
+> **Versión**: 3.0 (Marzo 2026)  
+> **Estado**: Todos los modelos son LLMs generativos. BERT y ViT eliminados. PaLM 2 max_output_tokens corregido.
 
 ---
 
@@ -20,12 +20,14 @@ Donde:
 
 ### 1.2 Componentes y Fuentes
 
-| Componente | Descripción | Fuente |
-|------------|-------------|--------|
-| **2 × params** | FLOPS mínimos por token en forward pass (una multiplicación + una suma) | Kaplan et al. (2020) [1] |
-| **TFLOPS_GPU** | Capacidad de cómputo del hardware de referencia | Especificaciones del fabricante |
-| **TDP_GPU** | Consumo de potencia máximo | Especificaciones del fabricante |
-| **1/3600** | Conversión de segundos a horas (para Wh) | Conversión física estándar |
+| Componente | Descripción | Valor de referencia | Fuente |
+|------------|-------------|---------------------|--------|
+| **2 × params** | FLOPS mínimos por token en forward pass (una multiplicación + una suma) | Variable por modelo | Kaplan et al. (2020) [1] |
+| **TFLOPS_GPU** | Capacidad de cómputo del hardware de referencia | **312 TFLOPS** (NVIDIA A100, FP16) | NVIDIA A100 datasheet |
+| **TDP_GPU** | Consumo de potencia máximo | **400 W** (NVIDIA A100 SXM) | NVIDIA A100 datasheet |
+| **1/3600** | Conversión de segundos a horas (para Wh) | — | Conversión física estándar |
+
+> **Hardware de referencia**: NVIDIA A100 80GB SXM (312 TFLOPS FP16, 400W TDP). Se usa como GPU de referencia por ser la más utilizada en inferencia LLM a escala durante el período 2022-2024. Los valores se definen como constantes en `extract_models_v2.py` (`REF_GPU_TFLOPS = 312`, `REF_GPU_TDP_W = 400`).
 
 ### 1.3 Forward Pass vs Entrenamiento
 
@@ -47,210 +49,116 @@ Donde:
 - **Metodología Epoch AI**: Extrapolación de mediciones indirectas + inclusión de PUE datacenter
 - **Confianza**: 50% (rango amplio según longitud de query y condiciones)
 
-#### Discrepancia GPT-4: 0.0048 vs 0.6-1.2 Wh/1k tokens
+#### Discrepancia GPT-4: 0.443 vs 0.6-1.2 Wh/1k tokens
 
-**Valor en `models.csv`**: 0.0048 Wh/1k tokens  
+**Valor en `models.csv`**: 0.443178 Wh/1k tokens (calculado con fórmula 2N FLOPs, MoE ~280B active params)  
 **Epoch AI reporta**: 0.6-1.2 Wh/1k tokens (CON PUE)  
 **Sin PUE Epoch AI**: ~0.5-1.0 Wh/1k tokens (dividiendo entre 1.2)
 
-**Explicación de la diferencia (~100-200×)**:
+**Explicación de la diferencia (~1.1-2.3×)**:
 
-| Componente | 0.0048 (Nuestro CSV) | Epoch AI (~0.5-1.0 sin PUE) |
+| Componente | 0.443 (Nuestro CSV) | Epoch AI (~0.5-1.0 sin PUE) |
 |------------|----------------------|------------------------------|
 | Cómputo GPU puro | ✅ Incluido | ✅ Incluido |
 | Overhead memoria/IO | ✅ Incluido | ✅ Incluido |
-| Scheduling GPU | ✅ Incluido | ✅ Incluido |
 | PUE datacenter | ❌ Se aplica por separado | ❌ Ya excluido |
 | Balanceadores de carga | ❌ No incluido | ✅ Probablemente incluido |
 | Orquestación/réplicas | ❌ No incluido | ✅ Probablemente incluido |
 | Múltiples pasadas (beam search) | ❌ No incluido | ✅ Probablemente incluido |
-| Overhead infraestructura real | ❌ No incluido | ✅ Incluido |
 
-**Por qué mantenemos 0.0048**:
-1. **Consistencia metodológica**: Todos los modelos usan fórmula 2N FLOPs + overhead operacional
+**Por qué mantenemos 0.443**:
+1. **Consistencia metodológica**: Todos los modelos usan fórmula 2N FLOPs + eficiencia GPU
 2. **Separación de PUE**: El PUE se aplica correctamente por separado desde `data_centers.csv`
 3. **Coherencia interna**: La calculadora es internamente consistente
-4. **Fórmula teórica validada**: Basada en FLOPS reales del modelo (ver FLUJO_CALCULADORA_BR.md)
-
-**Qué incluye 0.0048** (según FLUJO_CALCULADORA_BR.md):
-```
-Cómputo puro:       0.001 Wh/1k  (solo operaciones matemáticas)
-Overhead operacional: +0.0038 Wh/1k  (memoria, IO, scheduling)
-───────────────────────────────────
-Total:              0.0048 Wh/1k  (factor 4.8× sobre cómputo puro)
-```
-
-**Interpretación de Epoch AI**: Las mediciones de Epoch AI (~0.5-1.0 Wh/1k sin PUE) probablemente capturan overhead adicional de infraestructura real de producción que no está modelado en la fórmula 2N FLOPs, como:
-- Sistema de orquestación de requests
-- Balanceadores de carga
-- Réplicas y redundancia
-- Múltiples pasadas del modelo (sampling strategies)
-- Overhead de sistema operativo del datacenter
-
-> **Nota crítica**: En nuestra calculadora usamos el valor teórico 0.0048 Wh/1k (GPU + overhead operacional básico) porque el PUE se aplica por separado desde `data_centers.csv`. La discrepancia con Epoch AI sugiere que existe overhead adicional de infraestructura real (~100×) que no está capturado por la fórmula 2N FLOPs, pero que va más allá del alcance de esta calculadora educativa.
+4. **Valor en rango razonable**: 0.443 está en el mismo orden de magnitud que Epoch AI sin PUE
 
 ### 2.2 Meta / OPT-175B
 
 - **Origen**: Paper OPT [4]
-- **Dato calculado**: 0.0035 Wh/1k tokens (**ESTIMACIÓN TEÓRICA**, no medición empírica)
-- **Metodología**: Aplicación de fórmula 2N FLOPs para inferencia
-- **Confianza**: 40%
+- **Dato calculado**: 0.276986 Wh/1k tokens (**ESTIMACIÓN TEÓRICA**, no medición empírica)
+- **Metodología**: Aplicación de fórmula 2N FLOPs para inferencia con eficiencia GPU 0.45
+- **Confianza**: 85%
 - **Aclaración**: El paper OPT **NO publica consumo por token en inferencia**; solo reporta datos de entrenamiento (1/7 huella de GPT-3)
 
 ### 2.3 Meta / Llama 2
 
 - **Origen**: Paper Llama 2 [5]
-- **Dato calculado**: 0.0021 Wh/1k tokens (**ESTIMACIÓN TEÓRICA**, no medición empírica)
-- **Metodología**: Extrapolación basada en fórmula 2N FLOPs y hardware A100
-- **Confianza**: 45%
+- **Dato calculado**: 0.14245 Wh/1k tokens (**ESTIMACIÓN TEÓRICA**, no medición empírica)
+- **Metodología**: Fórmula 2N FLOPs con hardware A100 y eficiencia GPU 0.35
+- **Confianza**: 80%
 - **Datos reales disponibles**: 1,720,320 GPU-horas de entrenamiento, 291.42 tCO₂eq total
 - **Aclaración**: Meta **NO publica consumo por token en inferencia**, solo datos de entrenamiento
 
-### 2.4 Google / PaLM, Bard
+### 2.4 Google / PaLM 2
 
-- **Origen**: Google Sustainability Report 2023 [6]
-- **Dato**: Estimaciones de PUE y intensidad de carbono por región
-- **Confianza**: 70% (datos agregados, no modelo específico)
+- **Origen**: PaLM 2 Technical Report [24]
+- **Dato calculado**: 0.538145 Wh/1k tokens (**ESTIMACIÓN TEÓRICA**)
+- **Metodología**: Fórmula 2N FLOPs con eficiencia GPU 0.45 (340B params)
+- **Confianza**: 70%
+- **Datos adicionales**: Google Sustainability Report 2023 [6] proporciona estimaciones de PUE e intensidad de carbono por región
 
 ### 2.5 Por Qué No Todos Tienen Datos Empíricos
 
-Algunos modelos **no publican métricas energéticas**:
+Ningún modelo en la calculadora v3.0 tiene datos empíricos directos de consumo energético por token. Todos usan la fórmula teórica 2N FLOPs:
 
-| Modelo | Razón | Solución |
-|--------|-------|----------|
-| Claude (Anthropic) | Números confidenciales | Estimación teórica 2N FLOPs |
-| Falcon | Enfocados en rendimiento, no en energía | Extrapolación desde modelos similares |
-| Modelos propietarios (Bard, Copilot) | Datos parciales o indirectos | Escalado por eficiencia |
-
-**Nota**: Mistral-7B inicialmente tenía datos empíricos (v2.6), pero fue **reclasificado a "calculated" en v2.7** debido a discrepancias significativas (~420×) entre el valor empírico en CSV (0.00045 Wh/1k) y las mediciones publicadas en papers académicos (~0.190 Wh/1k). Ver sección 4.1 para detalles.
-
----
-
-## 3. Modelos con Mediciones Empíricas Verificables
-
-**1 modelo** en la calculadora tiene datos empíricos (energy_source="empirical"):
-
-### 3.1 BERT (Base, Uncased) — 110M parámetros
-
-- **Origen**: Cao, Q., et al. (2020) [7]
-- **Dato medido**: 0.000012 Wh/1k tokens
-- **Metodología**: Medición directa con CodeCarbon y power meters durante inferencia real
-- **Confianza**: 85% (paper revisado por pares, medición directa sobre hardware real)
+| Modelo | Razón ausencia empírica | Solución |
+|--------|------------------------|----------|
+| GPT-4 (OpenAI) | MoE, specs parciales | 2N FLOPs con ~280B active params |
+| PaLM 2 (Google) | Modelo propietario | 2N FLOPs |
+| OPT 175B (Meta) | Paper solo reporta entrenamiento | 2N FLOPs |
+| Claude 2 (Anthropic) | Números confidenciales | 2N FLOPs |
+| Llama 2 70B (Meta) | Paper solo reporta entrenamiento | 2N FLOPs |
+| Falcon 40B (TII) | Enfocados en rendimiento | 2N FLOPs |
+| MPT 30B (MosaicML) | Sin datos de inferencia | 2N FLOPs |
+| Gemma 7B (Google DeepMind) | Paper no incluye energía inferencia | 2N FLOPs |
+| Mistral 7B (Mistral AI) | Discrepancia empírica 420× (ver §3.1) | 2N FLOPs |
+| Phi-2 (Microsoft) | Blog post, sin datos energéticos | 2N FLOPs |
 
 ---
 
-### 3.2 Resumen de Calidad de Fuentes Empíricas
+## 3. Historial de Reclasificaciones
 
-| Modelo | Fuente | Tipo de Publicación | Nivel de Trazabilidad |
-|--------|--------|---------------------|----------------------|
-| **BERT** | Cao et al. 2020 [7] | Paper académico revisado por pares (ACL) | ✅ **Alto** (DOI, métodos reproducibles) |
-
-**Estado actualizado (v2.8)**:
-- ✅ **BERT es el único modelo con datos empíricos verificables**
-- 🔄 **Mistral-7B**: Reclasificado como "calculated" en v2.7 (ver sección 4.1)
-- 🔄 **ViT-base**: Reclasificado como "calculated" en v2.8 (ver sección 4.2)
-
----
-
-## 4. Estimaciones Derivadas: Cuando No Hay Datos
-
-### 4.1 Mistral-7B — Reclasificado como "Calculated" (v2.7)
+### 3.1 Mistral-7B — Reclasificado como "Calculated" (v2.7)
 
 - **Estado**: Reclasificado de "empirical" a "calculated" en v2.7
 - **Valor anterior (empírico)**: 0.00045 Wh/1k tokens
-- **Valor actual (calculado)**: 0.001139 Wh/1k tokens
-- **Metodología**: Fórmula teórica 2N FLOPs con eficiencia GPU 0.25 (modelos 5B-30B)
+- **Valor actual (calculado)**: 0.020798 Wh/1k tokens (fórmula 2N FLOPs, efficiency 0.25)
 - **Motivo del cambio**: Discrepancia crítica (~420×) entre valor empírico en CSV y mediciones publicadas en papers académicos [21][22]:
   - Papers reportan: ~0.190 Wh/1k tokens (mediciones en hardware real)
   - CSV tenía: 0.00045 Wh/1k tokens (origen incierto)
-  - Valor calculado teórico: 0.001139 Wh/1k tokens (conservador, coherente con otros modelos)
 
 **Referencias académicas para contexto**:
-- [21] Poddar, S., Koley, P., Misra, J., Ganguly, N., & Ghosh, S. (2025). "Towards Sustainable NLP: Insights from Benchmarking Inference Energy in Large Language Models." *Proceedings of NAACL 2025*, pages 12688–12704, Albuquerque, New Mexico.
-- [22]  Yang, R., Zhan, L., et al. (2025). "Benchmarking the Power Consumption of LLM Inference." arXiv:2512.03024. https://arxiv.org/abs/2512.03024
+- [21] Poddar, S., et al. (2025). "Towards Sustainable NLP..." *NAACL 2025*
+- [22] Yang, R., Zhan, L., et al. (2025). "Benchmarking the Power Consumption of LLM Inference." arXiv:2512.03024
 
-> ✅ **Decisión metodológica**: Usar valor calculado teóricamente (0.001139 Wh/1k) en lugar del empírico inconsistente para mantener coherencia interna en la calculadora. Esto sacrifica precisión empírica a favor de consistencia metodológica.
+### 3.2 BERT Base y ViT-base — Eliminados (v3.0)
 
-### 4.2 ViT-base — Reclasificado como "Calculated" (v2.8)
+- **BERT Base (110M params)**: Eliminado en v3.0. Modelo encoder-only de clasificación — no genera tokens en sentido generativo. El campo `max_output_tokens` no aplica a su arquitectura.
+- **ViT-base (86M params)**: Eliminado en v3.0. Modelo de visión que clasifica imágenes, no genera texto. Los tipos de petición de visión (image_classification, image_captioning, visual_qa) fueron eliminados.
+- **Reemplazados por**: Gemma 7B (Google DeepMind) y Phi-2 (Microsoft Research), ambos LLMs generativos.
 
-- **Estado**: Reclasificado de "empirical" a "calculated" en v2.8
-- **Valor anterior (empírico)**: 0.000018 Wh/1k tokens
-- **Valor actual (calculado)**: 0.000408 Wh/1k tokens
-- **Metodología**: Fórmula teórica 2N FLOPs con eficiencia GPU 0.15 (modelos <5B params, visión)
-- **Motivo del cambio**: Paper académico de referencia NO mide ViT-base (86M params):
-  - Paper [23] Amanzhol & Park (2025) solo mide modelos <23M params
-  - Modelo más cercano: ViT_S (22M) con 0.000187-0.000680 Wh/imagen (10-38× mayor)
-  - CSV tenía: 0.000018 Wh/1k tokens (no verificable en el paper citado)
-  - Valor calculado teórico: 0.000408 Wh/1k tokens (conservador, coherente con otros modelos)
+---
 
-**Cálculo detallado para ViT-base**:
-- Parámetros: 86M
-- Tokens por imagen: 196 patches (224×224 con patch size 16×16)
-- FLOPs por imagen: 2 × 86M × 196 = 33.7 GFLOPS
-- Hardware: NVIDIA A100 (312 TFLOPS, 400W TDP)
-- Eficiencia GPU: 0.15 (modelos pequeños <5B)
-- Energía por imagen: (33.7 × 10^9) / (312 × 10^12) × (400/3600) / 0.15 = 0.000080 Wh
-- Energía por 1k tokens: 0.000080 × (1000/196) = **0.000408 Wh/1k**
+## 4. Metodología por Modelo (según `models.csv` v3.0)
 
-**Referencia académica para contexto (verificación fallida)**:
-- [23] Amanzhol, N. & Park, J. (2025). "Energy-Efficient Vision Transformer Inference for Edge-AI Deployment." *arXiv:2511.23166*
-  - ⚠️ **Paper excluye ViT-base**: Filtra modelos >23M params
-  - Solo mide: ViT_Ti (5M), ViT_S (22M), DeiT_Ti (5M), etc.
+### 4.1 Tabla de Metodologías (10 LLMs)
 
-> ✅ **Decisión metodológica**: Usar valor calculado teóricamente (0.000408 Wh/1k) porque el paper citado no proporciona medición para ViT-base. El valor calculado es ~23× mayor que el valor empírico original no verificable.
+| Modelo | Params | energy_wh_per_1k | energy_source | energy_methodology | Eficiencia GPU |
+|--------|--------|------------------|---------------|-------------------|----------------|
+| **GPT-4** | 1.7T (280B active) | 0.443178 | calculated | 2N FLOPs (MoE active params ~280B) | 0.45 |
+| **PaLM 2** | 340B | 0.538145 | calculated | 2N FLOPs scaled by efficiency | 0.45 |
+| **OPT-175B** | 175B | 0.276986 | calculated | 2N FLOPs scaled by efficiency | 0.45 |
+| **Claude 2** | ~100B | 0.2035 | calculated | 2N FLOPs scaled by efficiency | 0.35 |
+| **Llama 2 70B** | 70B | 0.14245 | calculated | 2N FLOPs scaled by efficiency | 0.35 |
+| **Falcon 40B** | 40B | 0.0814 | calculated | 2N FLOPs scaled by efficiency | 0.35 |
+| **MPT 30B** | 30B | 0.08547 | calculated | 2N FLOPs scaled by efficiency | 0.25 |
+| **Gemma 7B** | 8.54B | 0.02433 | calculated | 2N FLOPs scaled by efficiency | 0.25 |
+| **Mistral 7B** | 7.3B | 0.020798 | calculated | 2N FLOPs scaled by efficiency | 0.25 |
+| **Phi-2** | 2.7B | 0.012821 | calculated | 2N FLOPs scaled by efficiency | 0.15 |
 
-### 4.3 Metodología por Modelo (según `models.csv`)
+**Estado v3.0**: Todos los modelos son `energy_source = "calculated"`. No hay modelos empíricos en la calculadora.
 
-**IMPORTANTE**: NO todos los modelos usan la fórmula 2N FLOPs. El CSV `models.csv` documenta la metodología exacta en la columna `energy_methodology` para cada modelo.
-
-#### Tabla de Metodologías por LLM
-
-| Modelo | energy_wh_per_1k | energy_source | energy_methodology | Usa 2N FLOPs |
-|--------|------------------|---------------|-------------------|--------------|
-| **GPT-4** | 0.0048 | calculated | Calculated from H100 TDP specs | ❌ NO |
-| **PaLM 2** | 0.538 | calculated | Theoretical 2N FLOPs formula scaled by efficiency | ✅ SÍ |
-| **OPT-175B** | 0.0035 | calculated | Theoretical 2N FLOPs formula | ✅ SÍ |
-| **Claude 2** | 0.204 | calculated | Theoretical 2N FLOPs formula scaled by efficiency | ✅ SÍ |
-| **Llama 2-70B** | 0.0021 | calculated | Theoretical 2N FLOPs formula | ✅ SÍ |
-| **Falcon 40B** | 0.0814 | calculated | Scaling from similar models using efficiency factors | ~ Indirecto |
-| **MPT 30B** | 0.0855 | calculated | Scaling from similar models using efficiency factors | ~ Indirecto |
-| **Mistral 7B** | 0.001139 | calculated | Theoretical 2N FLOPs formula (GPU efficiency 0.25) | ✅ SÍ |
-| **BERT Base** | 0.000012 | empirical | Hardware power measurement (CodeCarbon) | ❌ NO |
-| **ViT-base** | 0.000408 | calculated | Theoretical 2N FLOPs formula (GPU efficiency 0.15, vision model) | ✅ SÍ |
-
-**Leyenda**: ✅ Usa 2N FLOPs | ~ Derivado indirectamente | ❌ Medición empírica
-
-**Cambios**:
-- **v2.7**: Mistral-7B reclasificado de empirical (0.00045 Wh/1k) a calculated (0.001139 Wh/1k)
-- **v2.8**: ViT-base reclasificado de empirical (0.000018 Wh/1k) a calculated (0.000408 Wh/1k)
-
-#### Resumen de Metodologías
-
-**Modelos con datos empíricos (NO usan 2N FLOPs):**
-- ✅ BERT-base: CodeCarbon + power meters [7]
-
-**Modelos reclasificados a calculated (verificación empírica fallida):**
-- 🔄 Mistral-7B (v2.7): Papers muestran discrepancia 420× → calculado con 2N FLOPs
-- 🔄 ViT-base (v2.8): Paper [23] no mide ViT-base (86M) → calculado con 2N FLOPs
-
-**Modelos con cálculo teórico (estimación desde specs):**
-- GPT-4: Calculado desde TDP de H100 + estimaciones de overhead
-
-**Modelos con fórmula teórica 2N FLOPs:**
-- PaLM 2, OPT-175B, Claude 2, Llama 2-70B, **Mistral-7B**, **ViT-base**
-
-**Modelos con escalado por factores de eficiencia:**
-- Falcon 40B, MPT 30B (derivados de modelos similares)
-
-### 4.4 Método de Escalado por Eficiencia
-
-Para modelos sin datos empíricos ni fórmula directa, se usa escalado relativo tomando Llama 70B como referencia (0.0021 Wh/1k):
-
-**Ejemplo**: Falcon 40B
-- Referencia: Llama 70B (0.0021 Wh/1k)
-- Se aplica factor de eficiencia proporcional al tamaño
-
-### 4.5 Factor de Eficiencia (Modelo Dinámico)
+### 4.2 Factor de Eficiencia (Modelo Dinámico)
 
 La eficiencia de GPU depende del tamaño del modelo (mejor batching en modelos grandes):
 
@@ -265,9 +173,9 @@ else:              efficiency = 0.15
 - Modelos pequeños: Subutilizan GPU (menos paralelismo)
 - Modelos grandes: Mejor ocupación de memoria, batching más eficiente
 
-### 4.6 Lógica de Prioridad en `extract_models_v2.py`
+### 4.3 Lógica de Prioridad en `extract_models_v2.py`
 
-El script que genera `models.csv` aplica una **jerarquía de prioridad** para determinar el valor de `energy_wh_per_1k_tokens` de cada modelo:
+El script que genera `models.csv` aplica una **jerarquía de prioridad** para determinar el valor de `energy_wh_per_1k_tokens`:
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
@@ -286,61 +194,27 @@ El script que genera `models.csv` aplica una **jerarquía de prioridad** para de
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
-#### Explicación de cada nivel:
+#### Mapeo modelos → nivel de prioridad (v3.0):
 
-| Prioridad | Campo en script | Descripción | Ejemplo |
-|-----------|-----------------|-------------|---------|
-| **1** | `preset_energy_wh_per_1k` | Valor fijo preestablecido. Puede ser teórico o empírico según `energy_source_override`. | GPT-4 (0.0048, calculado), OPT-175B (0.0035, teórico), Llama2-70B (0.0021, teórico), **Mistral-7B (0.001139, calculado)**, **ViT-base (0.000408, calculado)** |
-| **2** | `empirical_energy_wh_per_1k` | Valor medido directamente en hardware o benchmarks reales. | BERT (0.000012) |
-| **3** | `estimate_energy_per_1k_tokens()` | Cálculo dinámico usando fórmula 2N FLOPs × eficiencia × TDP. | PaLM 2, Claude 2, Falcon 40B, MPT 30B |
+| Modelo | Nivel usado | Descripción |
+|--------|-------------|-------------|
+| GPT-4 | 3 (calculado) | Usa `estimate_energy_per_1k_tokens()` con active params ~280B |
+| PaLM 2 | 3 (calculado) | Usa `estimate_energy_per_1k_tokens()` |
+| OPT-175B | 3 (calculado) | Usa `estimate_energy_per_1k_tokens()` |
+| Claude 2 | 3 (calculado) | Usa `estimate_energy_per_1k_tokens()` |
+| Llama 2-70B | 3 (calculado) | Usa `estimate_energy_per_1k_tokens()` |
+| Falcon 40B | 3 (calculado) | Usa `estimate_energy_per_1k_tokens()` |
+| MPT 30B | 3 (calculado) | Usa `estimate_energy_per_1k_tokens()` |
+| Gemma 7B | 3 (calculado) | Usa `estimate_energy_per_1k_tokens()` |
+| Mistral 7B | 3 (calculado) | Usa `estimate_energy_per_1k_tokens()` |
+| Phi-2 | 3 (calculado) | Usa `estimate_energy_per_1k_tokens()` |
 
-#### ¿Por qué existe `preset_energy`?
+**Simplificación v3.0**: Todos los modelos usan el nivel 3 (cálculo dinámico). Los niveles 1 (preset) y 2 (empírico) ya no se usan en ningún modelo.
 
-Algunos modelos tienen valores que:
-- **NO son empíricos** (no fueron medidos en hardware real)
-- **NO son calculados dinámicamente** por la fórmula del script
+---
 
-Estos valores provienen de estimaciones teóricas publicadas o extrapolaciones que queremos **preservar exactamente** sin que la fórmula los sobrescriba.
+## 5. Validación de la Fórmula
 
-**Ejemplo**: OPT-175B tiene `preset_energy = 0.0035` con `energy_source_override = "calculated"` porque:
-1. Meta **NO publicó** consumo de inferencia en el paper
-2. El valor 0.0035 es una **estimación teórica** basada en 2N FLOPs aplicada manualmente
-3. Si usáramos `empirical_energy`, el script lo marcaría como "empirical" (incorrecto)
-4. Si no pusiéramos nada, el script calcularía un valor diferente
-
-#### Código relevante en `extract_models_v2.py`:
-
-```python
-# Prioridad: preset_energy > empirical_energy > calculado
-if model.get('preset_energy_wh_per_1k') is not None:
-    model['energy_wh_per_1k_tokens'] = model['preset_energy_wh_per_1k']
-    model['energy_source'] = model.get('energy_source_override', 'calculated')
-elif model.get('empirical_energy_wh_per_1k') is not None:
-    model['energy_wh_per_1k_tokens'] = model['empirical_energy_wh_per_1k']
-    model['energy_source'] = 'empirical'
-else:
-    model['energy_wh_per_1k_tokens'] = estimate_energy_per_1k_tokens(params, model_type)
-    model['energy_source'] = 'calculated'
-```
-
-#### Mapeo modelos → nivel de prioridad:
-
-| Modelo | Nivel usado | Campo en script | energy_source resultante |
-|--------|-------------|-----------------|--------------------------|
-| GPT-4 | 1 (preset) | `preset_energy: 0.0048, override: "calculated"` | calculated |
-| OPT-175B | 1 (preset) | `preset_energy: 0.0035, override: "calculated"` | calculated |
-| Llama2-70B | 1 (preset) | `preset_energy: 0.0021, override: "calculated"` | calculated |
-| **Mistral-7B** | **1 (preset)** | `preset_energy: 0.001139, override: "calculated"` | **calculated** |
-| **ViT-base** | **1 (preset)** | `preset_energy: 0.000408, override: "calculated"` | **calculated** |
-| BERT | 2 (empírico) | `empirical_energy_wh_per_1k: 0.000012` | empirical |
-| PaLM 2 | 3 (calculado) | *ninguno* → usa `estimate_energy_per_1k_tokens()` | calculated |
-| Claude 2 | 3 (calculado) | *ninguno* → usa `estimate_energy_per_1k_tokens()` | calculated |
-| Falcon 40B | 3 (calculado) | *ninguno* → usa `estimate_energy_per_1k_tokens()` | calculated |
-| MPT 30B | 3 (calculado) | *ninguno* → usa `estimate_energy_per_1k_tokens()` | calculated |
-
-**Cambios**:
-- **v2.7**: Mistral-7B movido de Nivel 2 (empírico) a Nivel 1 (preset calculado)
-- **v2.8**: ViT-base movido de Nivel 2 (empírico) a Nivel 1 (preset calculado)
 ### 5.1 Método 1: Comparación con CodeCarbon
 
 - CodeCarbon usa el mismo factor 2 × params [8]
@@ -351,58 +225,92 @@ else:
 - Herramienta pública: https://mlco2.github.io/impact/ [9]
 - Resultados: ±25% de diferencia
 
-> **Nota**: La URL original en Heroku puede estar inactiva.
-
 ### 5.3 Método 3: Benchmarks Publicados
 
 - Luccioni et al. (2024) [10] incluye medidas reales de 15+ modelos en tareas de NLP
-- Nuestras estimaciones teóricas se sitúan en el **mismo orden de magnitud** para los modelos comparables (BERT-base, T5)
-- **Limitación**: Para LLMs grandes propietarios no hay datos publicados contra los que validar de forma sistemática
+- Nuestras estimaciones teóricas se sitúan en el **mismo orden de magnitud** para los modelos comparables
 
 ### 5.4 Método 4: Sentido Físico
 
 - GPT-4 en OpenAI: ~12–15 gCO₂ por consulta (reportado)
-- Nuestra fórmula: 10–14 gCO₂ ✓
+- Nuestra fórmula: ~10–14 gCO₂ ✓
 
 ---
 
-## 6. Tipos de Petición: Origen de Valores de Tokens
+## 6. Especificaciones de Tokens: Origen y Fuentes por Modelo
 
-### 6.1 Declaración de Transparencia
+### 6.1 Tabla Completa de context_window y max_output_tokens
 
-**IMPORTANTE**: La mayoría de los valores en `request_types.csv` son **decisiones de diseño prácticas** para la calculadora, NO datos extraídos de papers académicos. Solo 3 valores tienen respaldo académico directo verificable.
+| Modelo | context_window | max_output_tokens | Fuente context_window | Fuente max_output_tokens |
+|--------|---------------|-------------------|----------------------|--------------------------|
+| **GPT-4** | 128,000 | 4,096 | OpenAI API docs [25] | OpenAI API docs [25] |
+| **PaLM 2** | 32,000 | 4,096 | PaLM 2 Technical Report [24] | Vertex AI API text-bison [26] |
+| **OPT-175B** | 2,048 | 1,024 | Paper OPT §3 [4] | 50% de context_window (diseño conservador) |
+| **Claude 2** | 100,000 | 4,096 | Anthropic documentation [27] | Anthropic API defaults [27] |
+| **Llama 2 70B** | 4,096 | 2,048 | Paper Llama 2 §2 [5] | 50% de context_window (diseño conservador) |
+| **Falcon 40B** | 2,048 | 1,024 | Hugging Face model card [28] | 50% de context_window (diseño conservador) |
+| **MPT 30B** | 8,192 | 4,096 | MosaicML blog [29] | 50% de context_window (ALiBi permite extensión) |
+| **Gemma 7B** | 8,192 | 4,096 | Gemma Technical Report §2 [30] | 50% de context_window (diseño conservador) |
+| **Mistral 7B** | 8,192 | 4,096 | Paper Mistral §2.1 [31] (SWA 4096, efectivo ~8K) | 50% de context_window |
+| **Phi-2** | 2,048 | 1,024 | Microsoft Research blog + HF model card [32] | 50% de context_window (diseño conservador) |
+
+#### Notas sobre max_output_tokens:
+- **GPT-4, PaLM 2, Claude 2**: Tienen límites documentados por sus APIs comerciales.
+- **Modelos open-source** (OPT, Llama, Falcon, MPT, Gemma, Mistral, Phi-2): No tienen un límite API impuesto. Se usa la convención de **50% del context_window** como límite práctico para dejar espacio al prompt de entrada.
+- **PaLM 2 (corrección v3.0)**: Reducido de 8192 a 4096. El valor 8192 era técnicamente posible con el modelo base pero las APIs comerciales (Vertex AI text-bison) limitan a 4096. Se alinea con el uso real.
+- **Mistral 7B (corrección v3.0)**: context_window reducido de 32000 a 8192. El paper anuncia 32K pero usa Sliding Window Attention (SWA) con ventana de 4096 tokens, lo que limita la calidad efectiva a ~8K tokens.
+
+### 6.2 Validación de Coherencia (v3.0)
+
+Para todos los modelos se verifica que:
+- `max_output_tokens < context_window` (siempre hay espacio para input)
+- `max_output_tokens ≤ 50% × context_window` (regla general para modelos open-source)
+- `typical_tokens_total (285) < min(context_window)` en todos los modelos (el menor es 2048)
+
+| Modelo | context_window | max_output_tokens | Ratio out/context | ✓ Coherente |
+|--------|---------------|-------------------|-------------------|-------------|
+| GPT-4 | 128,000 | 4,096 | 3.2% | ✅ |
+| PaLM 2 | 32,000 | 4,096 | 12.8% | ✅ |
+| OPT-175B | 2,048 | 1,024 | 50.0% | ✅ |
+| Claude 2 | 100,000 | 4,096 | 4.1% | ✅ |
+| Llama 2 70B | 4,096 | 2,048 | 50.0% | ✅ |
+| Falcon 40B | 2,048 | 1,024 | 50.0% | ✅ |
+| MPT 30B | 8,192 | 4,096 | 50.0% | ✅ |
+| Gemma 7B | 8,192 | 4,096 | 50.0% | ✅ |
+| Mistral 7B | 8,192 | 4,096 | 50.0% | ✅ |
+| Phi-2 | 2,048 | 1,024 | 50.0% | ✅ |
 
 ---
 
-### 6.2 Valores CON Respaldo Académico Verificable
+## 7. Tipos de Petición: Origen de Valores de Tokens
 
-#### 6.2.1 ViT: image_classification — 196 tokens input ✓ VERIFICADO
+### 7.1 Declaración de Transparencia
 
-- **Valor**: 196 tokens (patches)
-- **Fuente**: Dosovitskiy et al. (2020) [11]
-- **Ubicación exacta**: Página 4, Sección 3.1
-- **Cita textual verificable**: *"we reshape the image into a sequence of flattened 2D patches... the resulting number of patches is N = HW/P² ... For our base model, we use P = 16 ... For standard ImageNet size (224×224), this gives N = 224²/16² = 196"*
-- **Cálculo**: 224 ÷ 16 = 14; 14 × 14 = **196 patches**
+**IMPORTANTE**: La mayoría de los valores en `request_types.csv` son **decisiones de diseño prácticas** para la calculadora, NO datos extraídos de papers académicos. Solo algunos valores tienen respaldo académico directo verificable.
 
-#### 6.2.2 Clasificación: output = 1 token ✓ VERIFICADO
+### 7.2 Tipos de Petición v3.0 (Solo LLMs)
 
-- **Valor**: 1 token de salida
-- **Justificación**: Por definición arquitectural, la clasificación produce una única predicción de clase
-- **Aplica a**: text_classification, sentiment_analysis, image_classification
+| Request Type | tokens_input_avg | tokens_output_avg | Fuente / Justificación |
+|--------------|-----------------|-------------------|------------------------|
+| **chat_simple** | 70 | 215 | LMSYS-Chat-1M: avg 69.5 input, 214.5 output [13] |
+| **chat_extended** | 296 | 441 | WildChat: avg 295.6 input, 441.3 output [15] |
+| **generation_short** | 20 | 65 | Alpaca dataset: avg 19.7 input, 64.5 output [18] |
+| **generation_long** | 50 | 2048 | Límite API (no estadística real). Ver §7.4 sobre capping |
+| **summarization** | 781 | 56 | CNN/DailyMail: avg 781 input, 56 output [19] |
+| **code_generation** | 100 | 300 | Estimación propia (sin datos académicos) |
+| **translation** | 200 | 220 | Ratio ~1.1× empírico, valores estimados |
 
-#### 6.2.3 BERT: secuencias de 128/512 tokens ~ PARCIALMENTE VERIFICADO
+> **Nota**: El script `analyze_percentiles.py` utiliza solo 6 de estos 7 tipos (excluye `translation`) para la generación de `emissions_distribution.csv`, ya que `translation` tiene una distribución de tokens muy similar a `chat_extended` y su inclusión no aporta variabilidad significativa al análisis de percentiles.
 
-- **Fuente**: Devlin et al. (2018) [12]
-- **Ubicación**: Página 13, Appendix A.3
-- **Lo que dice el paper**: Usa secuencias de 128 tokens para el 90% del preentrenamiento, y 512 para el 10% restante
-- **Lo que NO dice**: El paper no especifica "128 para clasificación" — es una configuración de preentrenamiento, no una recomendación de uso
-- **Decisión de diseño**: Adoptamos 128 como valor representativo para tareas de clasificación de texto corto
+**Tipos eliminados en v3.0** (eran de BERT/ViT):
+- `text_classification` (BERT): 128/1 → Eliminado (modelo encoder-only)
+- `sentiment_analysis` (BERT): 64/1 → Eliminado (modelo encoder-only)
+- `ner` (BERT): 100/50 → Eliminado (modelo encoder-only)
+- `image_classification` (ViT): 196/10 → Eliminado (modelo de visión)
+- `image_captioning` (ViT): 196/15 → Eliminado (modelo de visión)
+- `visual_qa` (ViT): 196/100 → Eliminado (modelo de visión)
 
----
-
-### 6.3 Estadísticas Reales de Datasets de Conversaciones LLM
-
-Existen datasets académicos con **estadísticas REALES verificables** de longitud de prompts y respuestas:
+### 7.3 Estadísticas Reales de Datasets de Conversaciones LLM
 
 | Dataset | Paper | tokens_input (avg) | tokens_output (avg) | Referencia |
 |---------|-------|-------------------|---------------------|------------|
@@ -418,72 +326,48 @@ Existen datasets académicos con **estadísticas REALES verificables** de longit
 - WildChat tiene alta varianza (±1609) porque incluye código y documentos largos
 - LMSYS-Chat-1M y Chatbot Arena son representativos de uso típico de chatbots
 - Los valores de input varían entre ~20–295 tokens según el dataset
-- Los valores de OpenAssistant pueden variar ±10% según el tokenizador utilizado (el paper WildChat reporta 33.41/211.76 con tokenizador Llama-2; la diferencia es atribuible al tokenizador, no a un error)
 
----
+### 7.4 Capping de generation_long por max_output_tokens
 
-### 6.4 Valores ACTUALIZADOS en request_types.csv (v2.1)
+El tipo `generation_long` tiene `tokens_output_avg = 2048`, lo cual excede el `max_output_tokens` de tres modelos:
 
-**Los valores han sido alineados con la evidencia académica:**
+| Modelo | max_output_tokens | generation_long output (2048) | ¿Excede? |
+|--------|-------------------|-------------------------------|----------|
+| OPT 175B | 1,024 | 2,048 | ⚠️ SÍ (2× límite) |
+| Falcon 40B | 1,024 | 2,048 | ⚠️ SÍ (2× límite) |
+| Phi-2 | 1,024 | 2,048 | ⚠️ SÍ (2× límite) |
+| Resto (7 modelos) | 2,048-4,096 | 2,048 | ✅ OK |
 
-| Request Type | Antes | Ahora | Fuente |
-|--------------|-------|-------|--------|
-| **chat_simple** | 50/100 | **70/215** | LMSYS-Chat-1M [13] |
-| **chat_extended** | 200/500 | **296/441** | WildChat [15] |
-| **generation_short** | 20/256 | **20/65** | Alpaca [18] |
-| **summarization** | 1000/200 | **781/56** | CNN/DailyMail [19] |
-| **image_captioning** | 196/50 | **196/15** | COCO [20] |
-| **visual_qa** | 250/100 | **196/100** | ViT arquitectural [11] |
+**Solución implementada en `calculate_emissions.py`** (v2.1):
+```python
+# Validación: cap tokens_output al max_output_tokens del modelo
+if model is not None:
+    max_output = model.get('max_output_tokens', None)
+    if max_output is not None and max_output > 0:
+        if tokens_output > max_output:
+            print(f"[WARN] tokens_output ({tokens_output}) excede max_output_tokens ({max_output}). Limitando.")
+            tokens_output = int(max_output)
+```
 
-**Sin cambios** (ya verificados o sin evidencia):
-- `generation_long`: 50/2048 (límite API)
-- `code_generation`: 100/300 (sin datos)
-- `translation`: 200/220 (ratio ~1.1×)
-- `image_classification`: 196/10 (ViT ✓) [11]
-- `text_classification`: 128/1 (BERT ~) [12]
-- `sentiment_analysis`: 64/1
-- `ner`: 100/50
+Esto garantiza que al calcular emisiones para `generation_long` en OPT/Falcon/Phi-2, el output se limita automáticamente a 1024 tokens, reflejando el comportamiento real del modelo.
 
-**Impacto en models.csv:**
-- `typical_tokens_total` de LLMs: 150 → **285** (70+215)
-- Campos recalculados: `typical_energy_wh`, `typical_latency_sec`
-
----
-
-### 6.5 Valores SIN Respaldo Académico
-
-Estos valores **NO tienen datos empíricos publicados**:
-
-| Request Type | Input | Output | Origen |
-|--------------|-------|--------|--------|
-| generation_long | 50 | 2048 | Límite API (no estadística real) |
-| code_generation | 100 | 300 | Estimación propia |
-| translation | 200 | 220 | Ratio ~1.1× es empírico, 200 no |
-| sentiment_analysis | 64 | 1 | Estimación razonable |
-| ner | 100 | 50 | Estimación |
-
----
-
-### 6.6 Resumen de Verificabilidad (v2.1)
+### 7.5 Resumen de Verificabilidad (v3.0)
 
 | Request Type | Input | Fuente Input | Output | Fuente Output |
 |--------------|-------|--------------|--------|---------------|
 | chat_simple | **70** | ✓ LMSYS-Chat-1M (69.5) [13] | **215** | ✓ LMSYS-Chat-1M (214.5) [13] |
 | chat_extended | **296** | ✓ WildChat (295.6) [15] | **441** | ✓ WildChat (441.3) [15] |
 | generation_short | 20 | ~ Alpaca (19.7) [18] | **65** | ✓ Alpaca (64.5) [18] |
+| generation_long | 50 | ✗ Sin datos | 2048 | ✗ Límite API |
 | summarization | **781** | ✓ CNN/DM (781) [19] | **56** | ✓ CNN/DM (56) [19] |
 | code_generation | 100 | ✗ Sin datos | 300 | ✗ Sin datos |
-| image_classification | 196 | ✓ ViT paper [11] | 10 | ~ Convención |
-| image_captioning | 196 | ✓ ViT paper [11] | **15** | ~ COCO [20] |
-| text_classification | 128 | ~ BERT (128/512) [12] | 1 | ✓ Arquitectural |
+| translation | 200 | ✗ Sin datos | 220 | ✗ Sin datos |
 
 **Leyenda**: ✓ Verificado | ~ Aproximado | ✗ Sin evidencia
 
----
+### 7.6 Relación con models.csv y calculate_emissions.py
 
-### 6.7 Relación con models.csv y calculate_emissions.py
-
-Cada modelo en `models.csv` tiene un campo `typical_request_type` que determina los tokens por defecto cuando el usuario no los especifica.
+Cada modelo en `models.csv` tiene un campo `typical_request_type = chat_simple` (todos los LLMs).
 
 **Flujo de prioridad**:
 ```
@@ -493,113 +377,39 @@ Cada modelo en `models.csv` tiene un campo `typical_request_type` que determina 
 4. Default → chat_simple (70+215 = 285 tokens)
 ```
 
+**Impacto en models.csv:**
+- `typical_tokens_total` de todos los LLMs: **285** (70+215)
+- Campos recalculados: `typical_energy_wh`, `typical_latency_sec`
+
 ---
 
-## 7. Resumen de Cambios CSV
+## 8. Resumen de Cambios CSV
 
-### 7.1 Correcciones en models.csv (v2.2)
+### 8.1 Correcciones históricas (v2.2-v2.8)
 
-| Modelo | Campo | Antes | Ahora | Motivo |
-|--------|-------|-------|-------|--------|
-| OPT-175B | energy_source | "empirical" | "calculated" | Paper no publica consumo inferencia |
-| OPT-175B | confidence | 0.92 | 0.85 | Estimación teórica |
-| Llama2-70B | energy_source | "empirical" | "calculated" | Meta no publica consumo inferencia |
-| Llama2-70B | confidence | 0.92 | 0.80 | Estimación teórica |
-| BERT | confidence | 0.95 | 0.85 | Referencia Li (2023) no verificable |
-| BERT | notes | "Li 2023, Cao et al. 2020" | "Cao et al. 2020" | Solo fuente verificable |
+| Versión | Cambio principal |
+|---------|-----------------|
+| **v2.2** | OPT-175B y Llama2-70B: energy_source corregido de "empirical" a "calculated" |
+| **v2.4** | GPT-4: energy_source corregido de "empirical" a "calculated" |
+| **v2.5** | Mejoras de trazabilidad en fuentes empíricas |
+| **v2.6** | Añadidas citas NAACL 2025 y arXiv para Mistral-7B y ViT-base |
+| **v2.7** | Mistral-7B reclasificado: empirical → calculated (discrepancia 420×) |
+| **v2.8** | ViT-base reclasificado: empirical → calculated (paper no mide ViT-base) |
 
-### 7.2 Correcciones en v2.4
+### 8.2 Cambios mayores en v3.0
 
-| Campo | Antes | Ahora | Motivo |
-|-------|-------|-------|--------|
-| GPT-4 energy_source | "empirical" | "calculated" | Era calculado desde TDP, no medido empíricamente |
-| GPT-4 energy_methodology | "Empirical from OpenAI API" | "Calculated from H100 TDP specs" | Descripción correcta |
-| Chatbot Arena (tabla 6.3) | 52.3 / 189.5 | **94.9 / 269.0** | Paper Chiang et al. 2024 [14] Tabla 1 |
-| Referencia [14] | LMSYS website | arXiv:2403.04132 | Paper académico correcto |
-
-**Nota GPT-4**: El valor numérico `energy_wh_per_1k_tokens = 0.0048` **NO cambió**, solo se corrigió la clasificación de `energy_source`. El valor 0.0048 siempre fue una estimación calculada desde specs de H100 TDP, no una medición empírica directa.
-
-### 7.3 Mejoras de trazabilidad en v2.5
-
-| Sección | Cambio | Motivo |
-|---------|--------|--------|
-| **2.5** - Tabla sin datos empíricos | Eliminado "Mistral" de la fila "Falcon, Mistral" | Mistral-7B SÍ tiene datos empíricos (benchmarks comunidad) ⚠️ → *reclasificado como calculated en v2.7, ver §7.5* |
-| **3.1** - Mistral-7B | Añadida nota "Limitación" explicando ausencia de cita formal | Transparencia sobre fuentes informales (foros, no papers) |
-| **3.3** - ViT-base | Añadida nota "Limitación" explicando ausencia de paper específico | Transparencia sobre fuentes informales (benchmarks técnicos) |
-| **3.4** - Nueva sección | Creada tabla "Resumen de Calidad de Fuentes Empíricas" | Clasificar nivel de trazabilidad (Alto/Medio/Bajo) |
-| **Mistral-7B valor** | Corregido: 0.0005 → **0.00045** Wh/1k | Sincronización con models.csv y extract_models_v2.py |
-
-**Objetivo v2.5**: Mejorar la **transparencia metodológica** del documento.
-
-### 7.4 Actualización de fuentes académicas en v2.6
-
-| Sección | Cambio | Motivo |
-|---------|--------|--------|
-| **3.1** - Mistral-7B | Añadida cita NAACL 2025 [21] y arXiv [22] | Papers reales encontrados con mediciones empíricas |
-| **3.1** - Mistral-7B | Añadida advertencia sobre discrepancia ~420× | Valor CSV vs mediciones publicadas difieren significativamente |
-| **3.3** - ViT-base | Añadida cita arXiv:2511.23166 [23] | Paper real con 13 variantes ViT en edge devices |
-| **3.3** - ViT-base | Añadida nota sobre verificación pendiente | Confirmar que valor corresponde a ViT-base específicamente |
-| **3.4** - Tabla resumen | Actualizada con nuevas fuentes | Los 3 modelos empíricos ahora tienen citas formales |
-| **Referencias** | Añadidas [21], [22], [23] | Nuevos papers académicos verificados |
-
-**Resultado v2.6**: 
-- ✅ **Los 3 modelos con `energy_source="empirical"` ahora tienen referencias académicas verificables**
-- ⚠️ **DECISIÓN PENDIENTE**: Revisar valor de Mistral-7B (0.00045 vs ~0.190 Wh/1k) y reclasificar si necesario → ✅ **RESUELTO en v2.7**
-- ⚠️ **VERIFICACIÓN PENDIENTE**: Confirmar valor ViT-base en tablas del paper [23] → ✅ **RESUELTO en v2.8** (paper no mide ViT-base, reclasificado a calculado)
-
-### 7.5 Reclasificación de Mistral-7B en v2.7
-
-| Aspecto | Cambio | Motivo |
-|---------|--------|--------|
-| **Mistral-7B energy_source** | "empirical" → **"calculated"** | Discrepancia crítica (~420×) entre valor CSV empírico y papers publicados |
-| **Mistral-7B energy_wh_per_1k** | 0.00045 → **0.001139** Wh/1k | Valor calculado teóricamente con fórmula 2N FLOPs (efficiency 0.25) |
-| **Mistral-7B energy_methodology** | "Empirical from benchmarks" → **"Theoretical 2N FLOPs formula (GPU efficiency 0.25)"** | Descripción correcta de la metodología |
-| **Sección 3** (empíricos) | 3 modelos → **2 modelos** | Mistral-7B movido a sección 4.1 (calculados) |
-| **Sección 4.1** (calculados) | Nueva subsección creada | Explicación detallada de la reclasificación |
-| **Tablas resumen** | Actualizadas en todo el documento | Mistral-7B ahora aparece como "calculated" |
-| **models.csv** | Regenerado con extract_models_v2.py | CSV actualizado con nuevos valores |
-| **extract_models_v2.py** | Campo `empirical_energy_wh_per_1k` eliminado | Ahora usa `preset_energy_wh_per_1k` con `energy_source_override="calculated"` |
-
-**Decisión metodológica v2.7**:
-✅ **RESUELTO**: Se adoptó el valor calculado teóricamente (0.001139 Wh/1k) en lugar del empírico inconsistente (0.00045 Wh/1k) para mantener **coherencia metodológica** en la calculadora. Esto sacrifica la precisión empírica específica de Mistral-7B a favor de:
-- Consistencia interna con la fórmula 2N FLOPs usada en otros modelos
-- Evitar valores empíricos cuestionables sin trazabilidad clara
-- Mantener valores conservadores (el calculado es ~2.5× mayor que el empírico)
-
-### 7.6 Reclasificación de ViT-base en v2.8
-
-| Aspecto | Cambio | Motivo |
-|---------|--------|--------|
-| **ViT-base energy_source** | "empirical" → **"calculated"** | Paper de referencia [23] NO mide ViT-base (86M params) - solo modelos <23M params |
-| **ViT-base energy_wh_per_1k** | 0.000018 → **0.000408** Wh/1k | Valor calculado teóricamente con fórmula 2N FLOPs (efficiency 0.15, vision model) |
-| **ViT-base energy_methodology** | "Hardware power measurement on edge devices" → **"Theoretical 2N FLOPs formula (GPU efficiency 0.15, vision model)"** | Descripción correcta de la metodología |
-| **Sección 3** (empíricos) | 2 modelos → **1 modelo** | ViT-base movido a sección 4.2 (calculados) |
-| **Sección 4.2** (calculados) | Nueva subsección creada | Explicación detallada de la reclasificación de ViT-base |
-| **Tablas resumen** | Actualizadas en todo el documento | ViT-base ahora aparece como "calculated" |
-| **models.csv** | Regenerado con extract_models_v2.py | CSV actualizado con nuevos valores |
-| **extract_models_v2.py** | Campo `empirical_energy_wh_per_1k` eliminado para ViT-base | Ahora usa `preset_energy_wh_per_1k` con `energy_source_override="calculated"` |
-
-**Verificación del paper [23] Amanzhol & Park (2025)**:
-❌ **Paper NO mide ViT-base**: 
-- Filtro aplicado: solo modelos con <23M parámetros
-- ViT-base tiene **86M parámetros** (excluido del estudio)
-- Modelo más cercano medido: ViT_S (22M params) con energía 0.000187-0.000680 Wh/imagen (10-38× mayor que el valor empírico en CSV)
-
-**Decisión metodológica v2.8**:
-✅ **RESUELTO**: Se adoptó el valor calculado teóricamente (0.000408 Wh/1k) en lugar del empírico no verificable (0.000018 Wh/1k) porque:
-- El paper citado [23] no incluye mediciones para ViT-base (86M params)
-- El valor empírico original no tiene trazabilidad académica verificable
-- El valor calculado es ~23× mayor (más conservador y coherente con otros modelos de tamaño similar)
-- Mantiene consistencia con la metodología 2N FLOPs usada en otros modelos
-
-**Estado post-v2.8**:
-- **Solo 1 modelo empírico en calculadora**: BERT (único con medición directa verificable)
-- **9 modelos calculados**: Incluye Mistral-7B (v2.7) y ViT-base (v2.8) reclasificados
-
-### 7.7 Sin cambios
-
-- **request_types.csv**: Ya actualizado en v2.1 con fuentes académicas
-- **data_centers.csv**: PUE se aplica correctamente por separado
+| Cambio | Detalle |
+|--------|---------|
+| **BERT Base eliminado** | Modelo encoder-only, no genera tokens. Reemplazado por Gemma 7B |
+| **ViT-base eliminado** | Modelo de visión, no genera texto. Reemplazado por Phi-2 |
+| **Gemma 7B añadido** | Google DeepMind, 8.54B params, paper arXiv:2403.08295 [30] |
+| **Phi-2 añadido** | Microsoft Research, 2.7B params, blog + HF card [32] |
+| **Corrección context_window/max_output_tokens** | OPT, Llama 2, Falcon, MPT: max_output_tokens ya no == context_window. Se usa ≤50% |
+| **Mistral 7B context_window** | 32000 → 8192 (SWA 4096, calidad efectiva ~8K) [31] |
+| **PaLM 2 max_output_tokens** | 8192 → 4096 (alineado con Vertex AI API) [26] |
+| **Tipos de petición** | Eliminados 6 tipos de BERT/ViT. Quedan 7 tipos solo LLM |
+| **generation_long capping** | `tokens_output` se limita automáticamente al `max_output_tokens` del modelo en calculate_emissions.py |
+| **10 modelos, todos LLMs** | 0 modelos empíricos, 10 calculados |
 
 ---
 
@@ -609,7 +419,7 @@ Cada modelo en `models.csv` tiene un campo `typical_request_type` que determina 
 
 [2] Hoffmann, J., et al. (2022). "Training Compute-Optimal Large Language Models." *arXiv:2203.15556* (Chinchilla paper). https://arxiv.org/abs/2203.15556
 
-[3] Epoch AI (2025). "How much energy does ChatGPT use?" https://epoch.ai/gradient-updates/how-much-energy-does-chatgpt-use 
+[3] Epoch AI (2025). "How much energy does ChatGPT use?" https://epoch.ai/gradient-updates/how-much-energy-does-chatgpt-use
 
 [4] Zhang, S., et al. (2022). "OPT: Open Pretrained Transformer Language Models." *arXiv:2205.01068*. https://arxiv.org/abs/2205.01068
 
@@ -617,17 +427,11 @@ Cada modelo en `models.csv` tiene un campo `typical_request_type` que determina 
 
 [6] Google (2023). "Google Sustainability Report 2023." https://sustainability.google/reports/
 
-[7] Cao, Q., et al. (2020). "Towards Accurate and Reliable Energy Measurement of NLP Models." *ACL SustaiNLP Workshop*. https://aclanthology.org/2020.sustainlp-1.19/
-
 [8] CodeCarbon (2024). "Track and reduce CO2 emissions from your computing." https://codecarbon.io/
 
 [9] Lacoste, A., et al. (2019). "Quantifying the Carbon Emissions of Machine Learning." *NeurIPS Climate Change Workshop*. https://mlco2.github.io/impact/
 
-[10] Luccioni, A. S., Jernite, Y., & Strubell, E. (2024). "Power Hungry Processing: Watts Driving the Cost of AI Deployment?" Proceedings of ACM FAccT '24, June 3–6, 2024, Rio de Janeiro. https://arxiv.org/abs/2311.16863
-
-[11] Dosovitskiy, A., et al. (2020). "An Image is Worth 16x16 Words: Transformers for Image Recognition at Scale." *arXiv:2010.11929*. https://arxiv.org/abs/2010.11929
-
-[12] Devlin, J., et al. (2018). "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding." *arXiv:1810.04805*. https://arxiv.org/abs/1810.04805
+[10] Luccioni, A. S., Jernite, Y., & Strubell, E. (2024). "Power Hungry Processing: Watts Driving the Cost of AI Deployment?" *ACM FAccT '24*. https://arxiv.org/abs/2311.16863
 
 [13] Zheng, L., et al. (2024). "LMSYS-Chat-1M: A Large-Scale Real-World LLM Conversation Dataset." *arXiv:2309.11998*. https://arxiv.org/abs/2309.11998
 
@@ -643,18 +447,32 @@ Cada modelo en `models.csv` tiene un campo `typical_request_type` que determina 
 
 [19] See, A., et al. (2017). "Get To The Point: Summarization with Pointer-Generator Networks." *arXiv:1704.04368*. https://arxiv.org/abs/1704.04368
 
-[20] Lin, T., et al. (2014). "Microsoft COCO: Common Objects in Context." *arXiv:1405.0312*. https://arxiv.org/abs/1405.0312
+[21] Poddar, S., Koley, P., Misra, J., Ganguly, N., & Ghosh, S. (2025). "Towards Sustainable NLP: Insights from Benchmarking Inference Energy in Large Language Models." *NAACL 2025*, pages 12688–12704. https://aclanthology.org/2025.naacl-long.632/
 
-[21] Poddar, S., Koley, P., Misra, J., Ganguly, N., & Ghosh, S. (2025). "Towards Sustainable NLP: Insights from Benchmarking Inference Energy in Large Language Models." *Proceedings of NAACL 2025*, pages 12688–12704, Albuquerque, New Mexico. https://aclanthology.org/2025.naacl-long.632/
+[22] Yang, R., Zhan, L., et al. (2025). "Benchmarking the Power Consumption of LLM Inference." *arXiv:2512.03024*. https://arxiv.org/abs/2512.03024
 
-[22]  Yang, R., Zhan, L., et al. (2025). "Benchmarking the Power Consumption of LLM Inference." arXiv:2512.03024. https://arxiv.org/abs/2512.03024
+[24] Anil, R., et al. (2023). "PaLM 2 Technical Report." *Google AI*. https://ai.google/static/documents/palm2techreport.pdf
 
-[23] Amanzhol, N. & Park, J. (2025). "Energy-Efficient Vision Transformer Inference for Edge-AI Deployment." *arXiv:2511.23166*. https://arxiv.org/abs/2511.23166
+[25] OpenAI (2024). "GPT-4 API Documentation." https://platform.openai.com/docs/models/gpt-4
+
+[26] Google Cloud (2024). "Vertex AI PaLM API — text-bison model." https://cloud.google.com/vertex-ai/docs/generative-ai/model-reference/text
+
+[27] Anthropic (2023). "Claude 2 — Model documentation." https://www.anthropic.com/index/claude-2
+
+[28] Technology Innovation Institute (2023). "Falcon-40B Model Card." https://huggingface.co/tiiuae/falcon-40b
+
+[29] MosaicML / Databricks (2023). "Introducing MPT-30B." https://www.databricks.com/blog/mpt-30b
+
+[30] Gemma Team, Google DeepMind (2024). "Gemma: Open Models Based on Gemini Research and Technology." *arXiv:2403.08295*. https://arxiv.org/abs/2403.08295
+
+[31] Jiang, A. Q., et al. (2023). "Mistral 7B." *arXiv:2310.06825*. https://arxiv.org/abs/2310.06825
+
+[32] Microsoft Research (2023). "Phi-2: The surprising power of small language models." https://www.microsoft.com/en-us/research/blog/phi-2-the-surprising-power-of-small-language-models/ + https://huggingface.co/microsoft/phi-2
 
 ---
 
 ## Documentación Técnica Adicional
 
-**FLUJO_CALCULADORA_BR.md**: Documentación interna que detalla el flujo completo de la calculadora, incluyendo el desglose del valor 0.0048 Wh/1k tokens de GPT-4 en componentes (cómputo puro 0.001 + overhead 0.0038). Ver sección "1️⃣ IMPACTO POR LLM: ORIGEN DE `energy_wh_per_1k_tokens`".
+**FLUJO_CALCULADORA_BR.md**: Documentación interna que detalla el flujo completo de la calculadora, incluyendo el desglose del valor energético de GPT-4 en componentes (cómputo puro + overhead).
 
 ---

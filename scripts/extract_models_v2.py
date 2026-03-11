@@ -27,17 +27,17 @@ FÓRMULAS USADAS:
 4. Energía por 1000 tokens (Wh):
    E_1k_tokens = (2 × params × 1000) / (GPU_TFLOPS × 10^12) × GPU_TDP / 3600
 
-Modelos incluidos:
-1. GPT-4 (OpenAI) - 1.7T params
+Modelos incluidos (todos LLMs generativos):
+1. GPT-4 (OpenAI) - 1.7T params (MoE)
 2. PaLM 2 (Google) - 340B params
 3. OPT 175B (Meta) - 175B params
 4. Claude 2 (Anthropic) - 100B params
 5. Llama 2 70B (Meta) - 70B params
 6. Falcon 40B (TII) - 40B params
 7. MPT 30B (MosaicML) - 30B params
-8. Mistral 7B (Mistral AI) - 7.3B params
-9. BERT Base (Google) - 110M params
-10. ViT Base (Google) - 86M params
+8. Gemma 7B (Google DeepMind) - 8.54B params
+9. Mistral 7B (Mistral AI) - 7.3B params
+10. Phi-2 (Microsoft) - 2.7B params
 """
 
 import pandas as pd
@@ -86,12 +86,6 @@ def estimate_energy_per_1k_tokens(params, model_type="LLM"):
     # Energía = Potencia × Tiempo
     energy_wh = (REF_GPU_TDP_W * seconds_per_1k) / 3600
     
-    # Ajustar por tipo de modelo
-    if model_type == "Vision":
-        energy_wh *= 1.5  # Visión requiere más compute
-    elif model_type == "Classification":
-        energy_wh *= 0.5  # Solo forward, sin generación
-    
     return round(energy_wh, 6)
 
 def estimate_latency_per_token_ms(params, model_type="LLM"):
@@ -121,43 +115,24 @@ def estimate_tokens_per_second(params, model_type="LLM"):
     latency_ms = estimate_latency_per_token_ms(params, model_type)
     return round(1000 / latency_ms, 1)
 
-def get_request_types(model_type):
+def get_request_types():
     """
-    Define tipos de petición soportados por cada tipo de modelo.
+    Define tipos de petición soportados (solo LLMs generativos).
     
     Valores basados en datasets académicos:
     - chat_simple: LMSYS-Chat-1M (Zheng et al., 2024) https://arxiv.org/abs/2309.11998
     - chat_extended: WildChat (Zhao et al., 2024) https://arxiv.org/abs/2405.01470
     - summarization: CNN/DailyMail (See et al., 2017) https://arxiv.org/abs/1704.04368
-    - image_*: ViT (Dosovitskiy et al., 2020) https://arxiv.org/abs/2010.11929
-    - text_classification: BERT (Devlin et al., 2018) https://arxiv.org/abs/1810.04805
     """
-    if model_type == "LLM":
-        return {
-            "chat_simple": {"tokens_input": 70, "tokens_output": 215, "description": "Pregunta-respuesta corta"},
-            "chat_extended": {"tokens_input": 296, "tokens_output": 441, "description": "Conversación extendida"},
-            "generation_short": {"tokens_input": 20, "tokens_output": 65, "description": "Generación de texto corto"},
-            "generation_long": {"tokens_input": 50, "tokens_output": 2048, "description": "Generación de texto largo"},
-            "summarization": {"tokens_input": 781, "tokens_output": 56, "description": "Resumen de documento"},
-            "code_generation": {"tokens_input": 100, "tokens_output": 300, "description": "Generación de código"},
-            "translation": {"tokens_input": 200, "tokens_output": 220, "description": "Traducción de texto"}
-        }
-    elif model_type == "Vision":
-        return {
-            "image_classification": {"tokens_input": 196, "tokens_output": 10, "description": "Clasificación de imagen"},
-            "image_captioning": {"tokens_input": 196, "tokens_output": 15, "description": "Descripción de imagen"},
-            "visual_qa": {"tokens_input": 196, "tokens_output": 100, "description": "Pregunta sobre imagen"}
-        }
-    elif model_type == "Classification":
-        return {
-            "text_classification": {"tokens_input": 128, "tokens_output": 1, "description": "Clasificación de texto"},
-            "sentiment_analysis": {"tokens_input": 64, "tokens_output": 1, "description": "Análisis de sentimiento"},
-            "ner": {"tokens_input": 100, "tokens_output": 50, "description": "Reconocimiento de entidades"}
-        }
-    else:
-        return {
-            "default": {"tokens_input": 100, "tokens_output": 100, "description": "Petición genérica"}
-        }
+    return {
+        "chat_simple": {"tokens_input": 70, "tokens_output": 215, "description": "Pregunta-respuesta corta"},
+        "chat_extended": {"tokens_input": 296, "tokens_output": 441, "description": "Conversación extendida"},
+        "generation_short": {"tokens_input": 20, "tokens_output": 65, "description": "Generación de texto corto"},
+        "generation_long": {"tokens_input": 50, "tokens_output": 2048, "description": "Generación de texto largo"},
+        "summarization": {"tokens_input": 781, "tokens_output": 56, "description": "Resumen de documento"},
+        "code_generation": {"tokens_input": 100, "tokens_output": 300, "description": "Generación de código"},
+        "translation": {"tokens_input": 200, "tokens_output": 220, "description": "Traducción de texto"}
+    }
 
 # ===== DATOS DE MODELOS =====
 models_data = [
@@ -190,12 +165,12 @@ models_data = [
         "source_url": "https://ai.google/static/documents/palm2techreport.pdf",
         "hf_url": None,
         "confidence": 0.70,
-        "notes": "Google PaLM 2 Technical Report",
+        "notes": "Google PaLM 2 Technical Report. max_output_tokens alineado con API comercial (Vertex AI text-bison: 4096)",
         "empirical_energy_wh_per_1k": None,  # Se calculará
         "empirical_latency_ms_per_token": None,
         "energy_methodology": "Theoretical 2N FLOPs formula scaled by efficiency",
         "context_window": 32000,
-        "max_output_tokens": 8192
+        "max_output_tokens": 4096
     },
     {
         "model_id": "opt-175b",
@@ -212,7 +187,7 @@ models_data = [
         "energy_methodology": "Theoretical 2N FLOPs formula scaled by efficiency",
         "empirical_latency_ms_per_token": 45,
         "context_window": 2048,
-        "max_output_tokens": 2048
+        "max_output_tokens": 1024
     },
     {
         "model_id": "claude-2",
@@ -247,7 +222,7 @@ models_data = [
         "energy_methodology": "Theoretical 2N FLOPs formula scaled by efficiency",
         "empirical_latency_ms_per_token": 28,
         "context_window": 4096,
-        "max_output_tokens": 4096
+        "max_output_tokens": 2048
     },
     {
         "model_id": "falcon-40b",
@@ -265,7 +240,7 @@ models_data = [
         "empirical_energy_wh_per_1k": None,
         "empirical_latency_ms_per_token": None,
         "context_window": 2048,
-        "max_output_tokens": 2048
+        "max_output_tokens": 1024
     },
     {
         "model_id": "mpt-30b",
@@ -283,7 +258,25 @@ models_data = [
         "empirical_energy_wh_per_1k": None,
         "empirical_latency_ms_per_token": None,
         "context_window": 8192,
-        "max_output_tokens": 8192
+        "max_output_tokens": 4096
+    },
+    {
+        "model_id": "gemma-7b",
+        "model_name": "Gemma 7B",
+        "organization": "Google DeepMind",
+        "model_type": "LLM",
+        "num_parameters": 8540000000,  # 8.54B
+        "flops_training": 1.24e23,
+        "release_date": "2024-02-21",
+        "source_url": "https://arxiv.org/abs/2403.08295",
+        "hf_url": "https://huggingface.co/google/gemma-7b",
+        "confidence": 0.85,
+        "notes": "Google DeepMind Gemma Technical Report. Open weights model.",
+        "energy_methodology": "Theoretical 2N FLOPs formula scaled by efficiency",
+        "empirical_energy_wh_per_1k": None,
+        "empirical_latency_ms_per_token": None,
+        "context_window": 8192,
+        "max_output_tokens": 4096
     },
     {
         "model_id": "mistral-7b",
@@ -299,43 +292,26 @@ models_data = [
         "notes": "Empirical value discrepancy with published papers. Calculado con fórmula 2N FLOPs",
         "empirical_latency_ms_per_token": 8,  # Mantener latency empírica para referencia
         "energy_methodology": "Theoretical 2N FLOPs formula scaled by efficiency",
-        "context_window": 32000,
-        "max_output_tokens": 8192
+        "context_window": 8192,
+        "max_output_tokens": 4096
     },
     {
-        "model_id": "bert-base-uncased",
-        "model_name": "BERT Base",
-        "organization": "Google",
-        "model_type": "Classification",
-        "num_parameters": 110000000,  # 110M
-        "flops_training": 2.0e19,
-        "release_date": "2018-10-11",
-        "source_url": "https://arxiv.org/abs/1810.04805",
-        "hf_url": "https://huggingface.co/google-bert/bert-base-uncased",
-        "energy_methodology": "Hardware power measurement (CodeCarbon)",
+        "model_id": "phi-2",
+        "model_name": "Phi-2",
+        "organization": "Microsoft Research",
+        "model_type": "LLM",
+        "num_parameters": 2700000000,  # 2.7B
+        "flops_training": 4.37e22,
+        "release_date": "2023-12-12",
+        "source_url": "https://www.microsoft.com/en-us/research/blog/phi-2-the-surprising-power-of-small-language-models/",
+        "hf_url": "https://huggingface.co/microsoft/phi-2",
         "confidence": 0.85,
-        "notes": "Mediciones empíricas verificables (Cao et al. 2020 ACL SustaiNLP)",
-        "empirical_energy_wh_per_1k": 0.000012,  # Cao et al. 2020 - medición directa
-        "empirical_latency_ms_per_token": 0.5,
-        "context_window": 512,
-        "max_output_tokens": 1  # Solo clasificación
-    },
-    {
-        "model_id": "vit-base-patch16-224",
-        "model_name": "Vision Transformer (ViT)",
-        "organization": "Google DeepMind",
-        "model_type": "Vision",
-        "num_parameters": 86000000,  # 86M
-        "flops_training": 1.7e19,
-        "release_date": "2020-10-22",
-        "source_url": "https://arxiv.org/abs/2010.11929",
-        "hf_url": "https://huggingface.co/google/vit-base-patch16-224",
-        "confidence": 0.85,
-        "notes": "Paper arXiv:2511.23166 does not measure ViT-base (86M params). Calculado con fórmula 2N FLOPs",
-        "empirical_latency_ms_per_token": 0.3,  # Mantener latency empírica para referencia
-        "energy_methodology": "Theoretical 2N FLOPs formula scaled by efficiency (vision model)",
-        "context_window": 196,  # Patches de imagen
-        "max_output_tokens": 10  # Clasificación
+        "notes": "Microsoft Research Phi-2. Small Language Model entrenado con datos de alta calidad.",
+        "energy_methodology": "Theoretical 2N FLOPs formula scaled by efficiency",
+        "empirical_energy_wh_per_1k": None,
+        "empirical_latency_ms_per_token": None,
+        "context_window": 2048,
+        "max_output_tokens": 1024
     },
 ]
 
@@ -375,20 +351,13 @@ for model in models_data:
     # Tokens por segundo
     model['tokens_per_second'] = round(1000 / model['latency_ms_per_token'], 1)
     
-    # Tipos de petición soportados
-    request_types = get_request_types(model_type)
+    # Tipos de petición soportados (todos LLMs generativos)
+    request_types = get_request_types()
     model['supported_request_types'] = ",".join(request_types.keys())
     
     # Petición típica (la más común)
-    if model_type == "LLM":
-        model['typical_request_type'] = 'chat_simple'
-        typical = request_types['chat_simple']
-    elif model_type == "Vision":
-        model['typical_request_type'] = 'image_classification'
-        typical = request_types['image_classification']
-    else:
-        model['typical_request_type'] = 'text_classification'
-        typical = request_types['text_classification']
+    model['typical_request_type'] = 'chat_simple'
+    typical = request_types['chat_simple']
     
     # Estimación para petición típica
     total_tokens = typical['tokens_input'] + typical['tokens_output']
@@ -470,16 +439,15 @@ df.to_csv(output_file, index=False, encoding='utf-8')
 
 # ===== GENERAR ARCHIVO DE TIPOS DE PETICIÓN =====
 request_types_data = []
-for model_type in ["LLM", "Vision", "Classification"]:
-    types = get_request_types(model_type)
-    for req_id, req_data in types.items():
-        request_types_data.append({
-            "request_type_id": req_id,
-            "model_type": model_type,
-            "tokens_input_avg": req_data['tokens_input'],
-            "tokens_output_avg": req_data['tokens_output'],
-            "description": req_data['description']
-        })
+types = get_request_types()
+for req_id, req_data in types.items():
+    request_types_data.append({
+        "request_type_id": req_id,
+        "model_type": "LLM",
+        "tokens_input_avg": req_data['tokens_input'],
+        "tokens_output_avg": req_data['tokens_output'],
+        "description": req_data['description']
+    })
 
 req_df = pd.DataFrame(request_types_data)
 req_output = os.path.join(output_dir, "request_types.csv")

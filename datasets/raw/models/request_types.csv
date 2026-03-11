@@ -6,9 +6,3 @@ generation_long,LLM,50,2048,Generación de texto largo
 summarization,LLM,781,56,Resumen de documento
 code_generation,LLM,100,300,Generación de código
 translation,LLM,200,220,Traducción de texto
-image_classification,Vision,196,10,Clasificación de imagen
-image_captioning,Vision,196,15,Descripción de imagen
-visual_qa,Vision,196,100,Pregunta sobre imagen
-text_classification,Classification,128,1,Clasificación de texto
-sentiment_analysis,Classification,64,1,Análisis de sentimiento
-ner,Classification,100,50,Reconocimiento de entidades

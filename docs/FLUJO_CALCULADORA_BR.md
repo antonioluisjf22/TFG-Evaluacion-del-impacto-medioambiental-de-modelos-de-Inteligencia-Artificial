@@ -54,13 +54,13 @@ FLOPS_por_token = 2 × num_parameters
   • Con num_parameters neuronas: total = 2 × num_parameters
 
 Ejemplos de num_parameters (de models.csv):
-  • BERT-base: 110 millones
-    FLOPS = 2 × 110 × 10^6 = 220 × 10^6 FLOPS/token
+  • Phi-2: 2.7 billones
+    FLOPS = 2 × 2.7 × 10^9 = 5.4 × 10^9 FLOPS/token
     
-  • Mistral-7b: 7 billones
-    FLOPS = 2 × 7 × 10^9 = 14 × 10^9 FLOPS/token
+  • Mistral-7b: 7.3 billones
+    FLOPS = 2 × 7.3 × 10^9 = 14.6 × 10^9 FLOPS/token
     
-  • GPT-4: 1.76 billones (estimado)
+  • GPT-4: 1.76 billones (estimado, ~280B activos por token MoE)
     FLOPS = 2 × 1.76 × 10^12 = 3.52 × 10^12 FLOPS/token
 
 Para 1000 tokens:
@@ -86,12 +86,13 @@ Para 1000 tokens de GPT-4:
   • Tiempo de procesamiento = 1000 tokens / 200 tok/seg = 5 seg (estimado)
   • Energy = 0.704 W × 5 seg = 3.52 Ws = 0.00098 Wh ≈ 0.001 Wh/1k
   
-  Realidad empírica reportada = 0.0048 Wh/1k (5x superior)
+  Realidad en models.csv (fórmula 2N FLOPs) = 0.443178 Wh/1k
   
-  Diferencia explícita (0.001 vs 0.0048):
-    • 0.001 = cómputo puro
-    • 0.0048 = cómputo + overhead de memoria, IO, scheduling
-    • Factor 4.8x = overhead operacional real del modelo
+  Diferencia explícita (0.001 vs 0.443):
+    • 0.001 = cómputo puro (TOPS/W simplificado, usa 1.76T params totales)
+    • 0.443 = fórmula 2N FLOPs con ~280B active params MoE, η=0.45
+    • La diferencia se debe al uso de parámetros activos vs totales
+      y a la eficiencia GPU real (η=0.45) vs TOPS/W teórico
 ```
 
 **NIVEL 3: VALORES EMPÍRICOS VERIFICADOS**
@@ -102,9 +103,9 @@ Parámetros energy_wh_per_1k_tokens (de models.csv — sincronizado v3.0, fórmu
 ┌──────────────────────┬──────────────┬────────────────────┬────────────────────────┐
 │ Modelo               │ Parámetros   │ energy_wh/1k       │ Metodología            │
 ├──────────────────────┼──────────────┼────────────────────┼────────────────────────┤
-│ BERT-base            │ 110M         │ 0.000012 Wh/1k     │ Empírico (CodeCarbon)  │
-│ ViT-base             │ 86M          │ 0.000613 Wh/1k     │ 2N FLOPs (η=0.15)     │
+│ Phi-2                │ 2.7B         │ 0.012821 Wh/1k     │ 2N FLOPs (η=0.15)     │
 │ Mistral-7B           │ 7.3B         │ 0.020798 Wh/1k     │ 2N FLOPs (η=0.25)     │
+│ Gemma 7B             │ 8.54B        │ 0.02433 Wh/1k      │ 2N FLOPs (η=0.25)     │
 │ Falcon 40B           │ 40B          │ 0.0814 Wh/1k       │ 2N FLOPs (η=0.35)     │
 │ MPT 30B              │ 30B          │ 0.08547 Wh/1k      │ 2N FLOPs (η=0.25)     │
 │ Llama 2 (70B)        │ 70B          │ 0.14245 Wh/1k      │ 2N FLOPs (η=0.35)     │
@@ -115,14 +116,14 @@ Parámetros energy_wh_per_1k_tokens (de models.csv — sincronizado v3.0, fórmu
 └──────────────────────┴──────────────┴────────────────────┴────────────────────────┘
 
 Relación tamaño ↔ energía (modelos calculados, ordenados por params activos):
-  • Mistral 7B (7.3B, η=0.25) → 0.020798
+  • Phi-2 (2.7B, η=0.15) → 0.012821
   • PaLM 2 (340B, η=0.45) → 0.538145
-  • Razón parámetros: 340B / 7.3B = 46.6x
-  • Razón energía: 0.538145 / 0.020798 = 25.9x
+  • Razón parámetros: 340B / 2.7B = 126x
+  • Razón energía: 0.538145 / 0.012821 = 42.0x
 
 NOTA: La relación es sublineal porque los modelos grandes
-tienen mejor eficiencia GPU (η mayor). BERT es el único
-valor medido empíricamente y queda fuera de la comparación.
+tienen mejor eficiencia GPU (η mayor). Todos los modelos v3.0
+usan fórmula teórica 2N FLOPs (no hay valores empíricos).
 ```
 
 ### 🎯 Característica Crítica: INVARIANZA
@@ -324,11 +325,11 @@ Ejemplos:
     - 200 tokens → 7000 ms = 7.0 seg
     - 1000 tokens → 35000 ms = 35 seg
     
-  • Mistral: 12 ms/token
-    - 100 tokens → 1200 ms = 1.2 seg (3x más rápido que GPT-4)
+  • Mistral: 8 ms/token
+    - 100 tokens → 800 ms = 0.8 seg (4.4x más rápido que GPT-4)
     
-  • BERT: 5 ms/token
-    - 100 tokens → 500 ms (7x más rápido que GPT-4)
+  • Phi-2: 1.12 ms/token
+    - 100 tokens → 112 ms (31x más rápido que GPT-4)
 ```
 
 **Sensibilidad:**
@@ -518,13 +519,13 @@ Clave: Este es el consumo de las GPUs al procesar el modelo.
 
 Sensibilidad a tokens (LINEAL):
   ┌──────────────┬────────────────────────────┐
-  │ tokens       │ E_compute (GPT-4, 0.0048)  │
+  │ tokens       │ E_compute (GPT-4, 0.443178)  │
   ├──────────────┼────────────────────────────┤
-  │ 50           │ 0.00024 Wh                 │
-  │ 100          │ 0.00048 Wh                 │
-  │ 150          │ 0.00072 Wh                 │
-  │ 300          │ 0.00144 Wh (2x)            │
-  │ 1000         │ 0.0048 Wh (6.7x)           │
+  │ 50           │ 0.02216 Wh                   │
+  │ 100          │ 0.04432 Wh                   │
+  │ 150          │ 0.06648 Wh                   │
+  │ 300          │ 0.13295 Wh (2x)              │
+  │ 1000         │ 0.44318 Wh (6.7x)            │
   └──────────────┴────────────────────────────┘
 
 CLAVE: E_compute ∝ tokens (perfectamente LINEAL)
@@ -533,15 +534,15 @@ Sensibilidad al MODELO (150 tokens, sincronizado con models.csv v3.0):
   ┌──────────────────┬─────────────┬──────────────────┐
   │ Modelo           │ en_wh/1k    │ E_compute @ 150t │
   ├──────────────────┼─────────────┼──────────────────┤
-  │ BERT-base        │ 0.000012    │ 0.0000018 Wh     │
-  │ ViT-base         │ 0.000613    │ 0.0000920 Wh     │
+  │ Phi-2            │ 0.012821    │ 0.001923 Wh      │
   │ Mistral-7B       │ 0.020798    │ 0.003120 Wh      │
+  │ Gemma 7B         │ 0.02433     │ 0.003650 Wh      │
   │ Llama 2 (70B)    │ 0.14245     │ 0.021368 Wh      │
   │ GPT-4 (MoE 280B) │ 0.443178    │ 0.066477 Wh      │
   │ PaLM 2           │ 0.538145    │ 0.080722 Wh      │
   └──────────────────┴─────────────┴──────────────────┘
 
-FACTOR: PaLM 2 usa ~44845x más energía que BERT
+FACTOR: PaLM 2 usa ~42x más energía que Phi-2
         Esto es la MAYOR fuente de variabilidad en CO2_dc
 ```
 
@@ -702,7 +703,7 @@ Base: 150 tokens, GPT-4, CPU, España, AWS EU-West, 4G
 │ Cambio                  │ Multiplicador CO2│ Magnitud     │
 ├─────────────────────────┼─────────────────┼──────────────┤
 │ tokens: 150 → 300       │ ×2.0            │ ALTÍSIMA     │
-│ modelo: GPT-4 → BERT    │ ÷10             │ ALTÍSIMA     │
+│ modelo: GPT-4 → Phi-2   │ ÷34.6           │ ALTÍSIMA     │
 │ DC: AWS-EU → AWS-US-W   │ ÷2.1            │ ALTÍSIMA     │
 │ usuario: España → Oregon│ ÷2.0            │ ALTÍSIMA     │
 │ CPU → GPU               │ ×5.0            │ ALTÍSIMA     │

@@ -47,6 +47,16 @@ FÓRMULAS DETALLADAS:
 
 NOTA: La intensidad de carbono (CI) se obtiene de Electricity Maps API
       cuando está disponible, o de valores por defecto como fallback.
+
+ESTRUCTURA DEL FICHERO:
+======================
+| Bloque              | Descripción                                          |
+|---------------------|------------------------------------------------------|
+| EmissionResult      | Dataclass que almacena el resultado (energía, CO2,  |
+|                     | metadatos, renovables)                               |
+|                     |                                                      |
+| CarbonCalculator    | Clase principal: carga datasets, resuelve CI         |
+|                     | (intensidad de carbono) y ejecuta los cálculos      |
 """
 
 import pandas as pd
@@ -639,7 +649,7 @@ class CarbonCalculator:
         # Ahora usamos los datos del modelo para calcular automáticamente
         
         # Diccionario de tipos de petición (sincronizado con request_types.csv)
-        # Fuentes: LMSYS-Chat-1M, WildChat, CNN/DailyMail, ViT paper, BERT paper
+        # Fuentes: LMSYS-Chat-1M, WildChat, CNN/DailyMail
         REQUEST_TYPES = {
             "chat_simple": {"tokens_input": 70, "tokens_output": 215},      # LMSYS-Chat-1M
             "chat_extended": {"tokens_input": 296, "tokens_output": 441},   # WildChat
@@ -648,12 +658,6 @@ class CarbonCalculator:
             "summarization": {"tokens_input": 781, "tokens_output": 56},    # CNN/DailyMail
             "code_generation": {"tokens_input": 100, "tokens_output": 300}, # Sin evidencia
             "translation": {"tokens_input": 200, "tokens_output": 220},     # Ratio ~1.1x
-            "image_classification": {"tokens_input": 196, "tokens_output": 10},  # ViT
-            "image_captioning": {"tokens_input": 196, "tokens_output": 15},      # ViT + COCO
-            "visual_qa": {"tokens_input": 196, "tokens_output": 100},            # ViT
-            "text_classification": {"tokens_input": 128, "tokens_output": 1},    # BERT
-            "sentiment_analysis": {"tokens_input": 64, "tokens_output": 1},      # SST-2
-            "ner": {"tokens_input": 100, "tokens_output": 50}                    # Estimación
         }
         
         # Determinar tokens según prioridad:
@@ -666,9 +670,24 @@ class CarbonCalculator:
             # Tokens explícitos
             pass
         elif request_type is not None and request_type in REQUEST_TYPES:
+            # Validar que el modelo soporta este tipo de petición
+            if model is not None:
+                supported = model.get('supported_request_types', '')
+                if supported and request_type not in supported.split(','):
+                    raise ValueError(
+                        f"El modelo '{model.get('model_name', model_id)}' no soporta "
+                        f"el tipo de petición '{request_type}'. "
+                        f"Tipos soportados: {supported}"
+                    )
             # Usar tipo de petición especificado
             tokens_input = REQUEST_TYPES[request_type]["tokens_input"]
             tokens_output = REQUEST_TYPES[request_type]["tokens_output"]
+        elif request_type is not None:
+            # request_type especificado pero no reconocido
+            raise ValueError(
+                f"Tipo de petición '{request_type}' no reconocido. "
+                f"Tipos válidos: {', '.join(REQUEST_TYPES.keys())}"
+            )
         elif model is not None:
             # Usar petición típica del modelo
             typical_type = model.get('typical_request_type', 'chat_simple')
@@ -731,6 +750,8 @@ class CarbonCalculator:
         else:
             ci_dc = ci_local
         
+
+        # PUNTO 1: EMISIONES DEL DISPOSITIVO
         # ===== 1. EMISIONES DEL DISPOSITIVO =====
         # MODELO DE CONSUMO DINÁMICO v2.0
         # Fórmula: P_real = P_idle + (P_TDP - P_idle) × U
@@ -1069,7 +1090,7 @@ def main():
     print("COMPARACIÓN DE MODELOS (misma petición: chat_simple)")
     print("=" * 70)
     
-    for model_id in ["gpt-4", "llama2-70b", "mistral-7b", "bert-base-uncased"]:
+    for model_id in ["gpt-4", "llama2-70b", "mistral-7b", "phi-2"]:
         r = calc.calculate_emissions(
             model_id=model_id,
             data_center_id="gcp-europe-west1",

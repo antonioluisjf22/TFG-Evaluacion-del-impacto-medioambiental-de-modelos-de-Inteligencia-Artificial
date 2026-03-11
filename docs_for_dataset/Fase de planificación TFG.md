@@ -276,7 +276,7 @@ A continuación, se describen los riesgos detectados, evaluando su probabilidad 
 
 | ID | Descripción del Riesgo | Probabilidad | Impacto | Nivel |
 | --- | --- | --- | --- | --- |
-| R1 | Inaccesibilidad de datos PUE específicos: Existe el riesgo de no encontrar datos públicos y fiables sobre la eficiencia energética (PUE) de ciertos centros de datos o proveedores Cloud específicos, lo que afectaría a la precisión del cálculo. También puede existir la dificultad de encontrar datos de consumo energético para regiones específicas. | Alta | Medio | Alto |
+| R1 | Precisión de las estimaciones energéticas por modelo: El consumo energético por petición (energy_wh_per_1k_tokens) se calcula mediante fórmulas teóricas basadas en el número de parámetros del modelo y las especificaciones del hardware de inferencia, en lugar de mediciones reales. El consumo real varía significativamente según factores como la cuantización aplicada, el tamaño de batch, la optimización del runtime y el hardware específico del servidor, lo que introduce un margen de error inherente en todas las estimaciones de emisiones. | Alta | Alto | Crítico |
 | R2 | Limitaciones de Hardware para Medición Real: Es posible que no se pueda medir el consumo exacto en ciertos ordenadores (como los Mac con chip M1/M2 o equipos Windows sin permisos especiales), ya que el acceso directo a los sensores de energía suele estar bloqueado o no disponible. | Alta | Alto | Crítico |
 | R3 | Dependencia de APIs de Terceros: La API de Electricity Maps podría modificar sus condiciones de uso (reducción del rate limit gratuito) o sufrir caídas de servicio, impidiendo la obtención de la intensidad de carbono en tiempo real. | Media | Alto | Medio |
 | R4 | Desviación del Alcance: Riesgo de intentar abarcar demasiadas funcionalidades (ej. optimizador de costes, simulador complejo) en el tiempo limitado disponible, comprometiendo la fecha de entrega. | Media | Medio | Medio |
@@ -290,7 +290,7 @@ A continuación, se describen los riesgos detectados, evaluando su probabilidad 
 
 Para cada uno de los riesgos identificados, se ha diseñado una estrategia de respuesta proactiva:
 
-*   **Para R1 (Falta de datos PUE):** En caso de no obtener datos oficiales de un proveedor, se utilizarán valores promedio de la industria validados por organismos de referencia (ej. PUE medio de 1.58 según el _Uptime Institute_) o datos agregados de literatura científica reciente, documentando siempre la fuente de la estimación.
+*   **Para R1 (Precisión estimaciones energéticas):** Se documentará de forma transparente la fórmula teórica empleada y sus limitaciones. Los resultados se contrastarán con datos publicados en literatura científica y con herramientas de referencia del sector (como CodeCarbon) para validar que las estimaciones se encuentran dentro de rangos razonables. Además, se presentarán los resultados como estimaciones orientativas, no como mediciones exactas, comunicando siempre el margen de incertidumbre al usuario.
 *   **Para R2 (Incompatibilidad Hardware):** Se priorizará que la herramienta sea compatible con cualquier equipo. Si no es posible "leer" el consumo real del dispositivo, el sistema activará automáticamente un **modo de estimación**. Este modo calculará el consumo aproximado basándose en las especificaciones técnicas oficiales del fabricante (TDP) y el tiempo de uso, una técnica estándar validada en estudios previos como el de _Green Algorithms_.
 *   **Para R3 (Fallo de API):** Se mantendrá un diccionario de intensidades de carbono por defecto (hardcodeado por país/zona). El sistema caché en JSON almacena respuestas previas. Cuando la API falla o no está disponible, automáticamente usa los valores por defecto como respaldo.
 *   **Para R4 (Alcance excesivo):** Se aplicará estrictamente la metodología iterativa. Si al finalizar el Sprint 3 se detectan retrasos, se moverán las funcionalidades secundarias (como el comparador económico) a un apartado de "Trabajo Futuro" en la memoria, garantizando que el núcleo funcional (MVP) esté pulido y validado para la defensa.
@@ -338,8 +338,8 @@ Las herramientas de gestión y seguimiento del proyecto incluyen:
 
 Como parte del proceso de planificación, se identificaron **9 riesgos** que podrían afectar al desarrollo del proyecto, clasificados según su nivel de criticidad:
 
-*   **Riesgos Críticos:** 1 (R2 – Limitaciones de hardware para medición real)
-*   **Riesgos Altos:** 2 (R1 – Inaccesibilidad de datos PUE; R6 – Inconsistencia entre fuentes de datos)
+*   **Riesgos Críticos:** 2 (R1 – Precisión de estimaciones energéticas; R2 – Limitaciones de hardware para medición real)
+*   **Riesgos Altos:** 1 (R6 – Inconsistencia entre fuentes de datos)
 *   **Riesgos Medios:** 4 (R3, R4, R7, R9)
 *   **Riesgos Bajos:** 2 (R5, R8)
 

@@ -13,16 +13,16 @@ Características técnicas y energéticas de 10 modelos de IA representativos, i
 
 | Modelo | Fuente Principal | URL | Fecha Consulta | Confianza | Notas |
 |--------|-----------------|-----|-----------------|-----------|-------|
-| **GPT-4** | OpenAI Official | https://openai.com/research/gpt-4 | 2026-01-10 | 95% | Energía: 4.8 mWh/1k tokens (calculado desde TDP H100) |
-| **PaLM 2** | Google Technical Report | https://ai.google/static/documents/palm2techreport.pdf | 2026-01-10 | 70% | Energía: calculada |
-| **OPT 175B** | Meta Research Paper | https://arxiv.org/abs/2205.01068 | 2026-01-10 | 85% | Energía: 3.5 mWh/1k tokens (calculado 2N FLOPs) |
-| **Claude 2** | Anthropic Official | https://www.anthropic.com/index/claude-2 | 2026-01-10 | 65% | Energía: calculada |
-| **Llama 2 70B** | Meta Research Paper | https://arxiv.org/abs/2307.09288 | 2026-01-10 | 80% | Energía: 2.1 mWh/1k tokens (calculado 2N FLOPs) |
-| **Falcon 40B** | TII Hugging Face | https://huggingface.co/tiiuae/falcon-40b | 2026-01-10 | 80% | Energía: calculada |
-| **MPT 30B** | MosaicML Hugging Face | https://huggingface.co/mosaicml/mpt-30b | 2026-01-10 | 82% | Energía: calculada |
-| **Mistral 7B** | Mistral Research Paper | https://arxiv.org/abs/2310.06825 | 2026-01-10 | 85% | Energía: 1.139 mWh/1k tokens (calculado teórico - v2.7) |
-| **BERT Base** | Google Research Paper | https://arxiv.org/abs/1810.04805 | 2026-01-10 | 85% | Energía: 0.012 mWh/1k tokens (empírico Cao 2020) |
-| **Vision Transformer (ViT)** | Google DeepMind Paper | https://arxiv.org/abs/2010.11929 | 2026-01-10 | 93% | Energía: 0.408 mWh/1k tokens (calculado teórico - v2.8) |
+| **GPT-4** | OpenAI Official | https://openai.com/research/gpt-4 | 2026-01-10 | 95% | Energía: 0.443178 Wh/1k tokens (calculado 2N FLOPs, MoE ~280B active params, GPU ref: A100). context_window=128000, max_output_tokens=4096 |
+| **PaLM 2** | Google Technical Report | https://ai.google/static/documents/palm2techreport.pdf | 2026-01-10 | 70% | Energía: calculada. context_window=32000, max_output_tokens=4096 (alineado con Vertex AI text-bison) |
+| **OPT 175B** | Meta Research Paper | https://arxiv.org/abs/2205.01068 | 2026-01-10 | 85% | Energía: 3.5 mWh/1k tokens (calculado 2N FLOPs). context_window=2048, max_output_tokens=1024 |
+| **Claude 2** | Anthropic Official | https://www.anthropic.com/index/claude-2 | 2026-01-10 | 65% | Energía: 0.2035 Wh/1k tokens (calculada 2N FLOPs). ~100B params estimados, context_window=100000, max_output_tokens=4096 |
+| **Llama 2 70B** | Meta Research Paper | https://arxiv.org/abs/2307.09288 | 2026-01-10 | 80% | Energía: 2.1 mWh/1k tokens (calculado 2N FLOPs). context_window=4096, max_output_tokens=2048 |
+| **Falcon 40B** | TII Hugging Face | https://huggingface.co/tiiuae/falcon-40b | 2026-01-10 | 80% | Energía: calculada. context_window=2048, max_output_tokens=1024 |
+| **MPT 30B** | MosaicML Hugging Face | https://huggingface.co/mosaicml/mpt-30b | 2026-01-10 | 82% | Energía: calculada. context_window=8192, max_output_tokens=4096 |
+| **Gemma 7B** | Google DeepMind Paper | https://arxiv.org/abs/2403.08295 | 2026-03-07 | 85% | Energía: 0.02433 Wh/1k tokens (calculada 2N FLOPs). 8.54B params, context_window=8192, max_output_tokens=4096 |
+| **Mistral 7B** | Mistral Research Paper | https://arxiv.org/abs/2310.06825 | 2026-01-10 | 85% | Energía: calculada. SWA 4096, context_window efectivo=8192, max_output_tokens=4096 |
+| **Phi-2** | Microsoft Research Blog | https://www.microsoft.com/en-us/research/blog/phi-2-the-surprising-power-of-small-language-models/ | 2026-03-07 | 85% | Energía: 0.012821 Wh/1k tokens (calculada 2N FLOPs). 2.7B params, context_window=2048, max_output_tokens=1024 |
 
 ### Fuentes para Datos Energéticos (v2.4)
 
@@ -32,7 +32,7 @@ Características técnicas y energéticas de 10 modelos de IA representativos, i
 | Patterson et al. 2021 | "Carbon Emissions and Large Neural Network Training" | https://arxiv.org/abs/2104.10350 | Fórmulas de estimación energética |
 | Strubell et al. 2019 | "Energy and Policy Considerations for Deep Learning" | https://arxiv.org/abs/1906.02243 | Metodología de cálculo |
 | Dodge et al. 2022 | "Measuring the Carbon Intensity of AI in Cloud Instances" | https://arxiv.org/abs/2206.05229 | Benchmarks de latencia |
-| Cao et al. 2020 | "Towards Accurate Energy Measurement of NLP Models" | https://aclanthology.org/2020.sustainlp-1.19/ | energy_wh_per_1k_tokens para BERT (empírico) |
+
 
 ### Metodología de Recopilación
 
@@ -76,7 +76,7 @@ Características técnicas y energéticas de 10 modelos de IA representativos, i
 model_id                 : Identificador único (lowercase, guiones)
 model_name               : Nombre oficial del modelo
 organization             : Organización creadora
-model_type               : Categoría (LLM, Vision, Classification)
+model_type               : Categoría (LLM — todos los modelos son LLMs generativos)
 
 # ARQUITECTURA
 num_parameters           : Número total de parámetros (entero)
@@ -124,7 +124,7 @@ tokens_output_avg  : Tokens de salida promedio
 description        : Descripción del tipo de petición
 ```
 
-### Tipos de Petición Disponibles (v2.1 - Actualizado con datos empíricos)
+### Tipos de Petición Disponibles (v3.0 - Solo LLMs generativos)
 
 | Tipo | Modelo | Tokens In | Tokens Out | Descripción | Fuente |
 |------|--------|-----------|------------|-------------|--------|
@@ -135,14 +135,8 @@ description        : Descripción del tipo de petición
 | summarization | LLM | **781** | **56** | Resumen de documento | CNN/DailyMail |
 | code_generation | LLM | 100 | 300 | Generación de código | Sin evidencia |
 | translation | LLM | 200 | 220 | Traducción de texto | Ratio ~1.1x |
-| image_classification | Vision | 196 | 10 | Clasificación de imagen | ViT paper |
-| image_captioning | Vision | 196 | **15** | Descripción de imagen | ViT + COCO |
-| visual_qa | Vision | **196** | 100 | Pregunta sobre imagen | ViT paper |
-| text_classification | Classification | 128 | 1 | Clasificación de texto | BERT |
-| sentiment_analysis | Classification | 64 | 1 | Análisis de sentimiento | SST-2 |
-| ner | Classification | 100 | 50 | Reconocimiento de entidades | — |
 
-**Nota v2.4**: Valores actualizados con datasets académicos verificables. Ver `docs/ORIGEN_FORMULAS_CONSUMO_TOKENS_FINAL.md` para fuentes completas.
+> **Nota v3.0**: Se han eliminado los tipos de petición de Vision (image_classification, image_captioning, visual_qa) y Classification (text_classification, sentiment_analysis, ner) ya que todos los modelos del dataset son ahora LLMs generativos. Los modelos BERT y ViT fueron reemplazados por Gemma 7B y Phi-2.
 
 ### Validación de Datos
 
@@ -161,20 +155,25 @@ description        : Descripción del tipo de petición
    - `E_1k = (2 × params × 1000) / (GPU_TFLOPS × 10^12) × GPU_TDP / 3600`
    - GPU de referencia: NVIDIA A100 (312 TFLOPS FP16, 400W TDP)
 
-### Metodología de Cálculo Energético (v2.8 - Actualizado)
+### Metodología de Cálculo Energético (v3.0 - Actualizado)
 
-#### **Datos Empíricos (1 modelo)**
-- **BERT**: Mediciones directas (Cao et al. 2020)
-
-#### **Modelos Reclasificados a Calculado (2 modelos)**
-- **Mistral 7B** (v2.7): Paper de referencia muestra discrepancia 420× → calculado con fórmula 2N FLOPs
-- **ViT-base** (v2.8): Paper arXiv:2511.23166 no mide ViT-base (86M params, solo <23M) → calculado con fórmula 2N FLOPs
-
-#### **Datos Calculados (7 modelos)**
-- GPT-4: Calculado desde TDP H100 + overhead estimado
+#### **Datos Calculados (10 modelos — todos LLMs generativos)**
+- GPT-4: Calculado desde TDP H100 + overhead estimado (MoE ~280B active params)
+- PaLM 2: Fórmula teórica 2N FLOPs
 - OPT-175B, Llama 2 70B: Fórmula teórica 2N FLOPs
-- PaLM 2, Claude 2, Falcon 40B, MPT 30B: Fórmula basada en FLOPS y eficiencia de GPU
-- Confianza: 65-82%
+- Claude 2, Falcon 40B, MPT 30B: Fórmula basada en FLOPS y eficiencia de GPU
+- Gemma 7B: Fórmula teórica 2N FLOPs (Google DeepMind, 8.54B params)
+- Mistral 7B: Fórmula teórica 2N FLOPs (context efectivo 8192, SWA 4096)
+- Phi-2: Fórmula teórica 2N FLOPs (Microsoft Research, 2.7B params)
+- Confianza: 65-85%
+
+> **Nota v3.0**: Se eliminaron BERT Base y Vision Transformer (ViT) del dataset.
+> - BERT es un modelo encoder-only de clasificación, no genera tokens en sentido generativo. El campo max_output_tokens no aplica a su arquitectura.
+> - ViT es un modelo de visión que clasifica imágenes, no genera texto.
+> - Reemplazados por Gemma 7B (Google DeepMind) y Phi-2 (Microsoft Research), ambos LLMs generativos con especificaciones bien documentadas.
+> - Se corrigió el problema de max_output_tokens == context_window en OPT 175B, Llama 2 70B, Falcon 40B y MPT 30B. El max_output_tokens debe ser significativamente menor que context_window (entre 25-50%) para dejar espacio al prompt de entrada.
+> - Se corrigió Mistral 7B: context_window de 32000 a 8192 (valor efectivo práctico, ya que SWA window es 4096 y la calidad se degrada más allá de 8K).
+> - Se corrigió PaLM 2: max_output_tokens de 8192 a 4096, alineado con el límite real de la API comercial (Vertex AI text-bison). El valor 8192 era técnicamente posible pero no representativo del uso comercial.
 
 ### Trazabilidad Completa
 

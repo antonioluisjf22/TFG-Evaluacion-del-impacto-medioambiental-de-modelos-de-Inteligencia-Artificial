@@ -9,14 +9,14 @@
 | Componente | Status | Detalles |
 |-----------|--------|----------|
 | **Estructura carpetas** | ✅ | datasets/raw/{models, data_centers, devices, network, carbon_intensity} |
-| **Modelos AI v2.0** | ✅ | 10 modelos con **energía por token + latencia + tipos de petición** |
+| **Modelos AI v3.0** | ✅ | 10 modelos LLMs generativos con **energía por token + latencia + tipos de petición** |
 | **Data Centers** | ✅ | 71 data centers (AWS 21, Azure 19, GCP 31, Deep Green 1) - PUE 1.005-1.46 |
 | **Dispositivos Cliente v2.0** | ✅ | 20 dispositivos con **distinción CPU/GPU/NPU** - TDP separados |
 | **Tipos de Red** | ✅ | 15 tipos (Fibra, WiFi, 4G, 5G, Satélite) - 0.02-3.0 Wh/GB |
-| **Tipos de Petición** | ✅ | 13 tipos (chat, generación, código, visión, clasificación) |
+| **Tipos de Petición** | ✅ | 7 tipos LLM (chat, generación, código, resumen, traducción) |
 | **Calculadora CO2 v2.2** | ✅ | calculate_emissions.py - Con `request_type` + `utilization` + **CI por zona específica** |
-| **models.csv v2.0** | ✅ | 10 registros, **con energy_wh_per_1k_tokens + latency** |
-| **request_types.csv** | ✅ | 13 tipos de petición con tokens estimados |
+| **models.csv v3.0** | ✅ | 10 registros (todos LLMs), **con energy_wh_per_1k_tokens + latency** |
+| **request_types.csv** | ✅ | 7 tipos de petición LLM con tokens estimados |
 | **data_centers.csv** | ✅ | 71 registros, confianza 100% |
 | **devices.csv v2.0** | ✅ | 20 registros, **TDP separado por CPU/GPU/NPU** |
 | **network_types.csv** | ✅ | 15 registros, confianza 83.9% |
@@ -47,11 +47,10 @@
   - `typical_latency_sec` - Tiempo de petición típica
 - Fuente de datos: `energy_source` (empirical/calculated)
 
-**2. Dataset `request_types.csv` (NUEVO):**
-- 13 tipos de petición predefinidos:
-  - LLM: chat_simple, chat_extended, generation_short/long, summarization, code_generation, translation
-  - Vision: image_classification, image_captioning, visual_qa
-  - Classification: text_classification, sentiment_analysis, ner
+**2. Dataset `request_types.csv` (ACTUALIZADO v3.0):**
+- 7 tipos de petición LLM:
+  - chat_simple, chat_extended, generation_short/long, summarization, code_generation, translation
+- Eliminados tipos Vision y Classification (modelos no generativos eliminados del dataset)
 - Campos: tokens_input_avg, tokens_output_avg, description
 
 **3. Dataset `devices.csv` v2.0:**
@@ -86,7 +85,7 @@
   - Precisión **6x mejor** para DCs en USA
 - **Validación de `max_output_tokens`**:
   - Limita tokens de salida al máximo del modelo
-  - Evita cálculos incorrectos para modelos de clasificación
+  - Evita que los tokens de salida excedan las capacidades del modelo
 - **Carga de `carbon_intensity_datacenters.csv`**:
   - 71 DCs con sus zonas específicas de Electricity Maps
 
@@ -129,7 +128,7 @@ Modelo               E_DC (mWh)  CO2_DC (mgCO2)  Tiempo
 gpt-4                0.78        0.35            3.50s
 llama2-70b           0.34        0.15            2.80s
 mistral-7b           0.07        0.03            0.80s
-bert-base            0.00        0.00            0.05s
+phi-2                0.02        0.01            0.32s
 ```
 
 **7. Efecto del tipo de petición (GPT-4):**
@@ -146,8 +145,8 @@ generation_long      2098    73.4s    0.1061 gCO2
 
 ### Datos
 ```
-✅ datasets/raw/models/models.csv (v2.0 - energy_wh_per_1k_tokens + latency)
-✅ datasets/raw/models/request_types.csv (NUEVO - 13 tipos de petición)
+✅ datasets/raw/models/models.csv (v3.0 - energy_wh_per_1k_tokens + latency)
+✅ datasets/raw/models/request_types.csv (v3.0 - 7 tipos de petición LLM)
 ✅ datasets/raw/data_centers/data_centers.csv (71 registros)
 ✅ datasets/raw/devices/devices.csv (v2.0 - CPU/GPU/NPU separados)
 ✅ datasets/raw/network/network_types.csv (15 tipos)
@@ -309,9 +308,9 @@ python scripts/test_electricity_maps.py
 | Llama2-70B | Meta | 70B | 8.4×10²³ | 92% |
 | Falcon-40B | TII | 40B | 2.4×10²³ | 80% |
 | MPT-30B | MosaicML | 30B | 1.89×10²³ | 82% |
+| Gemma-7B | Google DeepMind | 8.54B | 1.24×10²³ | 85% |
 | Mistral-7B | Mistral | 7.3B | 8.7×10²² | 85% |
-| BERT | Google | 110M | 2×10¹⁹ | 95% |
-| ViT | Google | 86M | 1.7×10¹⁹ | 93% |
+| Phi-2 | Microsoft | 2.7B | 4.37×10²² | 85% |
 
 ### Data Centers (43 - Actualizado 2026-01-12)
 | Proveedor | Cantidad | PUE Rango | PUE Promedio | Confianza |
