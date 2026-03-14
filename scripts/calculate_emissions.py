@@ -81,9 +81,21 @@ MODELS_CSV = os.path.join(DATASETS_DIR, "models", "models.csv")
 DATA_CENTERS_CSV = os.path.join(DATASETS_DIR, "data_centers", "data_centers.csv")
 DEVICES_CSV = os.path.join(DATASETS_DIR, "devices", "devices.csv")
 NETWORK_CSV = os.path.join(DATASETS_DIR, "network", "network_energy_sources_2024.csv")
+REQUEST_TYPES_CSV = os.path.join(DATASETS_DIR, "models", "request_types.csv")
 CI_DATACENTERS_CSV = os.path.join(DATASETS_DIR, "carbon_intensity", "carbon_intensity_datacenters.csv")
 CI_ZONES_CSV = os.path.join(DATASETS_DIR, "carbon_intensity", "carbon_intensity.csv")  # NUEVO: 125 zonas para fallback
 EM_ZONES_JSON = os.path.join(DATASETS_DIR, "carbon_intensity", "electricity_maps_zones.json")  # Regiones EM
+
+
+DEFAULT_REQUEST_TYPES = {
+    "chat_simple": {"tokens_input": 70, "tokens_output": 215},
+    "chat_extended": {"tokens_input": 296, "tokens_output": 441},
+    "generation_short": {"tokens_input": 20, "tokens_output": 65},
+    "generation_long": {"tokens_input": 50, "tokens_output": 2048},
+    "summarization": {"tokens_input": 781, "tokens_output": 56},
+    "code_generation": {"tokens_input": 100, "tokens_output": 300},
+    "translation": {"tokens_input": 200, "tokens_output": 220},
+}
 
 
 # ===== CONSTANTES =====
@@ -214,6 +226,10 @@ class CarbonCalculator:
         self.network_df = None
         self.dc_ci_df = None
         self.ci_zones_df = None  # NUEVO: Zonas de fallback  # CSV con electricity_maps_zone por DC
+        self.request_types = {
+            request_type: values.copy()
+            for request_type, values in DEFAULT_REQUEST_TYPES.items()
+        }
         self.carbon_api = None
         self.use_realtime_ci = use_realtime_carbon_intensity
         
@@ -263,6 +279,35 @@ class CarbonCalculator:
                 print(f"[OK] Tipos de Red: {len(self.network_df)} cargados")
             else:
                 print(f"[WARN] No se encontro: {NETWORK_CSV}")
+
+            if os.path.exists(REQUEST_TYPES_CSV):
+                try:
+                    req_df = pd.read_csv(REQUEST_TYPES_CSV)
+                    required_cols = {"request_type_id", "tokens_input_avg", "tokens_output_avg"}
+                    missing_cols = required_cols - set(req_df.columns)
+                    if missing_cols:
+                        raise ValueError(f"Columnas faltantes: {sorted(missing_cols)}")
+
+                    loaded_request_types = {}
+                    for _, row in req_df.iterrows():
+                        req_id = str(row["request_type_id"]).strip()
+                        if not req_id:
+                            continue
+
+                        loaded_request_types[req_id] = {
+                            "tokens_input": int(row["tokens_input_avg"]),
+                            "tokens_output": int(row["tokens_output_avg"]),
+                        }
+
+                    if loaded_request_types:
+                        self.request_types = loaded_request_types
+                        print(f"[OK] Tipos de Petición: {len(self.request_types)} cargados")
+                    else:
+                        print("[WARN] request_types.csv vacío. Usando valores por defecto")
+                except Exception as e:
+                    print(f"[WARN] Error cargando request_types.csv: {e}. Usando valores por defecto")
+            else:
+                print(f"[INFO] No se encontro: {REQUEST_TYPES_CSV}. Usando request types por defecto")
             
             # Cargar CSV con zonas de Electricity Maps por data center
             if os.path.exists(CI_DATACENTERS_CSV):
@@ -648,17 +693,7 @@ class CarbonCalculator:
         # ===== LÓGICA DE TOKENS Y TIEMPO v2.0 =====
         # Ahora usamos los datos del modelo para calcular automáticamente
         
-        # Diccionario de tipos de petición (sincronizado con request_types.csv)
-        # Fuentes: LMSYS-Chat-1M, WildChat, CNN/DailyMail
-        REQUEST_TYPES = {
-            "chat_simple": {"tokens_input": 70, "tokens_output": 215},      # LMSYS-Chat-1M
-            "chat_extended": {"tokens_input": 296, "tokens_output": 441},   # WildChat
-            "generation_short": {"tokens_input": 20, "tokens_output": 65},  # Alpaca
-            "generation_long": {"tokens_input": 50, "tokens_output": 2048}, # API limit
-            "summarization": {"tokens_input": 781, "tokens_output": 56},    # CNN/DailyMail
-            "code_generation": {"tokens_input": 100, "tokens_output": 300}, # Sin evidencia
-            "translation": {"tokens_input": 200, "tokens_output": 220},     # Ratio ~1.1x
-        }
+        request_types = self.request_types
         
         # Determinar tokens según prioridad:
         # 1. Si se especifican tokens_input/output explícitamente, usarlos
@@ -669,7 +704,7 @@ class CarbonCalculator:
         if tokens_input is not None and tokens_output is not None:
             # Tokens explícitos
             pass
-        elif request_type is not None and request_type in REQUEST_TYPES:
+        elif request_type is not None and request_type in request_types:
             # Validar que el modelo soporta este tipo de petición
             if model is not None:
                 supported = model.get('supported_request_types', '')
@@ -680,20 +715,20 @@ class CarbonCalculator:
                         f"Tipos soportados: {supported}"
                     )
             # Usar tipo de petición especificado
-            tokens_input = REQUEST_TYPES[request_type]["tokens_input"]
-            tokens_output = REQUEST_TYPES[request_type]["tokens_output"]
+            tokens_input = request_types[request_type]["tokens_input"]
+            tokens_output = request_types[request_type]["tokens_output"]
         elif request_type is not None:
             # request_type especificado pero no reconocido
             raise ValueError(
                 f"Tipo de petición '{request_type}' no reconocido. "
-                f"Tipos válidos: {', '.join(REQUEST_TYPES.keys())}"
+                f"Tipos válidos: {', '.join(request_types.keys())}"
             )
         elif model is not None:
             # Usar petición típica del modelo
             typical_type = model.get('typical_request_type', 'chat_simple')
-            if typical_type in REQUEST_TYPES:
-                tokens_input = REQUEST_TYPES[typical_type]["tokens_input"]
-                tokens_output = REQUEST_TYPES[typical_type]["tokens_output"]
+            if typical_type in request_types:
+                tokens_input = request_types[typical_type]["tokens_input"]
+                tokens_output = request_types[typical_type]["tokens_output"]
             else:
                 tokens_input = 50
                 tokens_output = 100

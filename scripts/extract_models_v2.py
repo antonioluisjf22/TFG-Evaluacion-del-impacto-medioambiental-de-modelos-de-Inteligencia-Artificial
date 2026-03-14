@@ -48,6 +48,17 @@ import math
 # Crear directorio si no existe
 output_dir = "datasets/raw/models"
 os.makedirs(output_dir, exist_ok=True)
+REQUEST_TYPES_CSV = os.path.join(output_dir, "request_types.csv")
+
+DEFAULT_REQUEST_TYPES = {
+    "chat_simple": {"tokens_input": 70, "tokens_output": 215, "description": "Pregunta-respuesta corta"},
+    "chat_extended": {"tokens_input": 296, "tokens_output": 441, "description": "Conversación extendida"},
+    "generation_short": {"tokens_input": 20, "tokens_output": 65, "description": "Generación de texto corto"},
+    "generation_long": {"tokens_input": 50, "tokens_output": 2048, "description": "Generación de texto largo"},
+    "summarization": {"tokens_input": 781, "tokens_output": 56, "description": "Resumen de documento"},
+    "code_generation": {"tokens_input": 100, "tokens_output": 300, "description": "Generación de código"},
+    "translation": {"tokens_input": 200, "tokens_output": 220, "description": "Traducción de texto"}
+}
 
 # ===== CONSTANTES PARA CÁLCULOS ENERGÉTICOS =====
 # GPU de referencia para cálculos: NVIDIA A100 (más usada en inference)
@@ -117,21 +128,47 @@ def estimate_tokens_per_second(params, model_type="LLM"):
 
 def get_request_types():
     """
-    Define tipos de petición soportados (solo LLMs generativos).
-    
-    Valores basados en datasets académicos:
-    - chat_simple: LMSYS-Chat-1M (Zheng et al., 2024) https://arxiv.org/abs/2309.11998
-    - chat_extended: WildChat (Zhao et al., 2024) https://arxiv.org/abs/2405.01470
-    - summarization: CNN/DailyMail (See et al., 2017) https://arxiv.org/abs/1704.04368
+    Obtiene tipos de petición desde request_types.csv.
+
+    Si el CSV no existe o falla su carga, usa valores por defecto.
     """
+    if os.path.exists(REQUEST_TYPES_CSV):
+        try:
+            req_df = pd.read_csv(REQUEST_TYPES_CSV)
+            required_cols = {
+                "request_type_id",
+                "tokens_input_avg",
+                "tokens_output_avg",
+                "description",
+            }
+            missing_cols = required_cols - set(req_df.columns)
+            if missing_cols:
+                raise ValueError(f"Columnas faltantes en request_types.csv: {sorted(missing_cols)}")
+
+            request_types = {}
+            for _, row in req_df.iterrows():
+                req_id = str(row["request_type_id"]).strip()
+                if not req_id:
+                    continue
+
+                description = row["description"] if pd.notna(row["description"]) else ""
+                request_types[req_id] = {
+                    "tokens_input": int(row["tokens_input_avg"]),
+                    "tokens_output": int(row["tokens_output_avg"]),
+                    "description": str(description),
+                }
+
+            if request_types:
+                return request_types
+
+            raise ValueError("request_types.csv no contiene filas válidas")
+        except Exception as e:
+            print(f"[WARN] Error al cargar {REQUEST_TYPES_CSV}: {e}")
+            print("[INFO] Usando request types por defecto")
+
     return {
-        "chat_simple": {"tokens_input": 70, "tokens_output": 215, "description": "Pregunta-respuesta corta"},
-        "chat_extended": {"tokens_input": 296, "tokens_output": 441, "description": "Conversación extendida"},
-        "generation_short": {"tokens_input": 20, "tokens_output": 65, "description": "Generación de texto corto"},
-        "generation_long": {"tokens_input": 50, "tokens_output": 2048, "description": "Generación de texto largo"},
-        "summarization": {"tokens_input": 781, "tokens_output": 56, "description": "Resumen de documento"},
-        "code_generation": {"tokens_input": 100, "tokens_output": 300, "description": "Generación de código"},
-        "translation": {"tokens_input": 200, "tokens_output": 220, "description": "Traducción de texto"}
+        req_id: values.copy()
+        for req_id, values in DEFAULT_REQUEST_TYPES.items()
     }
 
 # ===== DATOS DE MODELOS =====
@@ -453,7 +490,7 @@ for req_id, req_data in types.items():
     })
 
 req_df = pd.DataFrame(request_types_data)
-req_output = os.path.join(output_dir, "request_types.csv")
+req_output = REQUEST_TYPES_CSV
 req_df.to_csv(req_output, index=False, encoding='utf-8')
 
 # ===== RESUMEN =====

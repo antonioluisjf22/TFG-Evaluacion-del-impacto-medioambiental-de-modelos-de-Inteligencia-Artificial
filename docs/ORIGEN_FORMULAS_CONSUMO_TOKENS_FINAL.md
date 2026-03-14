@@ -357,7 +357,7 @@ Para todos los modelos se verifica que:
 | **code_generation** | 100 | 300 | Estimación propia (sin datos académicos) |
 | **translation** | 200 | 220 | Ratio ~1.1× empírico, valores estimados |
 
-> **Nota**: El script `analyze_percentiles.py` utiliza solo 6 de estos 7 tipos (excluye `translation`) para la generación de `emissions_distribution.csv`, ya que `translation` tiene una distribución de tokens muy similar a `chat_extended` y su inclusión no aporta variabilidad significativa al análisis de percentiles.
+> **Nota**: El script `analyze_percentiles.py` utiliza solo 6 de estos 7 tipos (excluye `translation`) para la generación de `emissions_distribution.csv`. La razón es que `translation` es una estimación sin respaldo en datasets académicos verificados (a diferencia de los otros tipos), y su volumen total de tokens (420) queda cubierto por el rango que ya ofrecen `chat_simple` (285) y `chat_extended` (737), por lo que su inclusión no aporta variabilidad nueva significativa al análisis de percentiles.
 
 **Tipos eliminados en v3.0** (eran de BERT/ViT):
 - `text_classification` (BERT): 128/1 → Eliminado (modelo encoder-only)
