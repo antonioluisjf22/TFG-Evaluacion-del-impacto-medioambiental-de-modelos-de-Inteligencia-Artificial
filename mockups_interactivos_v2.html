@@ -1,0 +1,2166 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calculadora de Carbono de IA - Mockups Interactivos v2</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap');
+        body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #FFFFFF; color: #2C3E50; min-height: 100vh; line-height: 1.6; }
+        :root {
+            --primary-dark: #2D5016; --primary: #4CAF50; --primary-light: #E8F5E9;
+            --secondary-blue: #1E88E5; --secondary-orange: #FF6F00; --secondary-red: #E74C3C;
+            --secondary-yellow: #FFC107; --text-dark: #2C3E50; --text-gray: #7F8C8D;
+            --border-gray: #ECF0F1; --white: #FFFFFF;
+        }
+        .container { max-width: 1400px; margin: 0 auto; padding: 48px 24px; }
+        header { background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary) 100%); padding: 48px 24px; margin: -48px -24px 48px -24px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        header .header-content { max-width: 1400px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 24px; }
+        .logo { font-size: 32px; font-weight: 700; color: var(--white); display: flex; align-items: center; gap: 12px; }
+        nav { display: flex; gap: 24px; }
+        nav a { color: var(--white); text-decoration: none; font-size: 14px; font-weight: 500; transition: opacity 0.2s ease; }
+        nav a:hover { opacity: 0.8; }
+        h1 { color: var(--white); font-size: 32px; font-weight: 700; margin-bottom: 8px; }
+        .subtitle { color: rgba(255,255,255,0.9); font-size: 16px; }
+        .tabs-container { background: var(--white); border-bottom: 1px solid var(--border-gray); margin: 0 -24px 0 -24px; padding: 0 24px; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .tabs { display: flex; gap: 8px; overflow-x: auto; max-width: 1400px; margin: 0 auto; }
+        .tab-button { padding: 16px 24px; background: transparent; border: none; border-bottom: 3px solid transparent; cursor: pointer; font-size: 14px; font-weight: 600; color: var(--text-gray); transition: all 0.2s ease; white-space: nowrap; }
+        .tab-button:hover { color: var(--primary-dark); background: var(--primary-light); }
+        .tab-button.active { color: var(--primary-dark); border-bottom-color: var(--primary-dark); }
+        .tab-content { display: none; animation: fadeIn 0.3s ease; }
+        .tab-content.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .card { background: var(--white); border-radius: 12px; padding: 24px; border: 1px solid var(--border-gray); margin-bottom: 24px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); transition: all 0.3s ease; }
+        .card:hover { box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .card.highlighted { background: var(--primary-light); border-color: var(--primary); }
+        .card.warning { background: #FFF3E0; border-color: var(--secondary-orange); }
+        .card-title { font-size: 18px; font-weight: 700; color: var(--text-dark); margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+        .input-group { margin-bottom: 24px; }
+        label { display: block; font-size: 14px; font-weight: 600; color: var(--text-dark); margin-bottom: 8px; }
+        input, select { width: 100%; padding: 12px; border: 1px solid var(--border-gray); border-radius: 8px; font-family: 'Inter', sans-serif; font-size: 14px; transition: all 0.2s ease; }
+        input:focus, select:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(76,175,80,0.1); }
+        input[type="range"] { width: 100%; padding: 0; }
+        .input-value { color: var(--primary-dark); font-weight: 600; font-size: 16px; margin-top: 8px; }
+        .button { padding: 12px 24px; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 600; transition: all 0.2s ease; display: inline-flex; align-items: center; gap: 8px; }
+        .button-primary { background: var(--primary-dark); color: var(--white); }
+        .button-primary:hover { background: #1F3C0A; }
+        .button-secondary { background: var(--border-gray); color: var(--text-dark); }
+        .button-secondary:hover { background: #D0D0D0; }
+        .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px; margin-bottom: 24px; }
+        .metrics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px; }
+        .metric-box { background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary) 100%); color: var(--white); padding: 24px; border-radius: 12px; text-align: center; }
+        .metric-label { font-size: 12px; font-weight: 600; opacity: 0.9; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .metric-value { font-size: 32px; font-weight: 700; font-family: 'JetBrains Mono', monospace; margin-bottom: 4px; }
+        .metric-unit { font-size: 12px; opacity: 0.8; }
+        .breakdown-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 24px; }
+        .breakdown-card { background: var(--white); border: 1px solid var(--border-gray); border-radius: 12px; padding: 20px; text-align: center; transition: all 0.3s ease; }
+        .breakdown-card:hover { border-color: var(--primary); box-shadow: 0 4px 12px rgba(76,175,80,0.15); }
+        .breakdown-icon { font-size: 28px; margin-bottom: 8px; }
+        .breakdown-label { font-size: 12px; color: var(--text-gray); font-weight: 500; margin-bottom: 8px; }
+        .breakdown-value { font-size: 24px; font-weight: 700; color: var(--primary-dark); font-family: 'JetBrains Mono', monospace; margin-bottom: 4px; }
+        .breakdown-percentage { font-size: 14px; color: var(--text-gray); }
+        .chart-container { background: var(--white); border-radius: 12px; padding: 24px; border: 1px solid var(--border-gray); margin-bottom: 24px; }
+        #pie-chart, #bar-chart, #area-chart, #comparison-chart, #projection-chart { min-height: 400px; }
+        .table-responsive { overflow-x: auto; border-radius: 8px; border: 1px solid var(--border-gray); }
+        table { width: 100%; border-collapse: collapse; font-size: 14px; }
+        thead { background: var(--primary-light); }
+        th { padding: 16px; text-align: left; font-weight: 600; color: var(--primary-dark); border-bottom: 2px solid var(--primary); }
+        td { padding: 16px; border-bottom: 1px solid var(--border-gray); }
+        tr:hover { background: var(--primary-light); }
+        .energy-label { max-width: 420px; margin: 24px auto; border: 3px solid var(--text-dark); border-radius: 12px; overflow: hidden; background: var(--white); box-shadow: 0 8px 24px rgba(0,0,0,0.15); }
+        .energy-label-header { background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary) 100%); color: var(--white); padding: 16px; text-align: center; font-weight: 700; }
+        .energy-label-content { padding: 24px; }
+        .energy-label-scale { display: flex; flex-direction: column; gap: 4px; margin: 20px 0; }
+        .energy-label-item { display: flex; align-items: center; gap: 12px; padding: 8px; border-radius: 4px; transition: all 0.2s ease; }
+        .energy-label-item.current { background: var(--primary-light); border-left: 4px solid var(--primary-dark); padding-left: 8px; font-weight: 600; }
+        .energy-label-letter { min-width: 55px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 4px; font-weight: 700; font-size: 14px; color: var(--white); }
+        #map { width: 100%; height: 600px; border-radius: 12px; border: 1px solid var(--border-gray); margin-bottom: 24px; }
+        .map-info-panel { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px; }
+        .map-info-card { background: var(--white); border: 1px solid var(--border-gray); border-radius: 12px; padding: 20px; }
+        .map-info-card h3 { font-size: 14px; font-weight: 600; color: var(--primary-dark); margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .section { margin-bottom: 48px; }
+        .section-title { font-size: 24px; font-weight: 700; color: var(--text-dark); margin-bottom: 24px; display: flex; align-items: center; gap: 12px; }
+        .hero { background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary) 100%); color: var(--white); padding: 48px 24px; border-radius: 12px; text-align: center; margin-bottom: 48px; }
+        .hero h2 { font-size: 32px; font-weight: 700; margin-bottom: 12px; }
+        .hero p { font-size: 16px; margin-bottom: 24px; opacity: 0.9; }
+        .formula-step { background: #f8f9fa; border-left: 4px solid var(--primary); padding: 16px 20px; margin: 12px 0; border-radius: 0 8px 8px 0; font-size: 13px; line-height: 1.8; }
+        .formula-step .formula-title { font-weight: 700; color: var(--primary-dark); margin-bottom: 8px; font-size: 14px; }
+        .formula-step code { background: #e8eaf6; padding: 2px 6px; border-radius: 4px; font-family: 'JetBrains Mono', monospace; font-size: 12px; }
+        .formula-step .formula-result { font-weight: 700; color: var(--primary-dark); font-family: 'JetBrains Mono', monospace; }
+        .greenwashing-bar { height: 24px; border-radius: 12px; position: relative; overflow: hidden; margin: 4px 0; }
+        .greenwashing-fill { height: 100%; border-radius: 12px; transition: width 0.5s ease; }
+        .device-info { font-size: 12px; color: var(--text-gray); margin-top: 4px; padding: 8px; background: #f8f9fa; border-radius: 6px; }
+        .tooltip { position: relative; cursor: help; border-bottom: 1px dotted var(--primary); }
+        .tooltip:hover::after { content: attr(data-tooltip); position: absolute; background: var(--text-dark); color: var(--white); padding: 8px 12px; border-radius: 6px; font-size: 12px; white-space: nowrap; bottom: 120%; left: 50%; transform: translateX(-50%); z-index: 1000; }
+        @media (max-width: 768px) {
+            .container { padding: 24px 16px; } header { margin: -24px -16px 24px -16px; padding: 24px 16px; }
+            h1 { font-size: 24px; } .form-grid { grid-template-columns: 1fr; }
+            .map-info-panel { grid-template-columns: 1fr; } #map { height: 400px; }
+            .tabs { gap: 4px; } .tab-button { padding: 12px 16px; font-size: 12px; }
+            .metrics-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+        @media (max-width: 480px) {
+            .container { padding: 16px 12px; } h1 { font-size: 20px; }
+            .metrics-grid { grid-template-columns: 1fr; } .button { width: 100%; justify-content: center; }
+        }
+        .text-center { text-align: center; }
+        .text-muted { color: var(--text-gray); }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="header-content">
+            <div>
+                <h1>Calculadora de Carbono de IA</h1>
+                <p class="subtitle">Impacto medioambiental de modelos de Inteligencia Artificial</p>
+            </div>
+            <nav>
+                <a href="#inicio">Inicio</a>
+                <a href="#documentacion">Documentacion</a>
+                <a href="#comparador">Comparador</a>
+            </nav>
+        </div>
+    </header>
+
+    <div class="tabs-container">
+        <div class="tabs">
+            <button class="tab-button active" data-tab="formulario">1. Formulario</button>
+            <button class="tab-button" data-tab="resultados">2. Resultados</button>
+            <button class="tab-button" data-tab="dashboard">3. Dashboard</button>
+            <button class="tab-button" data-tab="comparador">4. Comparador</button>
+            <button class="tab-button" data-tab="simulacion">5. Simulacion</button>
+            <button class="tab-button" data-tab="energy-label">6. Etiqueta</button>
+            <button class="tab-button" data-tab="mapa">7. Mapa Global</button>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- TAB 1: FORMULARIO -->
+        <div class="tab-content active" id="formulario">
+            <div class="section">
+                <div class="hero">
+                    <h2>Calcula el impacto ambiental de tu consulta IA</h2>
+                    <p>CO2_total = CO2_dispositivo + CO2_red + CO2_datacenter</p>
+                </div>
+
+                <div class="card">
+                    <h2 class="card-title">Parametros de entrada</h2>
+                    <div class="form-grid">
+                        <div class="input-group">
+                            <label for="modelo">1. Modelo de IA</label>
+                            <div style="font-size: 12px; color: var(--text-gray); margin-bottom: 6px;">El modelo que procesa tu consulta en el servidor. Modelos mas grandes consumen mas energia pero suelen dar mejores respuestas.</div>
+                            <select id="modelo" onchange="onModelChange()"></select>
+                            <div class="device-info" id="modelo-info"></div>
+                        </div>
+
+                        <div class="input-group">
+                            <label for="peticion">2. Tipo de peticion</label>
+                            <div style="font-size: 12px; color: var(--text-gray); margin-bottom: 6px;">Que tipo de tarea le pides a la IA. Tareas largas (resumir textos, generar codigo) procesan mas tokens y consumen mas.</div>
+                            <select id="peticion" onchange="onRequestTypeChange()"></select>
+                            <div class="device-info" id="peticion-info"></div>
+                        </div>
+
+                        <div class="input-group">
+                            <label for="data-center">3. Data Center</label>
+                            <div style="font-size: 12px; color: var(--text-gray); margin-bottom: 6px;">El servidor donde se ejecuta el modelo. <strong>Puede estar en un pais distinto al tuyo</strong> (ej: tu en España, el DC en Irlanda). Su ubicacion determina la huella de carbono de la electricidad del servidor, y su PUE mide la eficiencia energetica (1.0 = perfecto).</div>
+                            <select id="data-center" onchange="onDCChange()"></select>
+                            <div class="device-info" id="dc-info"></div>
+                        </div>
+
+                        <div class="input-group">
+                            <label for="dispositivo">4. Dispositivo cliente</label>
+                            <div style="font-size: 12px; color: var(--text-gray); margin-bottom: 6px;">Tu dispositivo (movil, portatil, etc.) que envia la consulta y recibe la respuesta. Consume energia mientras espera.</div>
+                            <select id="dispositivo" onchange="onDeviceChange()"></select>
+                            <div class="device-info" id="device-info"></div>
+                        </div>
+
+                        <div class="input-group">
+                            <label for="procesador">5. Procesador de inferencia <span class="tooltip" data-tooltip="auto = usa el procesador optimo del dispositivo">?</span></label>
+                            <div style="font-size: 12px; color: var(--text-gray); margin-bottom: 6px;">Que chip de tu dispositivo trabaja mientras esperas la respuesta. NPU es el mas eficiente si tu dispositivo lo tiene.</div>
+                            <select id="procesador">
+                                <option value="auto">Auto (detectar optimo)</option>
+                                <option value="cpu">CPU</option>
+                                <option value="gpu">GPU</option>
+                                <option value="npu">NPU</option>
+                            </select>
+                            <div class="device-info" id="proc-info"></div>
+                        </div>
+
+                        <div class="input-group">
+                            <label for="red">6. Tipo de red</label>
+                            <div style="font-size: 12px; color: var(--text-gray); margin-bottom: 6px;">Como se conecta tu dispositivo a internet. La fibra optica es la mas eficiente</div>
+                            <select id="red"></select>
+                        </div>
+
+                        <div class="input-group">
+                            <label for="pais">7. Pais del usuario (donde esta tu dispositivo)</label>
+                            <div style="font-size: 12px; color: var(--text-gray); margin-bottom: 6px;">Tu ubicacion fisica. Determina la intensidad de carbono de la electricidad que alimenta <strong>tu dispositivo</strong> (diferente de la del data center). Paises con mas renovables (Noruega, Suecia) emiten mucho menos.</div>
+                            <select id="pais">
+                                <option value="ES" selected>Espana (145 gCO2/kWh)</option>
+                                <option value="FR">Francia (50 gCO2/kWh)</option>
+                                <option value="DE">Alemania (380 gCO2/kWh)</option>
+                                <option value="UK">Reino Unido (230 gCO2/kWh)</option>
+                                <option value="IE">Irlanda (350 gCO2/kWh)</option>
+                                <option value="SE">Suecia (25 gCO2/kWh)</option>
+                                <option value="NO">Noruega (20 gCO2/kWh)</option>
+                                <option value="PL">Polonia (650 gCO2/kWh)</option>
+                                <option value="US">USA (380 gCO2/kWh)</option>
+                                <option value="US-CA">California (180 gCO2/kWh)</option>
+                                <option value="US-OR">Oregon (80 gCO2/kWh)</option>
+                                <option value="CN">China (550 gCO2/kWh)</option>
+                                <option value="IN">India (700 gCO2/kWh)</option>
+                                <option value="AU">Australia (500 gCO2/kWh)</option>
+                                <option value="JP">Japon (450 gCO2/kWh)</option>
+                            </select>
+                        </div>
+
+                        <div class="input-group">
+                            <label for="utilizacion">8. Factor de utilizacion (U)</label>
+                            <div style="font-size: 12px; color: var(--text-gray); margin-bottom: 6px;">Cuanto se exige tu dispositivo durante la espera. 70% es tipico. Valores mas altos = mas consumo.</div>
+                            <input type="range" id="utilizacion" min="0" max="100" value="70" oninput="document.getElementById('util-value').textContent=this.value">
+                            <div class="input-value">U = <span id="util-value">70</span>% &mdash; <span class="tooltip" data-tooltip="P_real = P_idle + (P_max - P_idle) x U">Formula: P_real = P_idle + (P_max - P_idle) x U</span></div>
+                        </div>
+
+                    </div>
+
+                    <div style="display: flex; gap: 12px; margin-top: 24px; flex-wrap: wrap;">
+                        <button class="button button-primary" onclick="calcularEmisiones()">Calcular emisiones</button>
+                        <button class="button button-secondary" onclick="limpiarFormulario()">Limpiar</button>
+                        <button class="button button-secondary" onclick="cargarEjemplo()">Cargar ejemplo</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 2: RESULTADOS con hilado de formulas -->
+        <div class="tab-content" id="resultados">
+            <div class="section">
+                <h2 class="section-title">Resultado: Emisiones totales por query</h2>
+
+                <div class="card highlighted">
+                    <div style="text-align: center;">
+                        <div style="color: var(--primary-dark); font-size: 48px; font-weight: 700; font-family: 'JetBrains Mono', monospace; margin-bottom: 8px;">
+                            <span id="co2-total">--</span> gCO2
+                        </div>
+                        <p style="color: var(--text-gray); margin-bottom: 16px;" id="result-subtitle">Ejecuta un calculo para ver resultados</p>
+                        <div id="result-label-badge" style="display:none; margin-bottom: 16px;">
+                            <span id="label-badge" style="padding: 8px 20px; border-radius: 20px; font-weight: 700; font-size: 18px; color: white;"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Equivalencias intuitivas - PROMINENTE arriba -->
+                <div class="card" id="equivalences-card" style="display: none;">
+                    <h2 class="card-title">Esto equivale a...</h2>
+                    <div id="equivalences-content" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 16px;"></div>
+                </div>
+
+                <!-- HILADO DE FORMULAS: Seccion 1 - Dispositivo -->
+                <div class="card" id="formula-device-card">
+                    <h2 class="card-title">Seccion 2.1.1 &mdash; Emisiones del Dispositivo</h2>
+                    <div id="formula-device"></div>
+                </div>
+
+                <!-- HILADO DE FORMULAS: Seccion 2 - Red -->
+                <div class="card" id="formula-network-card">
+                    <h2 class="card-title">Seccion 2.1.2 &mdash; Emisiones de la Red</h2>
+                    <div id="formula-network"></div>
+                </div>
+
+                <!-- HILADO DE FORMULAS: Seccion 3 - Data Center -->
+                <div class="card" id="formula-dc-card">
+                    <h2 class="card-title">Seccion 2.2 &mdash; Emisiones del Data Center</h2>
+                    <div id="formula-dc"></div>
+                </div>
+
+                <!-- Tabla Que pasaria si... -->
+                <h2 class="section-title" style="margin-top: 36px;">Que hubiera pasado si...?</h2>
+                <div class="table-responsive">
+                    <table id="what-if-table">
+                        <thead>
+                            <tr><th>Cambio</th><th>CO2 Nuevo</th><th>Diferencia</th><th>Impacto</th></tr>
+                        </thead>
+                        <tbody id="what-if-body"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 3: DASHBOARD -->
+        <div class="tab-content" id="dashboard">
+            <div class="section">
+                <h2 class="section-title">Dashboard detallado</h2>
+
+                <!-- Desglose por componente -->
+                <div class="card" style="margin-bottom: 24px;">
+                    <h2 class="card-title" style="margin-bottom: 20px;">Desglose por componente</h2>
+                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px;">
+
+                        <div style="border-radius: 16px; padding: 24px; background: #E3F2FD; position: relative; overflow: hidden;">
+                            <div style="position: absolute; top: 0; left: 0; height: 4px; width: 100%; background: #1E88E5; border-radius: 16px 16px 0 0;"></div>
+                            <div style="font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: #1565C0; margin-bottom: 14px;">&#128187; Dispositivo</div>
+                            <div style="font-size: 30px; font-weight: 800; font-family: 'JetBrains Mono', monospace; color: #1565C0; line-height: 1;" id="co2-device">--</div>
+                            <div style="margin: 14px 0 6px;">
+                                <div style="background: #BBDEFB; border-radius: 6px; height: 10px; overflow: hidden;">
+                                    <div id="bar-device" style="height: 100%; background: linear-gradient(90deg, #1E88E5, #42A5F5); width: 0%; transition: width 0.6s ease; border-radius: 6px;"></div>
+                                </div>
+                            </div>
+                            <div style="font-size: 26px; font-weight: 700; color: #1E88E5;" id="pct-device">--%</div>
+                            <div style="font-size: 11px; color: #5C6BC0; margin-top: 8px; line-height: 1.4;" id="device-detail-text"></div>
+                        </div>
+
+                        <div style="border-radius: 16px; padding: 24px; background: #FFFDE7; position: relative; overflow: hidden;">
+                            <div style="position: absolute; top: 0; left: 0; height: 4px; width: 100%; background: #FFC107; border-radius: 16px 16px 0 0;"></div>
+                            <div style="font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: #F57F17; margin-bottom: 14px;">&#128246; Red</div>
+                            <div style="font-size: 30px; font-weight: 800; font-family: 'JetBrains Mono', monospace; color: #F57F17; line-height: 1;" id="co2-network">--</div>
+                            <div style="margin: 14px 0 6px;">
+                                <div style="background: #FFF9C4; border-radius: 6px; height: 10px; overflow: hidden;">
+                                    <div id="bar-network" style="height: 100%; background: linear-gradient(90deg, #FFC107, #FFD54F); width: 0%; transition: width 0.6s ease; border-radius: 6px;"></div>
+                                </div>
+                            </div>
+                            <div style="font-size: 26px; font-weight: 700; color: #FFC107;" id="pct-network">--%</div>
+                            <div style="font-size: 11px; color: #9E9D24; margin-top: 8px; line-height: 1.4;" id="network-detail-text"></div>
+                        </div>
+
+                        <div style="border-radius: 16px; padding: 24px; background: #FFEBEE; position: relative; overflow: hidden;">
+                            <div style="position: absolute; top: 0; left: 0; height: 4px; width: 100%; background: #E53935; border-radius: 16px 16px 0 0;"></div>
+                            <div style="font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: #B71C1C; margin-bottom: 14px;">&#127970; Data Center</div>
+                            <div style="font-size: 30px; font-weight: 800; font-family: 'JetBrains Mono', monospace; color: #B71C1C; line-height: 1;" id="co2-datacenter">--</div>
+                            <div style="margin: 14px 0 6px;">
+                                <div style="background: #FFCDD2; border-radius: 6px; height: 10px; overflow: hidden;">
+                                    <div id="bar-datacenter" style="height: 100%; background: linear-gradient(90deg, #E53935, #EF5350); width: 0%; transition: width 0.6s ease; border-radius: 6px;"></div>
+                                </div>
+                            </div>
+                            <div style="font-size: 26px; font-weight: 700; color: #E53935;" id="pct-datacenter">--%</div>
+                            <div style="font-size: 11px; color: #C62828; margin-top: 8px; line-height: 1.4;" id="dc-detail-text"></div>
+                        </div>
+
+                    </div>
+                </div>
+
+                <div class="chart-container">
+                    <h3 class="card-title">Distribucion de emisiones por componente</h3>
+                    <div id="pie-chart"></div>
+                </div>
+                <div class="chart-container">
+                    <h3 class="card-title">Desglose de energia (Wh)</h3>
+                    <div id="bar-chart"></div>
+                </div>
+                <div class="card">
+                    <h2 class="card-title">Datos tecnicos detallados</h2>
+                    <div class="table-responsive">
+                        <table>
+                            <thead><tr><th>Componente</th><th>Energia (Wh)</th><th>CI (gCO2/kWh)</th><th>CO2 (gCO2)</th><th>% del Total</th></tr></thead>
+                            <tbody id="dashboard-table-body"></tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="metrics-grid" id="dashboard-metrics"></div>
+                <!-- Greenwashing section -->
+                <div class="card" id="greenwashing-card" style="display: none;">
+                    <h2 class="card-title">Greenwashing: Renovables reales vs. declaradas <span style="font-size: 12px; font-weight: 500; color: var(--secondary-orange); background: #FFF3E0; padding: 3px 10px; border-radius: 12px; margin-left: 8px;">Trabajo opcional futuro</span></h2>
+                    <p style="font-size: 13px; color: var(--text-gray); margin-bottom: 16px;">Diferencia entre el porcentaje de renovables en la red electrica real de la zona (renewable_grid_pct) y el porcentaje declarado por el proveedor mediante PPAs y certificados (provider_renewable_pct).</p>
+                    <div id="greenwashing-content"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 4: COMPARADOR -->
+        <div class="tab-content" id="comparador">
+            <div class="section">
+                <h2 class="section-title">Comparativa entre modelos</h2>
+
+                <!-- Banner de contexto derivado del formulario -->
+                <div class="card" style="background: linear-gradient(135deg, #E8F0FE, #F0F4FF); padding: 14px 20px; margin-bottom: 0;">
+                    <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;">
+                        <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap; flex: 1;">
+                            <span style="font-size: 11px; font-weight: 700; color: #4285F4; text-transform: uppercase; letter-spacing: 0.5px; flex-shrink:0;">Configuración activa</span>
+                            <span style="font-size: 13px; color: var(--primary-dark);" id="comp-context-text">—</span>
+                        </div>
+                        <button onclick="generateComparatorPDF()" id="btn-pdf" style="
+                            display: flex; align-items: center; gap: 6px;
+                            background: #2D5016; color: white; border: none;
+                            padding: 8px 16px; border-radius: 8px; font-size: 12px;
+                            font-weight: 700; cursor: pointer; white-space: nowrap;
+                            font-family: inherit; transition: background 0.2s;
+                        " onmouseover="this.style.background='#1a3009'" onmouseout="this.style.background='#2D5016'">
+                            📄 Descargar informe PDF
+                        </button>
+                    </div>
+                    <div style="font-size: 11px; color: var(--text-gray); margin-top: 4px;">El tipo de petición y la configuración se leen del formulario. Todos los modelos se comparan bajo las mismas condiciones.</div>
+                    <div style="font-size: 11px; color: #5D4037; margin-top: 4px; background: #FFF3E0; border-left: 3px solid #FF9800; padding: 10px 12px; border-radius: 0 4px 4px 0; line-height: 1.6;">
+                        <strong style="color:#E65100;">⚠️ [MOCKUP] Nota metodológica: diferencias entre la calculadora y el comparador</strong><br><br>
+                        En la <strong>calculadora principal</strong>, el CO₂ total de una consulta se desglosa en tres componentes que varían de forma independiente: el CO₂ del dispositivo del usuario (en función del procesador, la potencia y el país), el CO₂ de la transferencia de datos por la red (según el tipo de conexión y el país), y el CO₂ del data center (según el modelo de IA, los tokens procesados, el PUE del DC y la intensidad de carbono del país donde está ubicado el servidor). La fórmula del componente DC es: <em>CO₂_DC = (tokens/1000) × energy_wh_1k × PUE / 1000 × CI_DC</em>. Si el modelo no dispone del dato <em>energy_wh_1k</em>, se aplica un fallback teórico de 2N FLOPs.<br><br>
+                        En el <strong>comparador</strong>, en cambio, los componentes de dispositivo, red y data center se fijan a los valores del último cálculo de la calculadora. Lo único que varía entre modelos es el dato <em>energy_wh_1k</em> de cada uno, lo que permite una comparación rápida y equitativa bajo las mismas condiciones. El <strong>eje Y</strong> del gráfico muestra el CO₂/query calculado de esta forma; el <strong>eje X</strong> muestra la velocidad de inferencia del modelo en tokens por segundo, extraída del parámetro <em>tps</em> (tokens per second) del CSV de modelos. Importante: el comparador <strong>no aplica el fallback 2N FLOPs</strong>; si algún modelo tuviese <em>energy_wh_1k = 0</em>, su CO₂_DC resultaría 0 en lugar de estimarse teóricamente.
+                    </div>
+                </div>
+
+                <!-- Scatter + Recomendaciones -->
+                <div style="display: grid; grid-template-columns: 3fr 2fr; gap: 24px; align-items: start;">
+                    <div class="chart-container" style="margin: 0;">
+                        <h3 class="card-title">Rendimiento vs Sostenibilidad</h3>
+                        <p style="font-size: 12px; color: var(--text-gray); margin-bottom: 4px;">El eje X representa la velocidad de inferencia de cada modelo en tokens por segundo (parámetro <code>tps</code> del CSV de modelos), y el eje Y su huella de CO₂ por consulta en gCO₂, ambos en escala logarítmica. El modelo ideal aparece en la esquina inferior derecha: muy rápido y muy limpio. Los modelos marcados con <strong style="color:#2D5016;">★</strong> son <strong>Pareto-óptimos</strong>: no existe ningún otro modelo que los supere simultáneamente en velocidad y en sostenibilidad.</p>
+                        <div id="comp-scatter-chart"></div>
+                    </div>
+                    <div style="padding-top: 24px;">
+                        <h3 class="card-title" style="margin-bottom: 12px;">Modelos destacados</h3>
+                        <div id="comp-recommendations" style="display: flex; flex-direction: column; gap: 12px;"></div>
+                    </div>
+                </div>
+
+                <!-- Tabla enriquecida -->
+                <div class="card">
+                    <h3 class="card-title">Comparativa detallada</h3>
+                    <p style="font-size: 12px; color: var(--text-gray); margin-bottom: 16px;">Ordenados de menor a mayor emisión. La barra muestra el CO₂ relativo al modelo más contaminante. El ahorro es respecto al modelo seleccionado en el formulario.</p>
+                    <div class="table-responsive">
+                        <table>
+                            <thead><tr><th>Modelo</th><th>Org.</th><th>CO₂/query (gCO₂)</th><th>Emisión relativa</th><th>Ahorro vs actual</th><th>Tokens/s</th><th>Latencia</th><th>Etiqueta</th></tr></thead>
+                            <tbody id="comparator-table-body"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Bar chart -->
+                <div class="chart-container">
+                    <h3 class="card-title">Comparativa de emisiones CO₂/query</h3>
+                    <div id="comparison-chart"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 5: SIMULACION -->
+        <div class="tab-content" id="simulacion">
+            <div class="section">
+                <h2 class="section-title">Simulacion: ¿Que pasaria a gran escala?</h2>
+                <div class="card" style="margin-bottom: 24px;">
+                    <p style="font-size: 14px; color: var(--text-gray); margin-bottom: 16px;">Esta pantalla te permite <strong>escalar el resultado de una unica query</strong> a millones de consultas anuales, como haria una empresa o servicio en produccion. Asi puedes ver el impacto real acumulado y comparar con equivalencias cotidianas.</p>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: end;">
+                        <div>
+                            <label for="sim-queries-input" style="font-size: 13px;">Numero de queries anuales</label>
+                            <div style="font-size: 11px; color: var(--text-gray); margin-bottom: 6px;">Ej: 1.000 (uso personal), 1.000.000 (startup), 100.000.000 (gran empresa)</div>
+                            <input type="number" id="sim-queries-input" value="1000000" min="1" style="font-size: 16px; font-weight: 600;">
+                        </div>
+                        <div>
+                            <button class="button button-primary" onclick="updateSimulation()" style="width: 100%;">Simular impacto anual</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="card highlighted" id="sim-annual-card" style="display: none;">
+                    <div style="text-align: center;">
+                        <h3 style="font-size: 18px; font-weight: 600; color: var(--primary-dark); margin-bottom: 8px;" id="sim-title"></h3>
+                        <div style="font-size: 13px; color: var(--text-gray); margin-bottom: 16px;" id="sim-per-query-info"></div>
+                        <div id="sim-annual-value" style="font-size: 48px; font-weight: 700; font-family: 'JetBrains Mono', monospace; color: var(--primary-dark); margin-bottom: 8px;"></div>
+                        <div id="sim-equivalences" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-top: 24px;"></div>
+                    </div>
+                </div>
+                <div class="chart-container">
+                    <h3 class="card-title" id="projection-chart-title">Proyeccion 5 anos &mdash; Impacto acumulado</h3>
+                    <div id="projection-chart"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 6: ENERGY LABEL -->
+        <div class="tab-content" id="energy-label">
+            <div class="section">
+                <h2 class="section-title">Etiqueta de eficiencia energetica</h2>
+                <p style="font-size: 13px; color: var(--text-gray); margin-bottom: 24px;">Sistema de 9 clases (A+++ a F) basado en el analisis de 426.000 combinaciones de modelos, data centers, dispositivos, redes y tipos de peticion.</p>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 48px;">
+                    <div class="energy-label" id="energy-label-widget">
+                        <div class="energy-label-header" id="energy-label-header">
+                            Ejecuta un calculo para ver la etiqueta
+                        </div>
+                        <div class="energy-label-content">
+                            <div style="text-align: center; margin-bottom: 16px;">
+                                <div style="font-size: 28px; font-weight: 700; color: var(--primary-dark);" id="energy-label-class">--</div>
+                                <div style="font-size: 12px; color: var(--text-gray);" id="energy-label-desc"></div>
+                            </div>
+                            <div class="energy-label-scale" id="energy-label-scale"></div>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="card">
+                            <h3 class="card-title">Escala de clases y umbrales</h3>
+                            <div style="display: grid; gap: 12px;" id="label-thresholds-info"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 7: MAPA GLOBAL -->
+        <div class="tab-content" id="mapa">
+            <div class="section">
+                <h2 class="section-title">Data Centers y su impacto por region</h2>
+                <div class="card">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 8px;">
+                        <h3 class="card-title" style="margin: 0;">71 Data Centers reales del dataset</h3>
+                        <div style="display: flex; gap: 12px; align-items: center; font-size: 12px; flex-wrap: wrap;">
+                            <div style="display: flex; align-items: center; gap: 4px;"><div style="width: 14px; height: 14px; background: #2D5016; border-radius: 50%;"></div><span>&lt;100 gCO₂/kWh (Muy limpio)</span></div>
+                            <div style="display: flex; align-items: center; gap: 4px;"><div style="width: 14px; height: 14px; background: #4CAF50; border-radius: 50%;"></div><span>100-200 (Limpio)</span></div>
+                            <div style="display: flex; align-items: center; gap: 4px;"><div style="width: 14px; height: 14px; background: #FFC107; border-radius: 50%;"></div><span>200-300 (Medio)</span></div>
+                            <div style="display: flex; align-items: center; gap: 4px;"><div style="width: 14px; height: 14px; background: #FF6F00; border-radius: 50%;"></div><span>300-400 (Alto)</span></div>
+                            <div style="display: flex; align-items: center; gap: 4px;"><div style="width: 14px; height: 14px; background: #E74C3C; border-radius: 50%;"></div><span>400-600 (Muy alto)</span></div>
+                            <div style="display: flex; align-items: center; gap: 4px;"><div style="width: 14px; height: 14px; background: #7B1A1A; border-radius: 50%;"></div><span>&gt;600 (Crítico)</span></div>
+                        </div>
+                    </div>
+                </div>
+                <div style="background: #F5F9FF; border-left: 4px solid #4285F4; padding: 16px; margin-bottom: 16px; border-radius: 6px;">
+                    <div style="display: grid; gap: 12px; font-size: 13px; color: var(--text-gray);">
+                        <div>
+                            <strong style="color: var(--primary-dark);">🌍 Qué ves en este mapa:</strong>
+                            <div style="margin-top: 8px;">
+                                <div><strong>📍 Regiones coloreadas</strong> — Cada país está coloreado según la intensidad de carbono (CI) de su red eléctrica en gCO₂/kWh. Verde = energía limpia, Rojo = energía sucia.</div>
+                                <div style="margin-top: 8px;"><strong>🔵 Marcadores de DC</strong> — Cada data center tiene un icono circular. El color del icono es el proveedor (Naranja=AWS, Azul=GCP, Azul claro=Azure, Púrpura=Deep Green). El borde del icono usa el color de CI del país.</div>
+                                <div style="margin-top: 8px;"><strong>💡 Al clicar en un país o DC</strong> — Muestra CI real, % renovables, PUE, greenwashing (si aplica), y <strong>estimación de CO₂/query para el modelo y petición seleccionados</strong>.</div>
+                                <div style="margin-top: 8px;"><strong style="color: #FF6F00;">⚠️ Advertencia de greenwashing</strong> — Si un DC declara muchas renovables pero la red sólo tiene pocas, mostrará una alerta.</div>
+                            </div>
+                        </div>
+                        <div style="padding-top: 8px; border-top: 1px solid #E0E8F5;">
+                            <strong style="color: var(--primary-dark);">💡 Consejo:</strong> Sitúa el ratón sobre diferentes regiones y DCs para comparar su impacto con tu modelo seleccionado.
+                        </div>
+                    </div>
+                </div>
+                <div id="map"></div>
+                <div class="map-info-panel" id="map-info-panel">
+                    <div class="map-info-card">
+                        <h3>Resumen del dataset</h3>
+                        <div style="font-size: 13px; color: var(--text-gray); line-height: 2;">
+                            <strong>Total Data Centers:</strong> 71<br>
+                            <strong>Proveedores:</strong> Google Cloud, AWS, Microsoft Azure, Deep Green<br>
+                            <strong>PUE medio:</strong> 1.14<br>
+                            <strong>Mejor PUE:</strong> Deep Green Exmouth (1.005)<br>
+                            <strong>Peor PUE:</strong> AWS Hyderabad (1.46)
+                        </div>
+                    </div>
+                    <div class="map-info-card">
+                        <h3>Recomendacion para minimizar emisiones</h3>
+                        <div style="font-size: 13px; color: var(--text-gray); line-height: 2;">
+                            <strong>1.</strong> Elegir DC con bajo PUE (Google Cloud Oregon: 1.06)<br>
+                            <strong>2.</strong> Priorizar regiones con baja CI (Noruega: 20 gCO2/kWh)<br>
+                            <strong>3.</strong> Verificar renovables reales vs declaradas (greenwashing)<br>
+                            <strong>4.</strong> Usar modelo eficiente (Phi-2: 0.013 Wh/1k tokens)
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    // =====================================================================
+    // DATASETS EMBEBIDOS (extraidos del proyecto real)
+    // =====================================================================
+    const MODELS = [
+        {id:"gpt-4", name:"GPT-4", org:"OpenAI", params:1700000000000, energy_wh_1k:0.443178, latency_ms:35.0, tps:28.6, typical_type:"chat_simple", methodology:"2N FLOPs (MoE ~280B activos)", notes:"MoE ~1.7T total, ~280B activos"},
+        {id:"palm2", name:"PaLM 2", org:"Google", params:340000000000, energy_wh_1k:0.538145, latency_ms:9.84, tps:101.6, typical_type:"chat_simple", methodology:"2N FLOPs", notes:"340B params"},
+        {id:"opt-175b", name:"OPT 175B", org:"Meta AI", params:175000000000, energy_wh_1k:0.276986, latency_ms:45.0, tps:22.2, typical_type:"chat_simple", methodology:"2N FLOPs", notes:"175B params"},
+        {id:"claude-2", name:"Claude 2", org:"Anthropic", params:100000000000, energy_wh_1k:0.2035, latency_ms:3.83, tps:261.1, typical_type:"chat_simple", methodology:"2N FLOPs", notes:"~100B estimados"},
+        {id:"llama2-70b", name:"Llama 2 (70B)", org:"Meta", params:70000000000, energy_wh_1k:0.14245, latency_ms:28.0, tps:35.7, typical_type:"chat_simple", methodology:"2N FLOPs", notes:"70B params"},
+        {id:"falcon-40b", name:"Falcon 40B", org:"TII", params:40000000000, energy_wh_1k:0.0814, latency_ms:2.73, tps:366.3, typical_type:"chat_simple", methodology:"2N FLOPs", notes:"40B params"},
+        {id:"mpt-30b", name:"MPT 30B", org:"MosaicML", params:30000000000, energy_wh_1k:0.08547, latency_ms:2.77, tps:361.0, typical_type:"chat_simple", methodology:"2N FLOPs", notes:"30B params"},
+        {id:"gemma-7b", name:"Gemma 7B", org:"Google DeepMind", params:8540000000, energy_wh_1k:0.02433, latency_ms:1.22, tps:819.7, typical_type:"chat_simple", methodology:"2N FLOPs", notes:"8.54B params"},
+        {id:"mistral-7b", name:"Mistral 7B", org:"Mistral AI", params:7300000000, energy_wh_1k:0.020798, latency_ms:8.0, tps:125.0, typical_type:"chat_simple", methodology:"2N FLOPs", notes:"7.3B params"},
+        {id:"phi-2", name:"Phi-2", org:"Microsoft", params:2700000000, energy_wh_1k:0.012821, latency_ms:1.12, tps:892.9, typical_type:"chat_simple", methodology:"2N FLOPs", notes:"2.7B params"}
+    ];
+
+    const DEVICES = [
+        {id:"smart-speaker-echo", name:"Amazon Echo (4th Gen)", type:"Smart Speaker", idle:2.0, cpu_w:2.0, gpu_w:0.0, npu_w:0.8, primary:"npu", has_npu:true, gpu_tdp:0},
+        {id:"smart-speaker-homepod", name:"Apple HomePod (2nd Gen)", type:"Smart Speaker", idle:2.5, cpu_w:2.5, gpu_w:0.8, npu_w:0.6, primary:"npu", has_npu:true, gpu_tdp:1},
+        {id:"edge-coral-tpu", name:"Google Coral Dev Board", type:"Edge Device", idle:2.0, cpu_w:2.0, gpu_w:0.5, npu_w:1.5, primary:"npu", has_npu:true, gpu_tdp:1},
+        {id:"phone-budget-average", name:"Smartphone Budget Promedio", type:"Smartphone", idle:0.3, cpu_w:2.5, gpu_w:2.0, npu_w:1.0, primary:"cpu", has_npu:true, gpu_tdp:3.5},
+        {id:"phone-pixel-8-pro", name:"Google Pixel 8 Pro", type:"Smartphone", idle:0.4, cpu_w:3.0, gpu_w:4.5, npu_w:1.8, primary:"npu", has_npu:true, gpu_tdp:7},
+        {id:"phone-iphone-15-pro", name:"iPhone 15 Pro Max", type:"Smartphone", idle:0.5, cpu_w:3.5, gpu_w:5.0, npu_w:1.5, primary:"npu", has_npu:true, gpu_tdp:8},
+        {id:"phone-samsung-s24-ultra", name:"Samsung Galaxy S24 Ultra", type:"Smartphone", idle:0.6, cpu_w:4.0, gpu_w:6.0, npu_w:2.0, primary:"npu", has_npu:true, gpu_tdp:9},
+        {id:"edge-raspberry-pi-5", name:"Raspberry Pi 5", type:"Edge Device", idle:3.0, cpu_w:6.0, gpu_w:3.0, npu_w:0, primary:"cpu", has_npu:false, gpu_tdp:4},
+        {id:"tablet-android-average", name:"Tablet Android Promedio", type:"Tablet", idle:1.0, cpu_w:5.0, gpu_w:5.0, npu_w:1.5, primary:"npu", has_npu:true, gpu_tdp:7},
+        {id:"tablet-ipad-pro-m4", name:"iPad Pro M4", type:"Tablet", idle:1.5, cpu_w:7.0, gpu_w:10.0, npu_w:3.0, primary:"npu", has_npu:true, gpu_tdp:15},
+        {id:"laptop-macbook-air-m3", name:"MacBook Air M3", type:"Laptop", idle:3.0, cpu_w:8.0, gpu_w:12.0, npu_w:4.0, primary:"npu", has_npu:true, gpu_tdp:15},
+        {id:"laptop-thinkpad-x1-carbon", name:"Lenovo ThinkPad X1 Carbon Gen 12", type:"Laptop", idle:5.0, cpu_w:12.0, gpu_w:10.0, npu_w:3.0, primary:"npu", has_npu:true, gpu_tdp:12},
+        {id:"laptop-budget-average", name:"Laptop Budget Promedio", type:"Laptop", idle:6.0, cpu_w:12.0, gpu_w:8.0, npu_w:0, primary:"cpu", has_npu:false, gpu_tdp:10},
+        {id:"edge-nvidia-jetson-orin", name:"NVIDIA Jetson AGX Orin", type:"Edge Device", idle:15.0, cpu_w:10.0, gpu_w:30.0, npu_w:8.0, primary:"gpu", has_npu:true, gpu_tdp:40},
+        {id:"laptop-macbook-pro-m3-max", name:"MacBook Pro M3 Max", type:"Laptop", idle:8.0, cpu_w:25.0, gpu_w:45.0, npu_w:6.0, primary:"gpu", has_npu:true, gpu_tdp:60},
+        {id:"desktop-office-average", name:"Desktop Oficina Promedio", type:"Desktop", idle:35.0, cpu_w:45.0, gpu_w:12.0, npu_w:0, primary:"cpu", has_npu:false, gpu_tdp:15},
+        {id:"laptop-dell-xps-15", name:"Dell XPS 15 (2024)", type:"Laptop", idle:12.0, cpu_w:35.0, gpu_w:85.0, npu_w:4.0, primary:"gpu", has_npu:true, gpu_tdp:115},
+        {id:"laptop-gaming-rtx4090", name:"Laptop Gaming RTX 4090", type:"Laptop", idle:25.0, cpu_w:40.0, gpu_w:150.0, npu_w:0, primary:"gpu", has_npu:false, gpu_tdp:175},
+        {id:"desktop-mac-studio-m2-ultra", name:"Mac Studio M2 Ultra", type:"Desktop", idle:30.0, cpu_w:50.0, gpu_w:120.0, npu_w:18.0, primary:"gpu", has_npu:true, gpu_tdp:150},
+        {id:"desktop-gaming-rtx4090", name:"Desktop Gaming RTX 4090", type:"Desktop", idle:65.0, cpu_w:85.0, gpu_w:350.0, npu_w:0, primary:"gpu", has_npu:false, gpu_tdp:450}
+    ];
+
+    // Representative subset of 71 DCs (15 representative for the dropdown, all in map)
+    const DATA_CENTERS_ALL = [
+        {id:"deepgreen-uk-exmouth",provider:"Deep Green",region:"Exmouth (UK)",cc:"UK",pue:1.005,renew_prov:100,lat:50.63,lng:-3.41},
+        {id:"gcp-us-west1",provider:"Google Cloud",region:"us-west1 (Oregon)",cc:"US",pue:1.06,renew_prov:100,lat:45.59,lng:-121.18},
+        {id:"gcp-us-or1-a",provider:"Google Cloud",region:"us-or1 (Oregon, F2)",cc:"US",pue:1.06,renew_prov:100,lat:45.60,lng:-121.20},
+        {id:"gcp-us-east5",provider:"Google Cloud",region:"us-east5 (Ohio)",cc:"US",pue:1.06,renew_prov:100,lat:40.10,lng:-82.78},
+        {id:"gcp-europe-west3",provider:"Google Cloud",region:"europe-west3 (Denmark)",cc:"DK",pue:1.07,renew_prov:100,lat:55.57,lng:9.74},
+        {id:"gcp-us-central1",provider:"Google Cloud",region:"us-central1 (Iowa)",cc:"US",pue:1.07,renew_prov:100,lat:41.26,lng:-95.86},
+        {id:"gcp-europe-west4",provider:"Google Cloud",region:"europe-west4 (Netherlands)",cc:"NL",pue:1.08,renew_prov:100,lat:53.44,lng:6.83},
+        {id:"gcp-europe-west2",provider:"Google Cloud",region:"europe-west2 (Ireland)",cc:"IE",pue:1.08,renew_prov:100,lat:53.34,lng:-6.26},
+        {id:"gcp-europe-west1",provider:"Google Cloud",region:"europe-west1 (Belgium)",cc:"BE",pue:1.08,renew_prov:100,lat:50.47,lng:3.82},
+        {id:"aws-eu-south-2",provider:"AWS",region:"eu-south-2 (Spain)",cc:"ES",pue:1.09,renew_prov:100,lat:41.65,lng:-0.88},
+        {id:"gcp-global",provider:"Google Cloud",region:"Global Average",cc:"GLOBAL",pue:1.09,renew_prov:100,lat:37.0,lng:-122.0},
+        {id:"aws-eu-north-1",provider:"AWS",region:"eu-north-1 (Stockholm)",cc:"SE",pue:1.10,renew_prov:100,lat:59.33,lng:18.07},
+        {id:"gcp-europe-north1",provider:"Google Cloud",region:"europe-north1 (Finland)",cc:"FI",pue:1.10,renew_prov:100,lat:60.56,lng:27.19},
+        {id:"gcp-us-east1",provider:"Google Cloud",region:"us-east1 (S. Carolina)",cc:"US",pue:1.10,renew_prov:100,lat:33.21,lng:-80.01},
+        {id:"gcp-us-south1",provider:"Google Cloud",region:"us-south1 (Texas)",cc:"US",pue:1.10,renew_prov:100,lat:32.44,lng:-96.88},
+        {id:"aws-eu-west-1",provider:"AWS",region:"eu-west-1 (Ireland)",cc:"IE",pue:1.11,renew_prov:100,lat:53.34,lng:-6.50},
+        {id:"azure-wyoming",provider:"Azure",region:"wyoming (Wyoming)",cc:"US",pue:1.12,renew_prov:100,lat:43.07,lng:-107.29},
+        {id:"aws-us-west-2",provider:"AWS",region:"us-west-2 (Oregon)",cc:"US",pue:1.12,renew_prov:100,lat:45.82,lng:-119.70},
+        {id:"azure-arizona",provider:"Azure",region:"arizona (Arizona)",cc:"US",pue:1.13,renew_prov:100,lat:33.45,lng:-112.07},
+        {id:"aws-us-east-2",provider:"AWS",region:"us-east-2 (Ohio)",cc:"US",pue:1.13,renew_prov:100,lat:39.96,lng:-83.00},
+        {id:"gcp-asia-east1",provider:"Google Cloud",region:"asia-east1 (Taiwan)",cc:"TW",pue:1.13,renew_prov:100,lat:24.05,lng:120.52},
+        {id:"gcp-asia-southeast1",provider:"Google Cloud",region:"asia-southeast1 (Singapore)",cc:"SG",pue:1.13,renew_prov:100,lat:1.35,lng:103.82},
+        {id:"azure-westeurope",provider:"Azure",region:"westeurope (Netherlands)",cc:"NL",pue:1.14,renew_prov:100,lat:52.37,lng:4.90},
+        {id:"azure-eastus",provider:"Azure",region:"eastus (Virginia)",cc:"US",pue:1.14,renew_prov:100,lat:37.43,lng:-79.97},
+        {id:"aws-us-east-1",provider:"AWS",region:"us-east-1 (N. Virginia)",cc:"US",pue:1.15,renew_prov:100,lat:38.95,lng:-77.45},
+        {id:"aws-global",provider:"AWS",region:"Global Average",cc:"GLOBAL",pue:1.15,renew_prov:100,lat:38.0,lng:-97.0},
+        {id:"azure-centralus",provider:"Azure",region:"centralus (Iowa)",cc:"US",pue:1.16,renew_prov:100,lat:41.88,lng:-93.10},
+        {id:"azure-sweden-central",provider:"Azure",region:"swedencentral (Sweden)",cc:"SE",pue:1.16,renew_prov:100,lat:59.33,lng:17.85},
+        {id:"azure-global",provider:"Azure",region:"Global Average",cc:"GLOBAL",pue:1.16,renew_prov:100,lat:47.64,lng:-122.13},
+        {id:"azure-westus2",provider:"Azure",region:"westus2 (Washington)",cc:"US",pue:1.16,renew_prov:100,lat:47.63,lng:-122.34},
+        {id:"aws-ca-west-1",provider:"AWS",region:"ca-west-1 (Canada West)",cc:"CA",pue:1.17,renew_prov:100,lat:51.05,lng:-114.07},
+        {id:"aws-sa-east-1",provider:"AWS",region:"sa-east-1 (Sao Paulo)",cc:"BR",pue:1.17,renew_prov:100,lat:-23.55,lng:-46.63},
+        {id:"aws-us-west-1",provider:"AWS",region:"us-west-1 (N. California)",cc:"US",pue:1.18,renew_prov:100,lat:37.35,lng:-121.96},
+        {id:"azure-northeurope",provider:"Azure",region:"northeurope (Ireland)",cc:"IE",pue:1.18,renew_prov:100,lat:53.35,lng:-6.30},
+        {id:"aws-ca-central-1",provider:"AWS",region:"ca-central-1 (Canada Central)",cc:"CA",pue:1.19,renew_prov:100,lat:45.50,lng:-73.57},
+        {id:"azure-poland-central",provider:"Azure",region:"polandcentral (Poland)",cc:"PL",pue:1.19,renew_prov:100,lat:52.23,lng:21.01},
+        {id:"aws-af-south-1",provider:"AWS",region:"af-south-1 (Cape Town)",cc:"ZA",pue:1.24,renew_prov:100,lat:-33.92,lng:18.42},
+        {id:"azure-illinois",provider:"Azure",region:"illinois (Illinois)",cc:"US",pue:1.25,renew_prov:100,lat:41.88,lng:-87.63},
+        {id:"aws-cn-north-1",provider:"AWS",region:"cn-north-1 (Ningxia)",cc:"CN",pue:1.25,renew_prov:100,lat:38.47,lng:106.27},
+        {id:"aws-me-central-1",provider:"AWS",region:"me-central-1 (UAE)",cc:"AE",pue:1.27,renew_prov:100,lat:24.45,lng:54.65},
+        {id:"aws-ap-northeast-1",provider:"AWS",region:"ap-northeast-1 (Tokyo)",cc:"JP",pue:1.27,renew_prov:100,lat:35.68,lng:139.69},
+        {id:"azure-southcentralus",provider:"Azure",region:"southcentralus (Texas)",cc:"US",pue:1.28,renew_prov:100,lat:29.43,lng:-98.49},
+        {id:"azure-southeastasia",provider:"Azure",region:"southeastasia (Singapore)",cc:"SG",pue:1.30,renew_prov:100,lat:1.29,lng:103.85},
+        {id:"aws-ap-southeast-1",provider:"AWS",region:"ap-southeast-1 (Singapore)",cc:"SG",pue:1.32,renew_prov:100,lat:1.32,lng:103.80},
+        {id:"aws-me-south-1",provider:"AWS",region:"me-south-1 (Bahrain)",cc:"BH",pue:1.33,renew_prov:100,lat:26.07,lng:50.55},
+        {id:"aws-eu-central-1",provider:"AWS",region:"eu-central-1 (Frankfurt)",cc:"DE",pue:1.35,renew_prov:100,lat:50.11,lng:8.68},
+        {id:"aws-ap-south-1",provider:"AWS",region:"ap-south-1 (Mumbai)",cc:"IN",pue:1.42,renew_prov:100,lat:19.08,lng:72.88},
+        {id:"aws-ap-south-2",provider:"AWS",region:"ap-south-2 (Hyderabad)",cc:"IN",pue:1.46,renew_prov:100,lat:17.39,lng:78.49}
+    ];
+
+    const NETWORKS = [
+        {id:"Fiber FTTH", name:"Fibra Optica (FTTH)", kwh_mb:0.0004, kwh_gb:0.4},
+        {id:"WiFi 6 802.11ax", name:"WiFi 6 (802.11ax)", kwh_mb:0.0008, kwh_gb:0.8},
+        {id:"WiFi 6E 802.11be", name:"WiFi 6E (802.11be)", kwh_mb:0.0007, kwh_gb:0.7},
+        {id:"5G NSA", name:"5G NSA", kwh_mb:0.004, kwh_gb:4.0},
+        {id:"4G LTE", name:"4G LTE", kwh_mb:0.006, kwh_gb:6.0}
+    ];
+
+    const REQUEST_TYPES = {
+        "chat_simple": {label:"Chat Simple", input:70, output:215},
+        "chat_extended": {label:"Chat Extendido", input:296, output:441},
+        "generation_short": {label:"Generacion Corta", input:20, output:65},
+        "generation_long": {label:"Generacion Larga", input:50, output:2048},
+        "summarization": {label:"Resumen", input:781, output:56},
+        "code_generation": {label:"Generacion de Codigo", input:100, output:300},
+        "translation": {label:"Traduccion", input:200, output:220}
+    };
+
+    const CI_COUNTRIES = {
+        "ES":145,"FR":50,"DE":380,"UK":230,"IE":350,"SE":25,"NO":20,"PL":650,
+        "US":380,"US-CA":180,"US-VA":320,"US-OR":80,"CN":550,"IN":700,"AU":500,
+        "JP":450,"GLOBAL":450,"DK":110,"NL":185,"FI":85,"BE":165,"BR":85,
+        "CA":120,"SG":380,"TW":510,"ZA":850,"BH":500,"AE":450
+    };
+
+    // Greenwashing data: real grid renewable % for some representative DCs
+    const DC_RENEWABLE_GRID = {
+        "deepgreen-uk-exmouth": 45, "gcp-us-west1": 43, "gcp-us-or1-a": 100,
+        "gcp-us-east5": 19, "gcp-europe-west3": 80, "gcp-us-central1": 30,
+        "gcp-europe-west4": 40, "gcp-europe-west1": 45, "aws-eu-south-2": 55,
+        "aws-eu-north-1": 95, "gcp-europe-north1": 70, "aws-eu-west-1": 45,
+        "aws-us-west-2": 43, "aws-us-east-1": 25, "aws-us-east-2": 19,
+        "azure-eastus": 25, "azure-westeurope":40, "azure-sweden-central":95,
+        "aws-eu-central-1": 45, "aws-ap-south-1": 15, "aws-ap-south-2": 15,
+        "aws-ap-northeast-1": 20, "azure-southeastasia": 5, "aws-ap-southeast-1": 5
+    };
+
+    // Environmental label thresholds (from environmental_labels.py)
+    const LABEL_THRESHOLDS = [
+        {label:"A+++", max:0.000892, desc:"Excepcional", color:"#1B5E20", pct:"P0-P2"},
+        {label:"A++",  max:0.002885, desc:"Excelente",   color:"#2D5016", pct:"P2-P10"},
+        {label:"A+",   max:0.005406, desc:"Muy bueno",   color:"#388E3C", pct:"P10-P20"},
+        {label:"A",    max:0.008973, desc:"Bueno",       color:"#4CAF50", pct:"P20-P30"},
+        {label:"B",    max:0.022489, desc:"Aceptable",   color:"#8BC34A", pct:"P30-P50"},
+        {label:"C",    max:0.053997, desc:"Mejorable",   color:"#FFC107", pct:"P50-P70"},
+        {label:"D",    max:0.171746, desc:"Ineficiente", color:"#FF9800", pct:"P70-P90"},
+        {label:"E",    max:0.338943, desc:"Muy ineficiente", color:"#F44336", pct:"P90-P97"},
+        {label:"F",    max:Infinity,  desc:"No recomendado",  color:"#B71C1C", pct:"P97+"}
+    ];
+
+    // GPU fallback constants (from calculate_emissions.py)
+    const GPU_EFFICIENCY = 0.35;
+    const WATTS_PER_TFLOP = 1.28;
+    const A100_TFLOPS = 312;
+    const A100_TDP = 400;
+
+    // =====================================================================
+    // ESTADO GLOBAL
+    // =====================================================================
+    let lastResult = null;
+
+    // =====================================================================
+    // INICIALIZACION DE FORMULARIO
+    // =====================================================================
+    function initForm() {
+        // Models
+        const mSel = document.getElementById('modelo');
+        MODELS.forEach(m => {
+            const o = document.createElement('option');
+            o.value = m.id;
+            o.textContent = m.name + ' (' + m.org + ')';
+            mSel.appendChild(o);
+        });
+
+        // Request types
+        const rSel = document.getElementById('peticion');
+        Object.entries(REQUEST_TYPES).forEach(([k, v]) => {
+            const o = document.createElement('option');
+            o.value = k;
+            o.textContent = v.label + ' (' + v.input + '+' + v.output + ' tokens)';
+            rSel.appendChild(o);
+        });
+
+        // Data Centers (subset for dropdown)
+        const dcSel = document.getElementById('data-center');
+        const dcSubset = [
+            "deepgreen-uk-exmouth","gcp-us-west1","gcp-us-east5","gcp-europe-west1",
+            "gcp-europe-west3","aws-eu-south-2","aws-eu-north-1","aws-eu-west-1",
+            "aws-us-east-1","aws-us-west-2","azure-eastus","azure-westeurope",
+            "azure-sweden-central","aws-ap-northeast-1","aws-ap-south-1"
+        ];
+        dcSubset.forEach(dcId => {
+            const dc = DATA_CENTERS_ALL.find(d => d.id === dcId);
+            if (!dc) return;
+            const o = document.createElement('option');
+            o.value = dc.id;
+            o.textContent = dc.provider + ' - ' + dc.region + ' (PUE: ' + dc.pue + ')';
+            dcSel.appendChild(o);
+        });
+
+        // Devices
+        const dSel = document.getElementById('dispositivo');
+        DEVICES.forEach(d => {
+            const o = document.createElement('option');
+            o.value = d.id;
+            o.textContent = d.name + ' [' + d.type + ']';
+            dSel.appendChild(o);
+        });
+
+        // Networks
+        const nSel = document.getElementById('red');
+        NETWORKS.forEach(n => {
+            const o = document.createElement('option');
+            o.value = n.id;
+            o.textContent = n.name + ' (' + n.kwh_gb + ' kWh/GB)';
+            nSel.appendChild(o);
+        });
+
+        // Init info boxes
+        onModelChange();
+        onDeviceChange();
+        onDCChange();
+        onRequestTypeChange();
+
+        // Init label thresholds info
+        initLabelThresholdsInfo();
+    }
+
+    function onModelChange() {
+        const m = MODELS.find(m => m.id === document.getElementById('modelo').value);
+        if (!m) return;
+        const paramsStr = m.params >= 1e12 ? (m.params/1e12).toFixed(1) + 'T' : m.params >= 1e9 ? (m.params/1e9).toFixed(1) + 'B' : (m.params/1e6).toFixed(0) + 'M';
+        document.getElementById('modelo-info').innerHTML =
+            '<strong>' + paramsStr + ' params</strong> | ' + m.energy_wh_1k.toFixed(4) + ' Wh/1k tokens | ' + m.tps.toFixed(1) + ' tok/s | Metodologia: ' + m.methodology;
+    }
+
+    function onDeviceChange() {
+        const d = DEVICES.find(d => d.id === document.getElementById('dispositivo').value);
+        if (!d) return;
+        let procs = ['CPU: ' + d.cpu_w + 'W'];
+        if (d.gpu_tdp > 0) procs.push('GPU: ' + d.gpu_w + 'W');
+        if (d.has_npu) procs.push('NPU: ' + d.npu_w + 'W');
+        document.getElementById('device-info').innerHTML =
+            '<strong>Idle: ' + d.idle + 'W</strong> | Primario: ' + d.primary.toUpperCase() + ' | ' + procs.join(' | ');
+
+        // Update processor dropdown
+        updateProcessorOptions(d);
+    }
+
+    function updateProcessorOptions(d) {
+        const pSel = document.getElementById('procesador');
+        const currentVal = pSel.value;
+        // Build options: Auto first, then CPU (always), then GPU/NPU if available
+        pSel.innerHTML = '<option value="auto">Auto → ' + d.primary.toUpperCase() + ' (' + (d.primary === 'cpu' ? d.cpu_w : d.primary === 'gpu' ? d.gpu_w : d.npu_w) + 'W, optimo para este dispositivo)</option>';
+        pSel.innerHTML += '<option value="cpu">CPU (' + d.cpu_w + 'W)</option>';
+        if (d.gpu_tdp > 0) pSel.innerHTML += '<option value="gpu">GPU (' + d.gpu_w + 'W)</option>';
+        if (d.has_npu) pSel.innerHTML += '<option value="npu">NPU (' + d.npu_w + 'W)</option>';
+        // Update info text
+        const procInfo = document.getElementById('proc-info');
+        const primaryName = d.primary.toUpperCase();
+        procInfo.innerHTML = 'Este dispositivo usa <strong>' + primaryName + '</strong> como procesador optimo. ' +
+            (d.primary === 'npu' ? 'La NPU es un chip especializado en IA, mucho mas eficiente.' :
+             d.primary === 'gpu' ? 'La GPU es potente pero consume mas que una NPU.' :
+             'Solo dispone de CPU para inferencia.') +
+            ' CPU siempre esta disponible como alternativa.';
+        // Try to restore selection
+        if ([...pSel.options].some(o => o.value === currentVal)) pSel.value = currentVal;
+    }
+
+    function onDCChange() {
+        const dc = DATA_CENTERS_ALL.find(d => d.id === document.getElementById('data-center').value);
+        if (!dc) return;
+        const gridRenew = DC_RENEWABLE_GRID[dc.id];
+        let info = '<strong>PUE: ' + dc.pue + '</strong> | Proveedor: ' + dc.provider + ' | Pais: ' + dc.cc;
+        if (gridRenew !== undefined) {
+            info += ' | Renov. red: ' + gridRenew + '% vs declarado: ' + dc.renew_prov + '%';
+        }
+        document.getElementById('dc-info').innerHTML = info;
+    }
+
+    function onRequestTypeChange() {
+        const rt = REQUEST_TYPES[document.getElementById('peticion').value];
+        if (!rt) return;
+        const total = rt.input + rt.output;
+        document.getElementById('peticion-info').innerHTML =
+            'Input: ' + rt.input + ' tokens | Output: ' + rt.output + ' tokens | <strong>Total: ' + total + ' tokens</strong>';
+    }
+
+    // =====================================================================
+    // MOTOR DE CALCULO (replica de calculate_emissions.py)
+    // =====================================================================
+    function calcularEmisiones() {
+        const modelId = document.getElementById('modelo').value;
+        const reqType = document.getElementById('peticion').value;
+        const dcId = document.getElementById('data-center').value;
+        const deviceId = document.getElementById('dispositivo').value;
+        const procSel = document.getElementById('procesador').value;
+        const netId = document.getElementById('red').value;
+        const country = document.getElementById('pais').value;
+        const utilPct = parseInt(document.getElementById('utilizacion').value);
+        const U = utilPct / 100;
+
+        const model = MODELS.find(m => m.id === modelId);
+        const device = DEVICES.find(d => d.id === deviceId);
+        const dc = DATA_CENTERS_ALL.find(d => d.id === dcId);
+        const network = NETWORKS.find(n => n.id === netId);
+        const rt = REQUEST_TYPES[reqType];
+
+        if (!model || !device || !dc || !network || !rt) {
+            alert('Selecciona todos los parametros');
+            return;
+        }
+
+        const tokensInput = rt.input;
+        const tokensOutput = rt.output;
+        const tokensTotal = tokensInput + tokensOutput;
+
+        // --- Inference time ---
+        const inferenceTimeSec = (model.latency_ms * tokensOutput) / 1000;
+
+        // --- CI ---
+        const ciLocal = CI_COUNTRIES[country] || 450;
+        const ciDC = CI_COUNTRIES[dc.cc] || 450;
+
+        // --- 1. DEVICE EMISSIONS ---
+        let processor = procSel === 'auto' ? device.primary : procSel;
+        // Fallback to CPU if processor not available
+        if (processor === 'gpu' && device.gpu_tdp === 0) processor = 'cpu';
+        if (processor === 'npu' && !device.has_npu) processor = 'cpu';
+
+        const pIdle = device.idle;
+        let pMax;
+        if (processor === 'gpu') pMax = device.gpu_w;
+        else if (processor === 'npu') pMax = device.npu_w;
+        else pMax = device.cpu_w;
+
+        const pReal = pIdle + (pMax - pIdle) * U;
+        const deviceWatts = Math.max(pIdle, pReal);
+        const energyDeviceWh = deviceWatts * (inferenceTimeSec / 3600);
+        const co2DeviceG = (energyDeviceWh / 1000) * ciLocal;
+
+        // --- 2. NETWORK EMISSIONS ---
+        const OVERHEAD_HTTP = 1200;
+        const BYTES_PER_TOKEN = 5;
+        const totalBytes = OVERHEAD_HTTP + (tokensTotal * BYTES_PER_TOKEN);
+        const dataMB = totalBytes / 1000000;
+        const dataGB = dataMB / 1000;
+        const energyNetWh = network.kwh_mb * dataMB * 1000;
+        const carbonPerGB = network.kwh_gb * ciLocal / 1000; // kg CO2/GB
+        const co2NetG = dataGB * carbonPerGB * 1000; // g CO2
+
+        // --- 3. DATA CENTER EMISSIONS ---
+        let energyComputeWh;
+        let dcMethodUsed;
+        if (model.energy_wh_1k && model.energy_wh_1k > 0) {
+            energyComputeWh = (tokensTotal / 1000) * model.energy_wh_1k;
+            dcMethodUsed = 'energy_wh_per_1k_tokens';
+        } else {
+            // Fallback: 2N FLOPs
+            const flops = 2 * model.params * tokensTotal;
+            const tflops = flops / 1e12;
+            energyComputeWh = tflops * WATTS_PER_TFLOP * (inferenceTimeSec / 3600) / GPU_EFFICIENCY;
+            dcMethodUsed = 'fallback_2N_FLOPs';
+        }
+        const pue = dc.pue;
+        const energyDCWh = energyComputeWh * pue;
+        const co2DCG = (energyDCWh / 1000) * ciDC;
+
+        // --- TOTALS ---
+        const co2Total = co2DeviceG + co2NetG + co2DCG;
+        const energyTotal = energyDeviceWh + energyNetWh + energyDCWh;
+
+        // --- LABEL ---
+        const labelInfo = getLabel(co2Total);
+
+        lastResult = {
+            model, device, dc, network, rt, reqType,
+            tokensInput, tokensOutput, tokensTotal,
+            inferenceTimeSec, ciLocal, ciDC, country,
+            processor, pIdle, pMax, pReal: deviceWatts, U,
+            energyDeviceWh, co2DeviceG,
+            dataMB, dataGB, energyNetWh, co2NetG,
+            energyComputeWh, pue, energyDCWh, co2DCG, dcMethodUsed,
+            co2Total, energyTotal, labelInfo
+        };
+
+        updateResultsTab();
+        // Switch to results tab
+        document.querySelector('[data-tab="resultados"]').click();
+    }
+
+    function getLabel(co2g) {
+        for (const t of LABEL_THRESHOLDS) {
+            if (co2g <= t.max) return t;
+        }
+        return LABEL_THRESHOLDS[LABEL_THRESHOLDS.length - 1];
+    }
+
+    function fmt(n, decimals) {
+        if (decimals === undefined) decimals = 6;
+        if (Math.abs(n) < 0.000001) return '0';
+        if (Math.abs(n) >= 1000) return n.toLocaleString('es-ES', {maximumFractionDigits: 2});
+        if (Math.abs(n) >= 1) return n.toFixed(Math.min(decimals, 4));
+        // Small numbers: show enough precision
+        return n.toFixed(decimals);
+    }
+
+    function fmtParams(p) {
+        if (p >= 1e12) return (p/1e12).toFixed(1) + 'T';
+        if (p >= 1e9) return (p/1e9).toFixed(1) + 'B';
+        return (p/1e6).toFixed(0) + 'M';
+    }
+
+    // =====================================================================
+    // ACTUALIZAR TAB DE RESULTADOS (con hilado de formulas)
+    // =====================================================================
+    function updateResultsTab() {
+        const r = lastResult;
+        if (!r) return;
+
+        // Total CO2
+        document.getElementById('co2-total').textContent = fmt(r.co2Total, 4);
+        document.getElementById('result-subtitle').textContent =
+            r.model.name + ' | ' + r.rt.label + ' (' + r.tokensTotal + ' tokens) | ' + r.device.name + ' | ' + r.dc.region;
+
+        // Label badge
+        document.getElementById('result-label-badge').style.display = 'block';
+        const badge = document.getElementById('label-badge');
+        badge.textContent = 'Etiqueta: ' + r.labelInfo.label + ' - ' + r.labelInfo.desc;
+        badge.style.background = r.labelInfo.color;
+
+        // --- HILADO DE FORMULAS: DISPOSITIVO ---
+        document.getElementById('formula-device').innerHTML =
+            '<div class="formula-step">' +
+                '<div class="formula-title">Paso 1: Seleccion de procesador</div>' +
+                'Procesador seleccionado: <code>' + r.processor.toUpperCase() + '</code> ' +
+                (r.processor === r.device.primary ? '(optimo para este dispositivo)' : '') +
+                '<br>P_idle (sistema en reposo) = <code>' + r.pIdle + ' W</code> <span style="background:#E8F5E9;color:#2D5016;padding:2px 6px;border-radius:6px;font-size:10px;font-weight:700;margin-left:8px;">CSV: dispositivos.csv</span>' +
+                '<br>P_max (inferencia ' + r.processor.toUpperCase() + ') = <code>' + r.pMax + ' W</code> <span style="background:#E8F5E9;color:#2D5016;padding:2px 6px;border-radius:6px;font-size:10px;font-weight:700;margin-left:8px;">CSV: dispositivos.csv</span>' +
+            '</div>' +
+            '<div class="formula-step">' +
+                '<div class="formula-title">Paso 2: Potencia real del dispositivo</div>' +
+                '<strong>P_real = P_idle + (P_max - P_idle) &times; U</strong><br>' +
+                'P_real = ' + r.pIdle + ' + (' + r.pMax + ' - ' + r.pIdle + ') &times; ' + r.U +
+                ' = <span class="formula-result">' + fmt(r.pReal, 2) + ' W</span>' +
+            '</div>' +
+            '<div class="formula-step">' +
+                '<div class="formula-title">Paso 3: Energia del dispositivo</div>' +
+                '<strong>E_disp = P_real &times; t_inferencia / 3600</strong><br>' +
+                'E_disp = ' + fmt(r.pReal, 2) + ' &times; ' + fmt(r.inferenceTimeSec, 3) + ' / 3600' +
+                ' = <span class="formula-result">' + fmt(r.energyDeviceWh, 6) + ' Wh</span>' +
+            '</div>' +
+            '<div class="formula-step">' +
+                '<div class="formula-title">Paso 4: CO2 del dispositivo</div>' +
+                '<strong>CO2_disp = (E_disp / 1000) &times; CI_local</strong><br>' +
+                'CO2_disp = (' + fmt(r.energyDeviceWh, 6) + ' / 1000) &times; <code>' + r.ciLocal + '</code> <span style="background:#FFF3E0;color:#E65100;padding:2px 6px;border-radius:6px;font-size:10px;font-weight:700;margin-left:4px;">CSV: carbon_intensity.csv</span>' +
+                ' = <span class="formula-result">' + fmt(r.co2DeviceG, 6) + ' gCO2</span>' +
+                '<br><small>CI_local (' + r.country + ') = ' + r.ciLocal + ' gCO2/kWh</small>' +
+            '</div>';
+
+        // --- HILADO DE FORMULAS: RED ---
+        document.getElementById('formula-network').innerHTML =
+            '<div class="formula-step">' +
+                '<div class="formula-title">Paso 1: Datos transferidos</div>' +
+                '<strong>datos_MB = (1200 + tokens &times; 5) / 1.000.000</strong><br>' +
+                'datos_MB = (1200 + ' + r.tokensTotal + ' &times; 5) / 1.000.000' +
+                ' = <span class="formula-result">' + fmt(r.dataMB, 6) + ' MB</span>' +
+                '<br><small>1200 bytes = overhead HTTP fijo | 5 bytes/token = payload UTF-8</small>' +
+            '</div>' +
+            '<div class="formula-step">' +
+                '<div class="formula-title">Paso 2: Energia de la red</div>' +
+                '<strong>E_red = energia_kWh/MB &times; datos_MB &times; 1000</strong><br>' +
+                'E_red = <code>' + r.network.kwh_mb + '</code> <span style="background:#E3F2FD;color:#1565C0;padding:2px 6px;border-radius:6px;font-size:10px;font-weight:700;margin-left:4px;">CSV: redes.csv</span> &times; ' + fmt(r.dataMB, 6) + ' &times; 1000' +
+                ' = <span class="formula-result">' + fmt(r.energyNetWh, 6) + ' Wh</span>' +
+                '<br><small>Red: ' + r.network.name + ' (' + r.network.kwh_gb + ' kWh/GB)</small>' +
+            '</div>' +
+            '<div class="formula-step">' +
+                '<div class="formula-title">Paso 3: CO2 de la red</div>' +
+                '<strong>CO2_red = (energy_kWh/GB &times; CI_local / 1000) &times; datos_GB &times; 1000</strong><br>' +
+                'carbon_kg_per_GB = ' + r.network.kwh_gb + ' &times; <code>' + r.ciLocal + '</code> <span style="background:#FFF3E0;color:#E65100;padding:2px 6px;border-radius:6px;font-size:10px;font-weight:700;margin-left:4px;">CSV: carbon_intensity.csv</span> / 1000 = ' + fmt(r.network.kwh_gb * r.ciLocal / 1000, 6) + ' kg CO2/GB<br>' +
+                'CO2_red = ' + fmt(r.dataGB, 9) + ' &times; ' + fmt(r.network.kwh_gb * r.ciLocal / 1000, 6) + ' &times; 1000' +
+                ' = <span class="formula-result">' + fmt(r.co2NetG, 6) + ' gCO2</span>' +
+            '</div>';
+
+        // --- HILADO DE FORMULAS: DATA CENTER ---
+        let dcFormulaHTML = '';
+        if (r.dcMethodUsed === 'energy_wh_per_1k_tokens') {
+            dcFormulaHTML =
+                '<div class="formula-step">' +
+                    '<div class="formula-title">Paso 1: Energia de computo (via energy_wh_per_1k_tokens)</div>' +
+                    '<strong>E_compute = (tokens / 1000) &times; energy_wh_per_1k_tokens</strong><br>' +
+                    'E_compute = (' + r.tokensTotal + ' / 1000) &times; <code>' + r.model.energy_wh_1k + '</code> <span style="background:#F3E5F5;color:#6A1B9A;padding:2px 6px;border-radius:6px;font-size:10px;font-weight:700;margin-left:4px;">CSV: modelos.csv</span>' +
+                    ' = <span class="formula-result">' + fmt(r.energyComputeWh, 6) + ' Wh</span>' +
+                    '<br><small>Metodologia: ' + r.model.methodology + '</small>' +
+                '</div>';
+        } else {
+            dcFormulaHTML =
+                '<div class="formula-step">' +
+                    '<div class="formula-title">Paso 1: Energia de computo (fallback 2N FLOPs)</div>' +
+                    '<strong>E_token = (2 &times; N_params) / (TFLOPS_GPU &times; eta &times; 10^12) &times; TDP_GPU / 3600</strong><br>' +
+                    'Usando N_params = ' + fmtParams(r.model.params) + ', GPU A100 (312 TFLOPS, 400W), eta = ' + GPU_EFFICIENCY +
+                    '<br>E_compute = <span class="formula-result">' + fmt(r.energyComputeWh, 6) + ' Wh</span>' +
+                '</div>';
+        }
+        dcFormulaHTML +=
+            '<div class="formula-step">' +
+                '<div class="formula-title">Paso 2: Energia total del Data Center (con PUE)</div>' +
+                '<strong>E_dc = E_compute &times; PUE</strong><br>' +
+                'E_dc = ' + fmt(r.energyComputeWh, 6) + ' &times; <code>' + r.pue + '</code> <span style="background:#FCE4EC;color:#880E4F;padding:2px 6px;border-radius:6px;font-size:10px;font-weight:700;margin-left:4px;">CSV: data_centers.csv</span>' +
+                ' = <span class="formula-result">' + fmt(r.energyDCWh, 6) + ' Wh</span>' +
+                '<br><small>PUE = ' + r.pue + ' (' + r.dc.provider + ' ' + r.dc.region + '). PUE=1.0 seria perfecto.</small>' +
+            '</div>' +
+            '<div class="formula-step">' +
+                '<div class="formula-title">Paso 3: CO2 del Data Center</div>' +
+                '<strong>CO2_dc = (E_dc / 1000) &times; CI_datacenter</strong><br>' +
+                'CO2_dc = (' + fmt(r.energyDCWh, 6) + ' / 1000) &times; <code>' + r.ciDC + '</code> <span style="background:#FFF3E0;color:#E65100;padding:2px 6px;border-radius:6px;font-size:10px;font-weight:700;margin-left:4px;">CSV: carbon_intensity.csv</span>' +
+                ' = <span class="formula-result">' + fmt(r.co2DCG, 6) + ' gCO2</span>' +
+                '<br><small>CI del data center (' + r.dc.cc + ') = ' + r.ciDC + ' gCO2/kWh</small>' +
+            '</div>';
+        document.getElementById('formula-dc').innerHTML = dcFormulaHTML;
+
+        // --- BREAKDOWN CARDS ---
+        const pctDev = r.co2Total > 0 ? (r.co2DeviceG / r.co2Total * 100).toFixed(1) : 0;
+        const pctNet = r.co2Total > 0 ? (r.co2NetG / r.co2Total * 100).toFixed(1) : 0;
+        const pctDC = r.co2Total > 0 ? (r.co2DCG / r.co2Total * 100).toFixed(1) : 0;
+        document.getElementById('co2-device').textContent = fmt(r.co2DeviceG, 4) + ' gCO2';
+        document.getElementById('co2-network').textContent = fmt(r.co2NetG, 4) + ' gCO2';
+        document.getElementById('co2-datacenter').textContent = fmt(r.co2DCG, 4) + ' gCO2';
+        document.getElementById('pct-device').textContent = pctDev + '%';
+        document.getElementById('pct-network').textContent = pctNet + '%';
+        document.getElementById('pct-datacenter').textContent = pctDC + '%';
+        document.getElementById('device-detail-text').textContent = r.device.name + ', ' + r.processor.toUpperCase() + ', ' + fmt(r.energyDeviceWh, 4) + ' Wh';
+        document.getElementById('network-detail-text').textContent = r.network.name + ', ' + fmt(r.energyNetWh, 6) + ' Wh';
+        document.getElementById('dc-detail-text').textContent = r.dc.provider + ' ' + r.dc.region + ', ' + fmt(r.energyDCWh, 4) + ' Wh';
+        // Animate progress bars
+        setTimeout(() => {
+            document.getElementById('bar-device').style.width = pctDev + '%';
+            document.getElementById('bar-network').style.width = pctNet + '%';
+            document.getElementById('bar-datacenter').style.width = pctDC + '%';
+        }, 50);
+
+        // --- WHAT-IF TABLE ---
+        buildWhatIfTable(r);
+
+        // --- EQUIVALENCES ---
+        updateEquivalences(r);
+    }
+
+    function buildWhatIfTable(r) {
+        const body = document.getElementById('what-if-body');
+        body.innerHTML = '';
+        const scenarios = [];
+
+        // Scenario: other processors
+        const procs = ['cpu', 'gpu', 'npu'].filter(p => {
+            if (p === r.processor) return false;
+            if (p === 'gpu' && r.device.gpu_tdp === 0) return false;
+            if (p === 'npu' && !r.device.has_npu) return false;
+            return true;
+        });
+        procs.forEach(p => {
+            const pMax = p === 'gpu' ? r.device.gpu_w : p === 'npu' ? r.device.npu_w : r.device.cpu_w;
+            const pReal = Math.max(r.pIdle, r.pIdle + (pMax - r.pIdle) * r.U);
+            const eW = pReal * (r.inferenceTimeSec / 3600);
+            const co2d = (eW / 1000) * r.ciLocal;
+            const newTotal = co2d + r.co2NetG + r.co2DCG;
+            scenarios.push({label: 'Usar ' + p.toUpperCase() + ' en lugar de ' + r.processor.toUpperCase(), co2: newTotal});
+        });
+
+        // Scenario: WiFi vs current
+        if (r.network.id !== 'WiFi 6 802.11ax') {
+            const wifi = NETWORKS.find(n => n.id === 'WiFi 6 802.11ax');
+            const eNet = wifi.kwh_mb * r.dataMB * 1000;
+            const cNet = r.dataGB * (wifi.kwh_gb * r.ciLocal / 1000) * 1000;
+            scenarios.push({label: 'Usar WiFi 6 en lugar de ' + r.network.name, co2: r.co2DeviceG + cNet + r.co2DCG});
+        }
+        if (r.network.id !== 'Fiber FTTH') {
+            const fiber = NETWORKS.find(n => n.id === 'Fiber FTTH');
+            const cNet = r.dataGB * (fiber.kwh_gb * r.ciLocal / 1000) * 1000;
+            scenarios.push({label: 'Usar Fibra en lugar de ' + r.network.name, co2: r.co2DeviceG + cNet + r.co2DCG});
+        }
+
+        // Scenario: most efficient model
+        const cheapModel = MODELS.reduce((a, b) => a.energy_wh_1k < b.energy_wh_1k ? a : b);
+        if (cheapModel.id !== r.model.id) {
+            const eComp = (r.tokensTotal / 1000) * cheapModel.energy_wh_1k;
+            const eDC = eComp * r.pue;
+            const co2DC = (eDC / 1000) * r.ciDC;
+            scenarios.push({label: 'Usar ' + cheapModel.name + ' en lugar de ' + r.model.name, co2: r.co2DeviceG + r.co2NetG + co2DC});
+        }
+
+        scenarios.forEach(s => {
+            const diff = ((s.co2 - r.co2Total) / r.co2Total * 100);
+            const tr = document.createElement('tr');
+            const better = s.co2 < r.co2Total;
+            tr.innerHTML =
+                '<td>' + s.label + '</td>' +
+                '<td>' + fmt(s.co2, 4) + ' gCO2</td>' +
+                '<td>' + (diff > 0 ? '+' : '') + diff.toFixed(1) + '%</td>' +
+                '<td style="color: ' + (better ? 'var(--primary)' : 'var(--secondary-red)') + ';">' +
+                    (better ? 'Mejor' : 'Peor') +
+                '</td>';
+            body.appendChild(tr);
+        });
+    }
+
+    // =====================================================================
+    // EQUIVALENCIAS INTUITIVAS (constantes de reports_generator.py)
+    // =====================================================================
+    const EQUIV = {
+        tree_kg_year: 22.5,          // 1 arbol absorbe 22.5 kg CO2/ano
+        flight_kg: 700,              // 1 vuelo transatlantico ~700 kg
+        car_kg_year: 474,            // 1 coche/ano ~474 kg
+        household_kg_year: 4380,     // 1 hogar/ano ~4.38 t
+        google_search_g: 0.2,       // 1 busqueda Google ~0.2 gCO2
+        phone_charge_g: 8.0,        // 1 carga de movil ~8 gCO2
+        email_g: 4.0,               // 1 email ~4 gCO2
+        kettle_cup_g: 15.0,         // hervir 1 taza de agua ~15 gCO2
+        led_9w_hour_wh: 9.0         // 1h bombilla LED 9W = 9 Wh
+    };
+
+    function updateEquivalences(r) {
+        const card = document.getElementById('equivalences-card');
+        const content = document.getElementById('equivalences-content');
+        card.style.display = 'block';
+
+        const co2g = r.co2Total;
+        const co2kg = co2g / 1000;
+        let items = [];
+
+        // Micro-comparisons (escala de 1 query, valores pequeños)
+        const googleSearches = co2g / EQUIV.google_search_g;
+        items.push({icon: '🔍', label: 'Busquedas en Google', value: fmt(googleSearches, 1), unit: 'busquedas equivalentes', desc: '1 busqueda ≈ 0.2 gCO2'});
+
+        if (co2g < 8) {
+            const fractionPhone = (co2g / EQUIV.phone_charge_g * 100);
+            items.push({icon: '🔋', label: 'Carga de movil', value: fmt(fractionPhone, 1) + '%', unit: 'de una carga completa', desc: '1 carga ≈ 8 gCO2'});
+        } else {
+            const phoneCharges = co2g / EQUIV.phone_charge_g;
+            items.push({icon: '🔋', label: 'Cargas de movil', value: fmt(phoneCharges, 1), unit: 'cargas equivalentes', desc: '1 carga ≈ 8 gCO2'});
+        }
+
+        // LED hours from energy
+        const ledHours = r.energyTotal / EQUIV.led_9w_hour_wh;
+        if (ledHours < 1) {
+            items.push({icon: '💡', label: 'Bombilla LED 9W', value: fmt(ledHours * 60, 1), unit: 'minutos encendida', desc: 'Misma energia que tu query'});
+        } else {
+            items.push({icon: '💡', label: 'Bombilla LED 9W', value: fmt(ledHours, 1), unit: 'horas encendida', desc: 'Misma energia que tu query'});
+        }
+
+        // Macro-comparisons inversas (a escala de query individual los valores directos son casi 0)
+        if (co2g > 0) {
+            const queriesToFlight = Math.round(EQUIV.flight_kg * 1000 / co2g);
+            items.push({icon: '✈️', label: '1 vuelo NYC–Londres equivale a', value: queriesToFlight.toLocaleString('es-ES'), unit: 'queries como esta', desc: 'Un vuelo transatlantico emite ~700 kg CO2'});
+
+            const carGperKm = EQUIV.car_kg_year * 1000 / 12800; // ~37 gCO2/km
+            const queriesToKm = Math.round(carGperKm / co2g);
+            items.push({icon: '🚗', label: '1 km en coche equivale a', value: queriesToKm.toLocaleString('es-ES'), unit: 'queries como esta', desc: 'Coche promedio emite ~37 gCO2/km'});
+
+            const householdGperDay = EQUIV.household_kg_year * 1000 / 365;
+            const queriesToDay = Math.round(householdGperDay / co2g);
+            items.push({icon: '🏠', label: '1 día de tu hogar equivale a', value: queriesToDay.toLocaleString('es-ES'), unit: 'queries como esta', desc: 'Un hogar emite ~12.000 gCO2/día'});
+        }
+
+        content.innerHTML = items.map(i =>
+            '<div style="padding: 20px 16px; background: var(--primary-light); border-radius: 16px; text-align: center; border: 2px solid transparent; transition: all 0.2s; cursor: default;" onmouseenter="this.style.borderColor=\'var(--primary)\'; this.style.transform=\'translateY(-3px)\'; this.style.boxShadow=\'0 6px 16px rgba(0,0,0,0.08)\'" onmouseleave="this.style.borderColor=\'transparent\'; this.style.transform=\'none\'; this.style.boxShadow=\'none\'">' +
+                '<div style="font-size: 42px; margin-bottom: 8px; line-height: 1;">' + i.icon + '</div>' +
+                '<div style="font-size: 12px; color: var(--text-gray); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px;">' + i.label + '</div>' +
+                '<div style="font-size: 28px; font-weight: 800; color: var(--primary-dark); font-family: \'JetBrains Mono\', monospace; line-height: 1.1;">' + i.value + '</div>' +
+                '<div style="font-size: 12px; color: var(--text-gray); margin-top: 4px; font-weight: 500;">' + i.unit + '</div>' +
+                '<div style="font-size: 10px; color: #bbb; margin-top: 6px; font-style: italic;">' + i.desc + '</div>' +
+            '</div>'
+        ).join('');
+    }
+
+    // =====================================================================
+    // TAB 3: DASHBOARD
+    // =====================================================================
+    function updateDashboard() {
+        const r = lastResult;
+        if (!r) return;
+
+        const pctDev = r.co2Total > 0 ? (r.co2DeviceG / r.co2Total * 100) : 0;
+        const pctNet = r.co2Total > 0 ? (r.co2NetG / r.co2Total * 100) : 0;
+        const pctDC = r.co2Total > 0 ? (r.co2DCG / r.co2Total * 100) : 0;
+
+        // Pie chart
+        Plotly.newPlot('pie-chart', [{
+            labels: ['Dispositivo (' + pctDev.toFixed(1) + '%)', 'Red (' + pctNet.toFixed(1) + '%)', 'Data Center (' + pctDC.toFixed(1) + '%)'],
+            values: [r.co2DeviceG, r.co2NetG, r.co2DCG],
+            type: 'pie',
+            marker: {colors: ['#1E88E5', '#FFC107', '#E74C3C']},
+            textposition: 'inside', textinfo: 'label+percent'
+        }], {height: 400, margin: {l: 0, r: 0, t: 0, b: 0}, showlegend: true}, {responsive: true});
+
+        // Bar chart energy
+        Plotly.newPlot('bar-chart', [{
+            x: ['Dispositivo', 'Red', 'Data Center', 'Total'],
+            y: [r.energyDeviceWh, r.energyNetWh, r.energyDCWh, r.energyTotal],
+            type: 'bar',
+            marker: {color: ['#1E88E5', '#FFC107', '#E74C3C', '#2D5016']}
+        }], {yaxis: {title: 'Energia (Wh)'}, height: 400, showlegend: false}, {responsive: true});
+
+        // Table
+        const tbody = document.getElementById('dashboard-table-body');
+        tbody.innerHTML =
+            '<tr><td><strong>Dispositivo</strong></td><td>' + fmt(r.energyDeviceWh, 6) + '</td><td>' + r.ciLocal + '</td><td>' + fmt(r.co2DeviceG, 4) + '</td><td>' + pctDev.toFixed(1) + '%</td></tr>' +
+            '<tr><td><strong>Red</strong></td><td>' + fmt(r.energyNetWh, 6) + '</td><td>' + r.ciLocal + '</td><td>' + fmt(r.co2NetG, 4) + '</td><td>' + pctNet.toFixed(1) + '%</td></tr>' +
+            '<tr><td><strong>Data Center</strong></td><td>' + fmt(r.energyDCWh, 6) + '</td><td>' + r.ciDC + '</td><td>' + fmt(r.co2DCG, 4) + '</td><td>' + pctDC.toFixed(1) + '%</td></tr>' +
+            '<tr style="background: var(--primary-light);"><td><strong>TOTAL</strong></td><td><strong>' + fmt(r.energyTotal, 6) + '</strong></td><td>&mdash;</td><td><strong>' + fmt(r.co2Total, 4) + '</strong></td><td><strong>100%</strong></td></tr>';
+
+        // Metrics
+        document.getElementById('dashboard-metrics').innerHTML =
+            '<div class="metric-box"><div class="metric-label">CI Local (' + r.country + ')</div><div class="metric-value">' + r.ciLocal + '</div><div class="metric-unit">gCO2/kWh</div></div>' +
+            '<div class="metric-box"><div class="metric-label">CI Data Center (' + r.dc.cc + ')</div><div class="metric-value">' + r.ciDC + '</div><div class="metric-unit">gCO2/kWh</div></div>' +
+            '<div class="metric-box"><div class="metric-label">PUE</div><div class="metric-value">' + r.pue + '</div><div class="metric-unit">' + r.dc.provider + '</div></div>' +
+            '<div class="metric-box"><div class="metric-label">Latencia total</div><div class="metric-value">' + (r.inferenceTimeSec * 1000).toFixed(0) + '</div><div class="metric-unit">ms (' + r.tokensOutput + ' tokens output)</div></div>';
+
+        // GREENWASHING
+        const gridRenew = DC_RENEWABLE_GRID[r.dc.id];
+        const gwCard = document.getElementById('greenwashing-card');
+        if (gridRenew !== undefined) {
+            gwCard.style.display = 'block';
+            const provRenew = r.dc.renew_prov;
+            const diff = provRenew - gridRenew;
+            document.getElementById('greenwashing-content').innerHTML =
+                '<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">' +
+                    '<div>' +
+                        '<div style="font-size: 13px; font-weight: 600; margin-bottom: 8px;">Renovables reales en la red (renewable_grid_pct)</div>' +
+                        '<div class="greenwashing-bar" style="background: #ecf0f1;"><div class="greenwashing-fill" style="width: ' + gridRenew + '%; background: #4CAF50;"></div></div>' +
+                        '<div style="font-size: 20px; font-weight: 700; color: var(--primary-dark);">' + gridRenew + '%</div>' +
+                    '</div>' +
+                    '<div>' +
+                        '<div style="font-size: 13px; font-weight: 600; margin-bottom: 8px;">Declarado por proveedor (provider_renewable_pct)</div>' +
+                        '<div class="greenwashing-bar" style="background: #ecf0f1;"><div class="greenwashing-fill" style="width: ' + provRenew + '%; background: ' + (diff > 20 ? '#FF6F00' : '#4CAF50') + ';"></div></div>' +
+                        '<div style="font-size: 20px; font-weight: 700; color: ' + (diff > 20 ? 'var(--secondary-orange)' : 'var(--primary-dark)') + ';">' + provRenew + '%</div>' +
+                    '</div>' +
+                '</div>' +
+                (diff > 20 ?
+                    '<div style="margin-top: 16px; padding: 12px; background: #FFF3E0; border-radius: 8px; border-left: 4px solid var(--secondary-orange);">' +
+                    '<strong>Posible greenwashing:</strong> El proveedor declara ' + provRenew + '% renovables (via PPAs y certificados), pero la red electrica real de la zona solo tiene ' + gridRenew + '% renovables. La diferencia de ' + diff + ' puntos porcentuales se cubre con certificados de energia renovable, no con energia verde real en la red.</div>' :
+                    '<div style="margin-top: 16px; padding: 12px; background: var(--primary-light); border-radius: 8px; border-left: 4px solid var(--primary);">' +
+                    'La diferencia entre renovables declaradas y reales es reducida (' + diff + ' pp). Coherente.</div>'
+                );
+        } else {
+            gwCard.style.display = 'none';
+        }
+    }
+
+    // =====================================================================
+    // TAB 4: COMPARADOR
+    // =====================================================================
+    function updateComparator() {
+        // Lee la peticion del formulario (el comparador deriva de esta seleccion)
+        const reqTypeKey = document.getElementById('peticion').value;
+        const rt = REQUEST_TYPES[reqTypeKey];
+        const tokensTotal = rt.input + rt.output;
+
+        // Configuracion del formulario
+        const modelId = document.getElementById('modelo').value;
+        const dcId = document.getElementById('data-center').value;
+        const deviceId = document.getElementById('dispositivo').value;
+        const selectedDC = DATA_CENTERS_ALL.find(d => d.id === dcId);
+        const selectedDevice = DEVICES.find(d => d.id === deviceId);
+        const pue = selectedDC ? selectedDC.pue : 1.15;
+        const ciDC = selectedDC ? (CI_COUNTRIES[selectedDC.cc] || 450) : 450;
+
+        // Componentes constantes (dispositivo + red) desde lastResult si existe
+        const co2DeviceG = lastResult ? lastResult.co2DeviceG : 0;
+        const co2NetG = lastResult ? lastResult.co2NetG : 0;
+
+        // Banner de contexto
+        const dcLabel = selectedDC ? (selectedDC.provider + ' ' + selectedDC.region) : '—';
+        const devLabel = selectedDevice ? selectedDevice.name : '—';
+        document.getElementById('comp-context-text').innerHTML =
+            '<strong>' + rt.label + '</strong>' +
+            ' <span style="color:#aaa;font-size:11px;">' + rt.input + '+' + rt.output + ' tokens</span>' +
+            ' &nbsp;·&nbsp; ' + dcLabel +
+            ' &nbsp;·&nbsp; ' + devLabel +
+            (lastResult ? '' : ' <span style="color:#FF9800;font-size:11px;">(CO₂ dispositivo/red no incluido hasta calcular)</span>');
+
+        // Calcular para todos los modelos
+        const modelResults = MODELS.map(m => {
+            const energyComputeWh = (tokensTotal / 1000) * m.energy_wh_1k;
+            const energyDCWh = energyComputeWh * pue;
+            const co2DCG = (energyDCWh / 1000) * ciDC;
+            const co2Total = co2DeviceG + co2NetG + co2DCG;
+            const label = getLabel(co2Total);
+            return {model: m, co2: co2Total, label, tps: m.tps, latency_ms: m.latency_ms};
+        });
+
+        const sorted = [...modelResults].sort((a, b) => a.co2 - b.co2);
+        const maxCO2 = Math.max(...modelResults.map(r => r.co2));
+        const currentResult = modelResults.find(r => r.model.id === modelId);
+        const currentCO2 = currentResult ? currentResult.co2 : maxCO2;
+
+        // --- FRONTERA DE PARETO (tps vs co2: mayor tps Y menor co2 = domina) ---
+        const byTps = [...modelResults].sort((a, b) => b.tps - a.tps);
+        let minCO2Pareto = Infinity;
+        const paretoSet = new Set();
+        byTps.forEach(r => {
+            if (r.co2 <= minCO2Pareto) {
+                paretoSet.add(r.model.id);
+                minCO2Pareto = r.co2;
+            }
+        });
+        const paretoModels = byTps.filter(r => paretoSet.has(r.model.id)).sort((a, b) => a.tps - b.tps);
+
+
+
+        // --- SCATTER PLOT ---
+        const isCurrentArr = modelResults.map(r => r.model.id === modelId);
+        const scatterTrace = {
+            x: modelResults.map(r => r.tps),
+            y: modelResults.map(r => r.co2),
+            text: modelResults.map(r => r.model.name),
+            mode: 'markers+text',
+            type: 'scatter',
+            textposition: modelResults.map(r => r.tps > 400 ? 'bottom center' : 'top center'),
+            textfont: {size: 10},
+            marker: {
+                color: modelResults.map(r => r.label.color),
+                size: modelResults.map(r => r.model.id === modelId ? 18 : 12),
+                line: {color: modelResults.map(r => r.model.id === modelId ? '#FF6F00' : 'rgba(0,0,0,0.2)'), width: modelResults.map(r => r.model.id === modelId ? 3 : 1)},
+                symbol: modelResults.map(r => paretoSet.has(r.model.id) ? 'star' : 'circle')
+            },
+            customdata: modelResults.map(r => [
+                r.model.org, r.label.label, r.latency_ms.toFixed(1),
+                currentCO2 > 0 ? ((1 - r.co2/currentCO2)*100).toFixed(1) : '0'
+            ]),
+            hovertemplate:
+                '<b>%{text}</b> (%{customdata[0]})<br>' +
+                'CO₂/query: <b>%{y:.4f} gCO₂</b><br>' +
+                'Velocidad: %{x:.0f} tokens/s<br>' +
+                'Latencia: %{customdata[2]} ms/token<br>' +
+                'Clase: <b>%{customdata[1]}</b><br>' +
+                'Ahorro vs actual: %{customdata[3]}%' +
+                '<extra></extra>',
+            name: 'Modelos'
+        };
+        // Los modelos Pareto-óptimos ya están marcados con ★ en scatterTrace
+        Plotly.newPlot('comp-scatter-chart', [scatterTrace], {
+            xaxis: {title: 'Velocidad de inferencia (tokens/s)', type: 'log', gridcolor: '#f0f0f0'},
+            yaxis: {title: 'CO₂/query (gCO₂)', type: 'log', gridcolor: '#f0f0f0'},
+            height: 420, showlegend: true,
+            legend: {x: 0.01, y: 0.01, bgcolor: 'rgba(255,255,255,0.9)', bordercolor: '#eee', borderwidth: 1},
+            margin: {t: 10, b: 60, l: 70, r: 20},
+            plot_bgcolor: '#fafafa', paper_bgcolor: 'white'
+        }, {responsive: true});
+
+        // --- CARDS DE RECOMENDACION ---
+        const mostSustainable = sorted[0];
+        const fastestModel = modelResults.reduce((a, b) => a.tps > b.tps ? a : b);
+        // Mejor ratio params/co2 (capacidad por gramo de CO2)
+        const maxParams = Math.max(...MODELS.map(m => m.params));
+        const bestRatio = modelResults.reduce((best, r) => {
+            const score = (r.model.params / maxParams) / (r.co2 / maxCO2);
+            return score > best.score ? {...r, score} : best;
+        }, {...modelResults[0], score: 0});
+
+        function recCard(icon, title, borderColor, mr, noteHtml) {
+            const sav = currentCO2 > 0 ? (1 - mr.co2/currentCO2)*100 : 0;
+            const savBadge = (sav > 0.5 && mr.model.id !== modelId)
+                ? '<span style="background:#E8F5E9;color:#2D5016;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;margin-left:4px;">−' + sav.toFixed(0) + '% CO₂</span>' : '';
+            return '<div style="background:#f8f9fa;border-radius:10px;padding:14px 16px;border-left:4px solid ' + borderColor + ';">' +
+                '<div style="font-size:20px;margin-bottom:4px;">' + icon + '</div>' +
+                '<div style="font-size:10px;font-weight:700;color:' + borderColor + ';text-transform:uppercase;letter-spacing:0.5px;">' + title + '</div>' +
+                '<div style="font-size:14px;font-weight:700;margin:4px 0;">' + mr.model.name + savBadge + '</div>' +
+                '<div style="font-size:11px;color:#666;margin-bottom:6px;">' + mr.model.org + '</div>' +
+                '<div style="font-size:12px;font-family:JetBrains Mono,monospace;font-weight:700;color:' + mr.label.color + ';">' + fmt(mr.co2, 4) + ' gCO₂/query</div>' +
+                '<div style="font-size:11px;color:#aaa;margin-top:4px;">' + noteHtml + '</div>' +
+                '</div>';
+        }
+
+        document.getElementById('comp-recommendations').innerHTML =
+            recCard('🏆', 'Más sostenible', '#2D5016', mostSustainable,
+                mostSustainable.tps.toFixed(0) + ' tok/s &middot; Clase <b>' + mostSustainable.label.label + '</b>') +
+            recCard('🧪', 'Mayor capacidad/CO₂', '#4285F4', bestRatio,
+                '<b>' + fmtParams(bestRatio.model.params) + ' parámetros</b><br>' +
+                'El modelo que ofrece más capacidad<br>' +
+                'por cada gramo de CO₂ emitido<br><br>' +
+                '<span style="font-family:monospace;font-size:10px;color:#666;">Fórmula: score = (params/max) ÷ (CO₂/max)</span>') +
+            recCard('⚡', 'Más rápido', '#FF6F00', fastestModel,
+                fastestModel.tps.toFixed(0) + ' tok/s &middot; ' + fastestModel.latency_ms.toFixed(1) + ' ms/token');
+
+        // --- TABLA ENRIQUECIDA ---
+        const tbody = document.getElementById('comparator-table-body');
+        tbody.innerHTML = '';
+        sorted.forEach(r => {
+            const pct = r.co2 / maxCO2 * 100;
+            const savings = currentCO2 > 0 ? (1 - r.co2/currentCO2)*100 : 0;
+            const isCurrent = r.model.id === modelId;
+            const isPareto = paretoSet.has(r.model.id);
+            const tr = document.createElement('tr');
+            if (isCurrent) tr.style.background = '#FFFDE7';
+            tr.innerHTML =
+                '<td><strong>' + r.model.name + '</strong>' +
+                    (isCurrent ? ' <span style="background:#FFC107;color:#333;padding:1px 6px;border-radius:8px;font-size:10px;font-weight:700;">ACTUAL</span>' : '') +
+                    (isPareto ? ' <span style="color:#2D5016;font-size:10px;font-weight:700;">&#9733;Pareto</span>' : '') +
+                '</td>' +
+                '<td style="font-size:11px;color:#888;">' + r.model.org + '</td>' +
+                '<td style="font-family:\"JetBrains Mono\",monospace;font-weight:700;color:' + r.label.color + ';">' + fmt(r.co2, 4) + '</td>' +
+                '<td style="min-width:100px;"><div style="background:#f0f0f0;border-radius:4px;height:14px;overflow:hidden;"><div style="width:' + pct.toFixed(1) + '%;height:100%;background:' + r.label.color + ';border-radius:4px;transition:width 0.4s;"></div></div></td>' +
+                '<td style="font-size:12px;font-weight:700;">' +
+                    (isCurrent ? '<span style="color:#aaa;">—</span>' :
+                     savings > 0.5 ? '<span style="color:#2D5016;">−' + savings.toFixed(0) + '%</span>' :
+                     savings < -0.5 ? '<span style="color:#E74C3C;">+' + Math.abs(savings).toFixed(0) + '%</span>' : '<span style="color:#aaa;">≈0%</span>') +
+                '</td>' +
+                '<td style="font-family:\"JetBrains Mono\",monospace;font-size:12px;">' + r.tps.toFixed(0) + '</td>' +
+                '<td style="font-size:12px;">' + r.latency_ms.toFixed(2) + ' ms</td>' +
+                '<td><span style="background:' + r.label.color + ';color:white;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;">' + r.label.label + '</span></td>';
+            tbody.appendChild(tr);
+        });
+
+        // --- BAR CHART ---
+        Plotly.newPlot('comparison-chart', [{
+            x: sorted.map(r => r.model.name),
+            y: sorted.map(r => r.co2),
+            type: 'bar',
+            marker: {color: sorted.map(r => r.label.color),
+                     line: {color: sorted.map(r => r.model.id === modelId ? '#FF6F00' : 'transparent'), width: 2.5}},
+            text: sorted.map(r => r.label.label),
+            textposition: 'outside'
+        }], {
+            yaxis: {title: 'CO₂ total (gCO₂/query)', gridcolor: '#f0f0f0'},
+            height: 380, showlegend: false,
+            margin: {b: 100, t: 20},
+            plot_bgcolor: '#fafafa', paper_bgcolor: 'white'
+        }, {responsive: true});
+    }
+
+    // =====================================================================
+    // GENERADOR DE PDF DEL COMPARADOR
+    // =====================================================================
+    async function generateComparatorPDF() {
+        const btn = document.getElementById('btn-pdf');
+        btn.textContent = '⏳ Generando PDF...';
+        btn.disabled = true;
+
+        try {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+            const W = 210, M = 14, CW = W - M * 2;
+            let y = 0;
+
+            // ---- Helpers ----
+            function addPage() { doc.addPage(); y = 14; }
+            function checkY(needed) { if (y + needed > 280) addPage(); }
+            function hLine(yy) { doc.setDrawColor(220); doc.setLineWidth(0.3); doc.line(M, yy, W - M, yy); }
+
+            function sectionTitle(text, yy) {
+                doc.setFillColor(45, 80, 22);
+                doc.rect(M, yy, CW, 7, 'F');
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(10);
+                doc.setTextColor(255, 255, 255);
+                doc.text(text, M + 3, yy + 5);
+                doc.setTextColor(44, 62, 80);
+                return yy + 11;
+            }
+            function bodyText(text, yy, indent) {
+                doc.setFont('helvetica', 'normal');
+                doc.setFontSize(8.5);
+                doc.setTextColor(80, 80, 80);
+                const lines = doc.splitTextToSize(text, CW - (indent || 0));
+                doc.text(lines, M + (indent || 0), yy);
+                return yy + lines.length * 4.5;
+            }
+            function labelBadge(text, color, x, yy) {
+                const rgb = hexToRgb(color);
+                doc.setFillColor(rgb.r, rgb.g, rgb.b);
+                doc.roundedRect(x, yy - 3.5, 14, 5, 1.5, 1.5, 'F');
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(7);
+                doc.setTextColor(255, 255, 255);
+                doc.text(text, x + 2, yy);
+                doc.setTextColor(44, 62, 80);
+            }
+            function hexToRgb(hex) {
+                const r = parseInt(hex.slice(1, 3), 16);
+                const g = parseInt(hex.slice(3, 5), 16);
+                const b = parseInt(hex.slice(5, 7), 16);
+                return {r, g, b};
+            }
+
+            // ---- Recolectar datos del comparador ----
+            const reqTypeKey = document.getElementById('peticion').value;
+            const rt = REQUEST_TYPES[reqTypeKey];
+            const tokensTotal = rt.input + rt.output;
+            const modelId = document.getElementById('modelo').value;
+            const dcId = document.getElementById('data-center').value;
+            const deviceId = document.getElementById('dispositivo').value;
+            const selectedDC = DATA_CENTERS_ALL.find(d => d.id === dcId);
+            const selectedDevice = DEVICES.find(d => d.id === deviceId);
+            const pue = selectedDC ? selectedDC.pue : 1.15;
+            const ciDC = selectedDC ? (CI_COUNTRIES[selectedDC.cc] || 450) : 450;
+            const co2DeviceG = lastResult ? lastResult.co2DeviceG : 0;
+            const co2NetG = lastResult ? lastResult.co2NetG : 0;
+
+            const modelResults = MODELS.map(m => {
+                const energyComputeWh = (tokensTotal / 1000) * m.energy_wh_1k;
+                const energyDCWh = energyComputeWh * pue;
+                const co2DCG = (energyDCWh / 1000) * ciDC;
+                const co2Total = co2DeviceG + co2NetG + co2DCG;
+                return {model: m, co2: co2Total, label: getLabel(co2Total), latency_ms: m.latency_ms, tps: m.tps};
+            });
+            const sorted = [...modelResults].sort((a, b) => a.co2 - b.co2);
+            const maxCO2 = Math.max(...modelResults.map(r => r.co2));
+            const currentResult = modelResults.find(r => r.model.id === modelId);
+            const currentCO2 = currentResult ? currentResult.co2 : maxCO2;
+            const mostSustainable = sorted[0];
+            const fastest = modelResults.reduce((a, b) => a.model.tps > b.model.tps ? a : b);
+            const maxParams = Math.max(...MODELS.map(m => m.params));
+            const bestCapacityRatio = modelResults.reduce((best, r) => {
+                const score = (r.model.params / maxParams) / (r.co2 / maxCO2);
+                return score > best.score ? {...r, score} : best;
+            }, {...modelResults[0], score: 0});
+
+            // ---- PORTADA ----
+            doc.setFillColor(45, 80, 22);
+            doc.rect(0, 0, W, 42, 'F');
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(18);
+            doc.setTextColor(255, 255, 255);
+            doc.text('Informe de Comparativa de Modelos de IA', M, 18);
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(10);
+            doc.text('Impacto medioambiental de la inferencia en funcion del modelo', M, 26);
+            doc.setFontSize(8);
+            doc.text('Generado: ' + new Date().toLocaleString('es-ES'), M, 34);
+            doc.text('Calculadora de Huella de Carbono IA - TFG', W - M, 34, {align: 'right'});
+            doc.setTextColor(44, 62, 80);
+
+            y = 52;
+
+            // ---- Sección: Configuración ----
+            y = sectionTitle('1. Configuracion del analisis', y);
+            const dcLabel = selectedDC ? selectedDC.provider + ' - ' + selectedDC.region : '--';
+            const devLabel = selectedDevice ? selectedDevice.name : '--';
+            const configRows = [
+                ['Tipo de peticion', rt.label + ' (' + rt.input + ' tokens entrada + ' + rt.output + ' tokens salida)'],
+                ['Total tokens/query', tokensTotal + ' tokens'],
+                ['Data center', dcLabel + ' | PUE: ' + pue.toFixed(2) + ' | CI: ' + ciDC + ' gCO2/kWh'],
+                ['Dispositivo cliente', devLabel],
+                ['CO2 dispositivo (base)', lastResult ? fmt(co2DeviceG, 4) + ' gCO2' : 'No calculado (ve al formulario primero)'],
+                ['CO2 red (base)', lastResult ? fmt(co2NetG, 4) + ' gCO2' : 'No calculado'],
+            ];
+            doc.setFontSize(8.5);
+            configRows.forEach(([k, v]) => {
+                doc.setFont('helvetica', 'bold'); doc.setTextColor(80, 80, 80);
+                doc.text(k + ':', M, y);
+                doc.setFont('helvetica', 'normal'); doc.setTextColor(44, 62, 80);
+                doc.text(v, M + 45, y);
+                y += 5.5;
+            });
+            y += 4;
+
+            // ---- Seccion: Grafico Scatter ----
+            checkY(120);
+            y = sectionTitle('2. Rendimiento vs Sostenibilidad', y);
+            y = bodyText(
+                'El eje X muestra la velocidad de inferencia de cada modelo en tokens por segundo, obtenida del parámetro tps (tokens per second) del CSV de modelos. El eje Y muestra el CO2 estimado por consulta en gCO2, calculado como CO2_DC = (tokens/1000 * energy_wh_1k * PUE / 1000) * CI_DC, manteniendo fijos el data center, el dispositivo y la red del usuario. Ambos ejes usan escala logaritmica para visualizar mejor el rango de valores. El modelo ideal se situa en la esquina inferior derecha: alta velocidad y baja huella de carbono. Los modelos marcados con (*) son Pareto-optimos, es decir, no existe otro modelo que los supere a la vez en velocidad y en sostenibilidad.',
+                y
+            );
+            y += 3;
+            const scatterImg = await Plotly.toImage('comp-scatter-chart', {format: 'png', width: 740, height: 420});
+            checkY(90);
+            doc.addImage(scatterImg, 'PNG', M, y, CW, CW * 420 / 740);
+            y += CW * 420 / 740 + 6;
+
+            // ---- Seccion: Modelos destacados ----
+            checkY(55);
+            y = sectionTitle('3. Modelos destacados', y);
+            y = bodyText('A continuacion se resumen los tres modelos con mejor perfil segun criterios distintos, junto con su posible ahorro frente al modelo actualmente configurado.', y);
+            y += 3;
+
+            const highlights = [
+                { icon: '[MAS SOSTENIBLE]', mr: mostSustainable, note: 'Menor CO2/query del conjunto analizado.' },
+                { icon: '[MAYOR CAPACIDAD/CO2]', mr: bestCapacityRatio, 
+                  note: 'El modelo con mas capacidad por gramo de carbono. Formula: (parametros / max) / (CO2 / max)' },
+                { icon: '[MAS RAPIDO]', mr: fastest, note: 'Mayor velocidad de inferencia (tokens/s).' }
+            ];
+            highlights.forEach(({icon, mr, note}) => {
+                // Mayor altura para Mayor Capacidad/CO2 por el texto más largo
+                const isCapacityCard = icon === '[MAYOR CAPACIDAD/CO2]';
+                const boxHeight = isCapacityCard ? 32 : 20;
+                const totalHeight = isCapacityCard ? 37 : 24;
+                checkY(totalHeight);
+                const savings = currentCO2 > 0 ? (1 - mr.co2 / currentCO2) * 100 : 0;
+                doc.setFillColor(248, 249, 250);
+                doc.roundedRect(M, y, CW, boxHeight, 2, 2, 'F');
+                doc.setFillColor(45, 80, 22);
+                doc.rect(M, y, 2, boxHeight, 'F');
+                doc.setFont('helvetica', 'bold'); doc.setFontSize(8.5); doc.setTextColor(44, 62, 80);
+                doc.text(icon, M + 5, y + 6);
+                doc.setFont('helvetica', 'bold'); doc.setFontSize(10);
+                doc.text(mr.model.name, M + 5, y + 13);
+                labelBadge(mr.label.label, mr.label.color, M + 5 + doc.getTextWidth(mr.model.name) + 3, y + 13);
+                doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5);  doc.setTextColor(120, 120, 120);
+                const savStr = savings > 0.5 && mr.model.id !== modelId ? ' | Ahorro: -' + savings.toFixed(0) + '%' : '';
+                if (isCapacityCard) {
+                    // Distribuir el texto en 2 líneas para Mayor Capacidad/CO2
+                    const lines = doc.splitTextToSize(note, CW - 10);
+                    doc.text(lines, M + 5, y + 18);
+                    doc.text('CO2: ' + fmt(mr.co2, 4) + ' gCO2/query' + savStr, M + 5, y + 28);
+                } else {
+                    doc.text(note + ' | CO2: ' + fmt(mr.co2, 4) + ' gCO2/query' + savStr, M + 5, y + 18);
+                }
+                y += totalHeight;
+            });
+            y += 4;
+
+            // ---- Seccion: Tabla completa ----
+            checkY(20);
+            y = sectionTitle('4. Tabla comparativa completa (ordenada por CO2 ascendente)', y);
+            y = bodyText('Todos los modelos evaluados con la misma configuracion de peticion, data center y dispositivo. La columna "Ahorro" muestra el porcentaje de reduccion de CO2 respecto al modelo actualmente seleccionado (marcado con *).', y);
+            y += 4;
+
+            // Cabecera tabla
+            const cols = [
+                {x: M,      w: 40, label: 'Modelo',         align: 'left'},
+                {x: M+40,   w: 22, label: 'Organizacion',   align: 'left'},
+                {x: M+62,   w: 26, label: 'CO2 (gCO2)',     align: 'right'},
+                {x: M+88,   w: 22, label: 'Tokens/s',       align: 'right'},
+                {x: M+110,  w: 24, label: 'Latencia',       align: 'right'},
+                {x: M+134,  w: 20, label: 'Ahorro',         align: 'right'},
+                {x: M+154,  w: 14, label: 'Clase',          align: 'center'},
+            ];
+            checkY(8);
+            doc.setFillColor(45, 80, 22);
+            doc.rect(M, y, CW, 6.5, 'F');
+            doc.setFont('helvetica', 'bold'); doc.setFontSize(7.5); doc.setTextColor(255, 255, 255);
+            cols.forEach(c => doc.text(c.label, c.align === 'right' ? c.x + c.w - 1 : c.align === 'center' ? c.x + c.w/2 : c.x + 1, y + 4.5, {align: c.align}));
+            y += 6.5;
+
+            sorted.forEach((r, i) => {
+                checkY(8);
+                doc.setFillColor(i % 2 === 0 ? 252 : 245, i % 2 === 0 ? 252 : 248, i % 2 === 0 ? 252 : 245);
+                if (r.model.id === modelId) doc.setFillColor(255, 253, 231);
+                doc.rect(M, y, CW, 6.5, 'F');
+                doc.setTextColor(44, 62, 80);
+                const isCurrent = r.model.id === modelId;
+                const savings = currentCO2 > 0 ? (1 - r.co2 / currentCO2) * 100 : 0;
+                const savStr = isCurrent ? '--' : savings > 0.5 ? '-' + savings.toFixed(0) + '%' : savings < -0.5 ? '+' + Math.abs(savings).toFixed(0) + '%' : '~0%';
+                const rows = [
+                    [M,     40, (isCurrent ? '* ' : '') + r.model.name, 'left'],
+                    [M+40,  22, r.model.org,                             'left'],
+                    [M+62,  26, fmt(r.co2, 4),                          'right'],
+                    [M+88,  22, r.model.tps.toFixed(0),                 'right'],
+                    [M+110, 24, r.latency_ms.toFixed(1) + ' ms',        'right'],
+                    [M+134, 20, savStr,                                  'right'],
+                ];
+                doc.setFont('helvetica', isCurrent ? 'bold' : 'normal');
+                doc.setFontSize(7.5);
+                rows.forEach(([x, w, val, align]) => {
+                    doc.text(val, align === 'right' ? x + w - 1 : x + 1, y + 4.5, {align});
+                });
+                // Badge clase
+                labelBadge(r.label.label, r.label.color, M + 155, y + 4.5);
+                y += 6.5;
+            });
+            y += 6;
+
+            // ---- Seccion: Grafico de barras ----
+            checkY(100);
+            y = sectionTitle('5. Comparativa de emisiones (grafico de barras)', y);
+            y = bodyText('Cada barra representa el CO2 total estimado por consulta para un modelo bajo la configuracion analizada. El color indica la clase energetica asignada segun los percentiles del dataset (A+++ = verde oscuro, F = rojo). El modelo actualmente seleccionado aparece con borde naranja.', y);
+            y += 3;
+            const barImg = await Plotly.toImage('comparison-chart', {format: 'png', width: 740, height: 380});
+            doc.addImage(barImg, 'PNG', M, y, CW, CW * 380 / 740);
+            y += CW * 380 / 740 + 6;
+
+            // ---- Seccion: Metodologia ----
+            checkY(60);
+            y = sectionTitle('6. Metodologia y notas', y);
+            const metaSections = [
+                {
+                    title: 'Calculadora principal vs Comparador',
+                    text: 'La calculadora principal calcula el CO2 total de una consulta como la suma de tres componentes: CO2 del dispositivo del usuario (funcion del procesador, la potencia y el pais), CO2 de la red (funcion del tipo de conexion y el pais) y CO2 del data center (funcion del modelo, los tokens, el PUE del DC y la intensidad de carbono del pais del servidor). El comparador, en cambio, fija dispositivo, red y DC a los valores del ultimo calculo, y solo varia el parametro energy_wh_1k de cada modelo para obtener una comparativa equitativa bajo las mismas condiciones.'
+                },
+                {
+                    title: 'Formula del componente data center (ambos modos)',
+                    text: 'CO2_DC = (tokens / 1000) x energy_wh_1k x PUE / 1000 x CI_DC, donde energy_wh_1k es el consumo medido del modelo por cada 1000 tokens procesados (parámetro del CSV de modelos), PUE es el factor de eficiencia del data center y CI_DC es la intensidad de carbono del pais del servidor en gCO2/kWh. Si el modelo no dispone de energy_wh_1k, la calculadora principal aplica un fallback teorico de 2N FLOPs; el comparador no aplica este fallback, por lo que modelos sin dato resultarian en CO2_DC = 0.'
+                },
+                {
+                    title: 'Ejes del grafico de dispersion',
+                    text: 'El eje X representa la velocidad de inferencia en tokens por segundo, obtenida del parámetro tps (tokens per second) del CSV de modelos. El eje Y representa el CO2/query en gCO2 calculado segun la formula anterior con los parametros fijos del comparador. Los modelos marcados con (*) son Pareto-optimos: no existe otro modelo que los supere simultaneamente en velocidad y sostenibilidad.'
+                },
+                {
+                    title: 'Alcance del analisis',
+                    text: 'Este informe cubre unicamente las emisiones de la fase de inferencia. Las emisiones de entrenamiento no estan incluidas. Los valores de intensidad de carbono (CI) provienen de Electricity Maps o de fallbacks regionales. Dataset: 10 modelos, 71 data centers en 6 continentes, 20 dispositivos de usuario y 15 tipos de red.'
+                },
+            ];
+            metaSections.forEach(({title, text}) => {
+                checkY(22);
+                doc.setFont('helvetica', 'bold'); doc.setFontSize(8.5); doc.setTextColor(44, 62, 80);
+                doc.text(title, M + 2, y);
+                y += 5;
+                y = bodyText(text, y, 2);
+                y += 4;
+            });
+
+            // ---- Pie de pagina en todas las paginas ----
+            const totalPages = doc.getNumberOfPages();
+            for (let p = 1; p <= totalPages; p++) {
+                doc.setPage(p);
+                doc.setFontSize(7); doc.setTextColor(180, 180, 180);
+                hLine(288);
+                doc.text('Calculadora de Carbono IA - TFG | Generado ' + new Date().toLocaleDateString('es-ES'), M, 293);
+                doc.text('Pag. ' + p + ' / ' + totalPages, W - M, 293, {align: 'right'});
+            }
+
+            // ---- Guardar ----
+            const fname = 'informe_comparativa_' + reqTypeKey + '_' + new Date().toISOString().slice(0, 10) + '.pdf';
+            doc.save(fname);
+
+        } catch (e) {
+            console.error(e);
+            alert('Error generando el PDF: ' + e.message);
+        } finally {
+            btn.textContent = '📄 Descargar informe PDF';
+            btn.disabled = false;
+        }
+    }
+
+    // =====================================================================
+    // TAB 5: SIMULACION
+    // =====================================================================
+    function updateSimulation() {
+        const r = lastResult;
+        if (!r) {
+            document.getElementById('sim-annual-card').style.display = 'block';
+            document.getElementById('sim-title').textContent = 'Calcula primero una query en la pestana Formulario';
+            document.getElementById('sim-per-query-info').textContent = '';
+            document.getElementById('sim-annual-value').textContent = '';
+            document.getElementById('sim-equivalences').innerHTML = '';
+            return;
+        }
+
+        const queries = Math.max(1, parseInt(document.getElementById('sim-queries-input').value) || 1000000);
+        const annualCO2g = r.co2Total * queries;
+        const annualCO2kg = annualCO2g / 1000;
+        const annualCO2t = annualCO2kg / 1000;
+
+        document.getElementById('sim-annual-card').style.display = 'block';
+
+        document.getElementById('sim-title').textContent =
+            'Si ejecutas ' + queries.toLocaleString('es-ES') + ' queries al ano:';
+        document.getElementById('sim-per-query-info').textContent =
+            'Cada query emite ' + fmt(r.co2Total, 4) + ' gCO2 con ' + r.model.name + ' en ' + r.dc.provider + ' ' + r.dc.region;
+
+        const valueStr = annualCO2t >= 1 ? fmt(annualCO2t, 2) + ' toneladas CO2'
+            : annualCO2kg >= 1 ? fmt(annualCO2kg, 2) + ' kg CO2'
+            : fmt(annualCO2g, 4) + ' g CO2';
+        document.getElementById('sim-annual-value').textContent = valueStr;
+
+        // Equivalences - a escala anual, mismas 6 métricas que en Resultados
+        const eq = document.getElementById('sim-equivalences');
+        const annualGoogleSearches = annualCO2g / EQUIV.google_search_g;
+        const annualPhoneCharges = annualCO2g / EQUIV.phone_charge_g;
+        const annualLedHours = r.energyTotal * queries / EQUIV.led_9w_hour_wh;
+        const annualFlights = annualCO2kg / EQUIV.flight_kg;
+        const annualCarKm = annualCO2kg / (EQUIV.car_kg_year / 12800);
+        const annualHouseholdPct = annualCO2kg / EQUIV.household_kg_year * 100;
+
+        function simCard(icon, label, value, unit) {
+            return '<div style="padding: 20px 16px; background: rgba(255,255,255,0.5); border-radius: 12px; text-align: center;">' +
+                '<div style="font-size: 34px;">' + icon + '</div>' +
+                '<div style="font-size: 11px; color: var(--text-gray); font-weight: 700; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px;">' + label + '</div>' +
+                '<div style="font-size: 26px; font-weight: 800; color: var(--primary-dark); font-family: \'JetBrains Mono\', monospace;">' + value + '</div>' +
+                '<div style="font-size: 11px; color: #aaa;">' + unit + '</div>' +
+            '</div>';
+        }
+
+        eq.innerHTML =
+            simCard('🔍', 'Busquedas en Google', Math.round(annualGoogleSearches).toLocaleString('es-ES'), 'busquedas equivalentes') +
+            simCard('🔋', 'Cargas de movil', Math.round(annualPhoneCharges).toLocaleString('es-ES'), 'cargas de movil completas') +
+            simCard('💡', 'Bombilla LED 9W', annualLedHours >= 24 ? fmt(annualLedHours / 24, 1) + ' días' : fmt(annualLedHours, 1) + ' horas', 'encendida ininterrumpidamente') +
+            simCard('✈️', 'Vuelos transatlanticos', fmt(annualFlights, 2), 'vuelos NYC–Londres') +
+            simCard('🚗', 'Trayecto en coche', fmt(annualCarKm, 0) + ' km', 'en coche promedio') +
+            simCard('🏠', 'Hogar medio anual', fmt(annualHouseholdPct, 2) + '%', 'de emisiones de un hogar/año');
+
+        // Projection chart - 5 year comparison
+        const cheapModel = MODELS.reduce((a, b) => a.energy_wh_1k < b.energy_wh_1k ? a : b);
+        document.getElementById('projection-chart-title').textContent = 'Proyeccion 5 anos — Impacto acumulado';
+        const eCompOpt = (r.tokensTotal / 1000) * cheapModel.energy_wh_1k;
+        const eDCOpt = eCompOpt * r.pue;
+        const co2DCOpt = (eDCOpt / 1000) * r.ciDC;
+        let co2DevOpt = r.co2DeviceG;
+        if (r.device.has_npu && r.processor !== 'npu') {
+            const pMaxNpu = r.device.npu_w;
+            const pRealNpu = Math.max(r.pIdle, r.pIdle + (pMaxNpu - r.pIdle) * r.U);
+            const eNpu = pRealNpu * (r.inferenceTimeSec / 3600);
+            co2DevOpt = (eNpu / 1000) * r.ciLocal;
+        }
+
+        const years = ['Ano 1', 'Ano 2', 'Ano 3', 'Ano 4', 'Ano 5'];
+        const baseline = years.map((_, i) => annualCO2kg * (i + 1));
+        const optTotal = (co2DevOpt + r.co2NetG + co2DCOpt) * queries / 1000;
+        const optimized = years.map((_, i) => optTotal * (i + 1));
+        const yUnit = annualCO2t >= 1 ? 'CO2 Acumulado (toneladas)' : 'CO2 Acumulado (kg)';
+        const yData = annualCO2t >= 1 ? baseline.map(v => v / 1000) : baseline;
+        const yDataOpt = annualCO2t >= 1 ? optimized.map(v => v / 1000) : optimized;
+
+        Plotly.newPlot('projection-chart', [
+            {x: years, y: yData, name: 'Sin cambios (' + r.model.name + ')', fill: 'tozeroy', line: {color: '#E74C3C'}},
+            {x: years, y: yDataOpt, name: 'Optimizado (' + cheapModel.name + ' + NPU)', fill: 'tozeroy', line: {color: '#2D5016'}}
+        ], {yaxis: {title: yUnit}, height: 400}, {responsive: true});
+    }
+
+    // =====================================================================
+    // TAB 6: ENERGY LABEL
+    // =====================================================================
+    function updateEnergyLabel() {
+        const r = lastResult;
+        if (!r) return;
+
+        document.getElementById('energy-label-header').textContent =
+            r.model.name + ' en ' + r.dc.provider + ' ' + r.dc.region;
+        document.getElementById('energy-label-class').textContent = 'Clase: ' + r.labelInfo.label;
+        document.getElementById('energy-label-desc').textContent = r.labelInfo.desc + ' | ' + fmt(r.co2Total, 4) + ' gCO2/query';
+
+        const scale = document.getElementById('energy-label-scale');
+        scale.innerHTML = '';
+        LABEL_THRESHOLDS.forEach(t => {
+            const isCurrent = t.label === r.labelInfo.label;
+            const maxStr = t.max === Infinity ? '>' + LABEL_THRESHOLDS[LABEL_THRESHOLDS.length - 2].max : '< ' + t.max;
+            const div = document.createElement('div');
+            div.className = 'energy-label-item' + (isCurrent ? ' current' : '');
+            div.innerHTML =
+                '<div class="energy-label-letter" style="background: ' + t.color + ';">' + t.label + '</div>' +
+                '<div style="flex: 1; text-align: left;">' +
+                    '<div style="font-size: 11px; font-weight: 600;">' + t.desc + (isCurrent ? ' (TU RESULTADO)' : '') + '</div>' +
+                    '<div style="font-size: 10px; color: var(--text-gray);">' + maxStr + ' gCO2 | ' + t.pct + '</div>' +
+                '</div>';
+            scale.appendChild(div);
+        });
+    }
+
+    function initLabelThresholdsInfo() {
+        const container = document.getElementById('label-thresholds-info');
+        LABEL_THRESHOLDS.forEach(t => {
+            const maxStr = t.max === Infinity ? '> ' + LABEL_THRESHOLDS[LABEL_THRESHOLDS.length - 2].max : '< ' + t.max;
+            container.innerHTML +=
+                '<div><h4 style="font-size: 12px; font-weight: 600; color: ' + t.color + '; margin-bottom: 4px;">' +
+                t.label + ' - ' + t.desc + ' (' + t.pct + ')</h4>' +
+                '<p style="font-size: 12px; color: var(--text-gray);">' + maxStr + ' gCO2/query</p></div>';
+        });
+    }
+
+    // =====================================================================
+    // TAB 7: MAPA
+    // =====================================================================
+    function initMap() {
+        if (window.carbonMap) return;
+
+        const map = L.map('map').setView([30, 10], 2);
+        window.carbonMap = map;
+
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; OSM &copy; CARTO', maxZoom: 19
+        }).addTo(map);
+
+        // Color por CI (gCO2/kWh)
+        function getCIColor(ci) {
+            return ci > 600 ? '#7B1A1A' :
+                   ci > 400 ? '#E74C3C' :
+                   ci > 300 ? '#FF6F00' :
+                   ci > 200 ? '#FFC107' :
+                   ci > 100 ? '#4CAF50' :
+                              '#2D5016';
+        }
+
+        // Calcula gCO2/query para un dc_ci dado, usando lastResult si existe, sino GPT-4 chat_simple
+        function estimateCO2(dcCI) {
+            if (lastResult) {
+                // Reusa todos los parametros del ultimo calculo, solo cambia el CI del DC
+                const r = lastResult;
+                const newDCco2 = (r.energyDCWh / 1000) * dcCI;
+                return (r.co2DeviceG + r.co2NetG + newDCco2).toFixed(4);
+            } else {
+                // GPT-4 chat_simple por defecto: ~0.000443 kWh/query, PUE 1.15
+                const energyDCkWh = 0.000443 * 1.15;
+                return (energyDCkWh * dcCI * 1000).toFixed(4);
+            }
+        }
+
+        function queryContext() {
+            const model = document.getElementById('modelo').selectedOptions[0]?.text || 'Modelo';
+            const reqType = REQUEST_TYPES[document.getElementById('peticion').value]?.name || 'Petición';
+            return model + ' | ' + reqType;
+        }
+
+        // Datos de paises con CI
+        const countriesData = {
+            'NO': {ci: 20,  name: 'Noruega',        renewable: '98% hidroeléctrica'},
+            'SE': {ci: 25,  name: 'Suecia',          renewable: '95% hidro+nuclear'},
+            'IS': {ci: 15,  name: 'Islandia',        renewable: '100% geo+hidro'},
+            'FR': {ci: 56,  name: 'Francia',         renewable: '75% nuclear'},
+            'CH': {ci: 35,  name: 'Suiza',           renewable: '90% hidro+nuclear'},
+            'AT': {ci: 95,  name: 'Austria',         renewable: '80% hidroeléctrica'},
+            'ES': {ci: 145, name: 'España',          renewable: '55% renovables'},
+            'PT': {ci: 120, name: 'Portugal',        renewable: '65% renovables'},
+            'BE': {ci: 165, name: 'Bélgica',         renewable: '45% nuclear+renov'},
+            'FI': {ci: 85,  name: 'Finlandia',       renewable: '70% nuclear+hidro'},
+            'DK': {ci: 110, name: 'Dinamarca',       renewable: '80% eólica'},
+            'NL': {ci: 185, name: 'Países Bajos',    renewable: '40% gas+renov'},
+            'IE': {ci: 260, name: 'Irlanda',         renewable: '45% eólica'},
+            'GB': {ci: 195, name: 'Reino Unido',     renewable: '50% gas+renov'},
+            'IT': {ci: 320, name: 'Italia',          renewable: '40% gas+renov'},
+            'DE': {ci: 350, name: 'Alemania',        renewable: '45% carbón todavía'},
+            'CZ': {ci: 420, name: 'Chequia',         renewable: '30% carbón'},
+            'GR': {ci: 380, name: 'Grecia',          renewable: '35% lignito'},
+            'PL': {ci: 680, name: 'Polonia',         renewable: '20% carbón intensivo'},
+            'US': {ci: 390, name: 'EE.UU.',          renewable: '40% promedio nacional'},
+            'CA': {ci: 120, name: 'Canadá',          renewable: '70% hidroeléctrica'},
+            'BR': {ci: 85,  name: 'Brasil',          renewable: '85% hidroeléctrica'},
+            'MX': {ci: 420, name: 'México',          renewable: '25% carbón+gas'},
+            'CN': {ci: 550, name: 'China',           renewable: '30% carbón intensivo'},
+            'IN': {ci: 650, name: 'India',           renewable: '25% carbón intensivo'},
+            'JP': {ci: 470, name: 'Japón',           renewable: '20% nuclear+gas'},
+            'KR': {ci: 420, name: 'Corea del Sur',   renewable: '30% nuclear+gas'},
+            'SG': {ci: 380, name: 'Singapur',        renewable: '95% gas natural'},
+            'TW': {ci: 510, name: 'Taiwán',          renewable: '45% carbón+gas'},
+            'AU': {ci: 540, name: 'Australia',       renewable: '55% carbón'},
+            'NZ': {ci: 105, name: 'Nueva Zelanda',   renewable: '85% hidro+geo'},
+            'ZA': {ci: 850, name: 'Sudáfrica',       renewable: '10% carbón intensivo'},
+            'AE': {ci: 490, name: 'EAU',             renewable: '5% gas natural'},
+            'BH': {ci: 520, name: 'Bahrein',         renewable: '5% gas natural'},
+        };
+
+        // Poligonos simplificados de paises
+        const countryPolygons = {
+            'NO': [[71,25],[71,31],[58,12],[58,5],[62,5],[62,12],[71,25]],
+            'SE': [[69,20],[69,24],[56,12],[56,18],[69,20]],
+            'FI': [[70,20],[70,30],[60,22],[60,30],[70,30]],
+            'IS': [[66,-24],[66,-13],[63,-13],[63,-24],[66,-24]],
+            'FR': [[51,2],[51,8],[42,3],[42,-2],[46,-2],[51,2]],
+            'ES': [[44,-9],[44,3],[36,0],[36,-9],[44,-9]],
+            'PT': [[42,-9],[42,-6],[37,-6],[37,-9],[42,-9]],
+            'DE': [[55,6],[55,15],[47,8],[47,13],[55,6]],
+            'PL': [[55,14],[55,24],[49,14],[49,24],[55,14]],
+            'IT': [[47,7],[47,18],[37,12],[37,18],[47,7]],
+            'GB': [[59,-8],[59,2],[50,2],[50,-6],[59,-8]],
+            'IE': [[55,-10],[55,-6],[51,-6],[51,-10],[55,-10]],
+            'NL': [[53,3],[53,7],[51,4],[51,7],[53,3]],
+            'BE': [[51,3],[51,6],[50,3],[50,6],[51,3]],
+            'CH': [[47,6],[47,10],[46,6],[46,10],[47,6]],
+            'AT': [[49,10],[49,17],[46,10],[46,17],[49,10]],
+            'DK': [[58,8],[58,15],[54,8],[54,12],[58,8]],
+            'GR': [[42,20],[42,29],[35,20],[35,29],[42,20]],
+            'CZ': [[51,12],[51,19],[48,12],[48,19],[51,12]],
+            'US': [[49,-125],[49,-67],[25,-80],[25,-120],[49,-125]],
+            'CA': [[83,-141],[83,-52],[42,-80],[42,-140],[83,-141]],
+            'MX': [[32,-117],[32,-86],[14,-92],[14,-117],[32,-117]],
+            'BR': [[5,-74],[5,-35],[-33,-53],[-33,-74],[5,-74]],
+            'CN': [[53,73],[53,135],[18,98],[18,120],[53,73]],
+            'IN': [[35,68],[35,97],[8,68],[8,97],[35,68]],
+            'JP': [[45,129],[45,146],[31,129],[31,146],[45,129]],
+            'KR': [[38,124],[38,132],[33,124],[33,132],[38,124]],
+            'AU': [[-10,113],[-10,154],[-44,113],[-44,154],[-10,113]],
+            'NZ': [[-34,166],[-34,179],[-47,166],[-47,179],[-34,166]],
+            'ZA': [[-22,16],[-22,33],[-35,18],[-35,30],[-22,16]],
+            'SG': [[1.5,103.6],[1.5,104.1],[1.2,103.6],[1.2,104.1]],
+            'TW': [[25,120],[25,122],[22,120],[22,122],[25,120]],
+            'AE': [[26,51],[26,56],[22,51],[22,56],[26,51]],
+            'BH': [[26.4,50.3],[26.4,50.8],[25.8,50.3],[25.8,50.8],[26.4,50.3]],
+        };
+
+        // Dibujar paises coloreados por CI
+        Object.keys(countriesData).forEach(code => {
+            if (!countryPolygons[code]) return;
+            const c = countriesData[code];
+            const color = getCIColor(c.ci);
+            L.polygon(countryPolygons[code].map(p => [p[0], p[1]]), {
+                color: color, fillColor: color, fillOpacity: 0.45, weight: 1
+            }).bindPopup(
+                '<div style="min-width:220px; font-family: Inter, sans-serif;">' +
+                '<div style="font-weight:700; font-size:15px; color:' + color + '; margin-bottom:6px;">' + c.name + '</div>' +
+                '<table style="width:100%; font-size:12px; border-collapse:collapse;">' +
+                '<tr><td style="color:#666; padding:3px 0;">Intensidad carbono</td><td style="text-align:right; font-weight:700; color:' + color + ';">' + c.ci + ' gCO2/kWh</td></tr>' +
+                '<tr><td style="color:#666; padding:3px 0;">Energia renovable</td><td style="text-align:right;">' + c.renewable + '</td></tr>' +
+                '</table>' +
+                '<hr style="margin:8px 0; border:none; border-top:1px solid #eee;">' +
+                '<div style="background:#f8f9fa; padding:8px; border-radius:6px; font-size:11px;">' +
+                '<div style="color:#666; margin-bottom:2px;">Estimacion CO2/query:</div>' +
+                '<div style="font-weight:700; font-size:14px; color:' + color + ';">' + estimateCO2(c.ci) + ' gCO2</div>' +
+                '<div style="color:#aaa; font-size:10px; margin-top:2px;">' + queryContext() + '</div>' +
+                '</div></div>'
+            ).addTo(map);
+        });
+
+        // Colores por proveedor
+        const providerColors = {'Deep Green': '#6A1B9A', 'Google Cloud': '#4285F4', 'AWS': '#FF9900', 'Azure': '#00A4EF'};
+
+        // Marcadores de data centers con CI real
+        DATA_CENTERS_ALL.forEach(dc => {
+            if (!dc.lat || !dc.lng) return;
+            const dcCI = CI_COUNTRIES[dc.cc] || CI_COUNTRIES['GLOBAL'] || 300;
+            const ciColor = getCIColor(dcCI);
+            const provColor = providerColors[dc.provider] || '#888';
+            const gridRenew = DC_RENEWABLE_GRID[dc.id];
+            const greenwashing = gridRenew !== undefined && (dc.renew_prov - gridRenew) > 20;
+
+            const icon = L.divIcon({
+                className: '',
+                html: '<div style="width:20px;height:20px;background:' + provColor + ';border:3px solid ' + ciColor + ';border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:white;box-shadow:0 2px 6px rgba(0,0,0,0.3);">' + dc.provider[0] + '</div>',
+                iconSize: [20, 20], iconAnchor: [10, 10]
+            });
+
+            const popupHTML =
+                '<div style="min-width:240px; font-family: Inter, sans-serif;">' +
+                '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">' +
+                '<div style="width:12px;height:12px;background:' + provColor + ';border-radius:50%;flex-shrink:0;"></div>' +
+                '<div><div style="font-weight:700;font-size:14px;">' + dc.provider + '</div>' +
+                '<div style="font-size:12px;color:#666;">' + dc.region + '</div></div>' +
+                '</div>' +
+                '<table style="width:100%;font-size:12px;border-collapse:collapse;">' +
+                '<tr><td style="color:#666;padding:3px 0;">Intensidad carbono</td><td style="text-align:right;font-weight:700;color:' + ciColor + ';">' + dcCI + ' gCO2/kWh</td></tr>' +
+                '<tr><td style="color:#666;padding:3px 0;">PUE</td><td style="text-align:right;font-weight:600;">' + dc.pue + '</td></tr>' +
+                '<tr><td style="color:#666;padding:3px 0;">Renovables declaradas</td><td style="text-align:right;">' + dc.renew_prov + '%</td></tr>' +
+                (gridRenew !== undefined ? '<tr><td style="color:#666;padding:3px 0;">Renovables en red del país</td><td style="text-align:right;">' + gridRenew + '%</td></tr>' : '') +
+                '</table>' +
+                (greenwashing ? '<div style="margin-top:6px;padding:6px 8px;background:#FFF3E0;border-left:3px solid #FF9800;border-radius:4px;font-size:11px;color:#E65100;">⚠️ Afirma ' + dc.renew_prov + '% renovable pero red eléctrica del país: ' + gridRenew + '%</div>' : '') +
+                '<hr style="margin:8px 0;border:none;border-top:1px solid #eee;">' +
+                '<div style="background:#f8f9fa;padding:8px;border-radius:6px;font-size:11px;">' +
+                '<div style="color:#666;margin-bottom:2px;">Estimacion CO2/query en este DC:</div>' +
+                '<div style="font-weight:700;font-size:14px;color:' + ciColor + ';">' + estimateCO2(dcCI) + ' gCO2</div>' +
+                '<div style="color:#aaa;font-size:10px;margin-top:2px;">' + queryContext() + '</div>' +
+                '</div></div>';
+
+            L.marker([dc.lat, dc.lng], {icon}).bindPopup(popupHTML).addTo(map);
+        });
+
+        // Leyenda CI
+        const legend = L.control({position: 'bottomright'});
+        legend.onAdd = function() {
+            const div = L.DomUtil.create('div');
+            div.style.cssText = 'background:white;padding:12px;border-radius:10px;box-shadow:0 2px 10px rgba(0,0,0,0.15);font-family:Inter,sans-serif;';
+            div.innerHTML =
+                '<div style="font-weight:700;font-size:12px;margin-bottom:8px;color:#333;">Intensidad Carbono (gCO2/kWh)</div>' +
+                [['#2D5016','< 100 (Muy limpio)'],['#4CAF50','100–200 (Limpio)'],['#FFC107','200–300 (Medio)'],
+                 ['#FF6F00','300–400 (Alto)'],['#E74C3C','400–600 (Muy alto)'],['#7B1A1A','> 600 (Crítico)']].map(([c,l]) =>
+                    '<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;font-size:11px;">' +
+                    '<div style="width:14px;height:14px;background:' + c + ';border-radius:3px;flex-shrink:0;"></div>' + l + '</div>'
+                ).join('') +
+                '<hr style="margin:8px 0;border:none;border-top:1px solid #eee;">' +
+                '<div style="font-weight:700;font-size:11px;margin-bottom:4px;color:#333;">Proveedores</div>' +
+                '<div style="display:flex;gap:8px;font-size:10px;flex-wrap:wrap;">' +
+                '<span style="color:#6A1B9A;">● Deep Green</span>' +
+                '<span style="color:#FF9900;">● AWS</span>' +
+                '<span style="color:#4285F4;">● GCP</span>' +
+                '<span style="color:#00A4EF;">● Azure</span>' +
+                '</div>' +
+                '<div style="font-size:10px;color:#aaa;margin-top:8px;max-width:200px;">Color del borde = CI del pais del DC<br>Color del icono = proveedor</div>';
+            return div;
+        };
+        legend.addTo(map);
+    }
+
+    // =====================================================================
+    // TAB SWITCHING
+    // =====================================================================
+    document.querySelectorAll('.tab-button').forEach(button => {
+        button.addEventListener('click', function() {
+            const tabName = this.dataset.tab;
+            document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
+            document.getElementById(tabName).classList.add('active');
+            this.classList.add('active');
+
+            if (lastResult) {
+                if (tabName === 'dashboard') updateDashboard();
+                else if (tabName === 'comparador') updateComparator();
+                else if (tabName === 'simulacion') updateSimulation();
+                else if (tabName === 'energy-label') updateEnergyLabel();
+            }
+            if (tabName === 'mapa') initMap();
+        });
+    });
+
+    // =====================================================================
+    // HELPERS
+    // =====================================================================
+    function limpiarFormulario() {
+        document.getElementById('modelo').selectedIndex = 0;
+        document.getElementById('peticion').selectedIndex = 0;
+        document.getElementById('data-center').selectedIndex = 0;
+        document.getElementById('dispositivo').selectedIndex = 0;
+        document.getElementById('procesador').value = 'auto';
+        document.getElementById('red').selectedIndex = 0;
+        document.getElementById('pais').value = 'ES';
+        document.getElementById('utilizacion').value = 70;
+        document.getElementById('util-value').textContent = '70';
+        lastResult = null;
+        onModelChange(); onDeviceChange(); onDCChange(); onRequestTypeChange();
+    }
+
+    function cargarEjemplo() {
+        document.getElementById('modelo').value = 'gpt-4';
+        document.getElementById('peticion').value = 'chat_simple';
+        document.getElementById('data-center').value = 'aws-eu-west-1';
+        document.getElementById('dispositivo').value = 'laptop-macbook-air-m3';
+        onDeviceChange();
+        document.getElementById('procesador').value = 'auto';
+        document.getElementById('red').value = 'WiFi 6 802.11ax';
+        document.getElementById('pais').value = 'ES';
+        document.getElementById('utilizacion').value = 70;
+        document.getElementById('util-value').textContent = '70';
+        onModelChange(); onDCChange(); onRequestTypeChange();
+        calcularEmisiones();
+    }
+
+    // =====================================================================
+    // INIT
+    // =====================================================================
+    initForm();
+    </script>
+</body>
+</html>

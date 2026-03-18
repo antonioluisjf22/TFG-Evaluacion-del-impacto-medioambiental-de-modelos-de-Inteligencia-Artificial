@@ -215,6 +215,26 @@ En cambio, para estimar **bytes de red** la heurística es aceptable: tratamos c
 
 **Estado v3.0**: Todos los modelos son `energy_source = "calculated"`. No hay modelos empíricos en la calculadora.
 
+Los campos `latency_ms_per_token` y `tokens_per_second` (`tps`) en `models.csv` complementan los valores energéticos con el rendimiento de inferencia. El campo `tps` no es una medición independiente: siempre se deriva como `tps = 1000 / latency_ms_per_token`. La latencia, en cambio, tiene dos fuentes posibles según el campo `latency_source`:
+
+- **`empirical`**: valor extraído de benchmarks publicados en papers o informes técnicos, medidos en hardware real (GPU A100 80GB SXM, configuración de inferencia en servidor). Modelos con latencia empírica: GPT-4 [3], OPT-175B [4], Llama 2 70B [5], Mistral 7B [21][22].
+- **`calculated`**: estimación derivada del throughput teórico de la GPU: `latency_ms = 1000 / (TFLOPS × eficiencia × 10¹² / (2 × N_params))`, aplicando los mismos parámetros de hardware de referencia (A100, 312 TFLOPS FP16) y factor de eficiencia del modelo.
+
+| Modelo | latency_ms_per_token | latency_source | tps |
+|--------|---------------------|----------------|-----|
+| **GPT-4** | 35.0 | empirical | 28.6 |
+| **PaLM 2** | 9.84 | calculated | 101.6 |
+| **OPT-175B** | 45.0 | empirical | 22.2 |
+| **Claude 2** | 3.83 | calculated | 261.1 |
+| **Llama 2 70B** | 28.0 | empirical | 35.7 |
+| **Falcon 40B** | 2.73 | calculated | 366.3 |
+| **MPT 30B** | 2.77 | calculated | 361.0 |
+| **Gemma 7B** | 1.22 | calculated | 819.7 |
+| **Mistral 7B** | 8.0 | empirical | 125.0 |
+| **Phi-2** | 1.12 | calculated | 892.9 |
+
+En el comparador de la calculadora, `tps` actúa como eje X del gráfico de dispersión (velocidad de inferencia) y como criterio del modelo «más rápido». Al ser siempre derivado de `latency_ms_per_token`, cualquier corrección a la latencia se propaga automáticamente al valor de `tps`.
+
 ### 4.2 Factor de Eficiencia (Modelo Dinámico)
 
 La eficiencia de GPU depende del tamaño del modelo (mejor batching en modelos grandes):
