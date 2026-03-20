@@ -1,9 +1,9 @@
 # 🏷️ DEFINICIÓN DE PERCENTILES PARA ETIQUETAS MEDIOAMBIENTALES
 
 **Documento**: Sistema de clasificación medioambiental para modelos de IA  
-**Fecha**: 2026-02-22  
+**Fecha**: 2026-03-11  
 **Autor**: Sistema de análisis de emisiones TFG  
-**Basado en**: 426,000 combinaciones de escenarios calculados
+**Basado en**: 426,000 combinaciones de escenarios calculados (v3.0 — 10 LLMs)
 
 ---
 
@@ -11,7 +11,7 @@
 
 Este documento define los umbrales de percentiles para las etiquetas de eficiencia medioambiental de modelos de IA, inspiradas en el etiquetado energético de la UE para electrodomésticos. Los umbrales se han calculado a partir de un análisis exhaustivo de 426,000 combinaciones de:
 
-- **10 modelos de IA** (desde BERT hasta GPT-4 y PaLM 2)
+- **10 modelos LLM** (desde Phi-2 hasta GPT-4 y PaLM 2)
 - **71 data centers** (Google Cloud, AWS, Azure, Deep Green)
 - **20 dispositivos cliente** (smartphones, laptops, desktops, edge devices)
 - **5 tipos de red** (WiFi, 4G, 5G, Fiber, Satellite)
@@ -25,29 +25,29 @@ Este documento define los umbrales de percentiles para las etiquetas de eficienc
 
 | Percentil | Valor (gCO2) | Interpretación |
 |-----------|--------------|----------------|
-| P0 (Min)  | 0.000076     | Caso más eficiente |
-| P5        | 0.000164     | Ultra eficiente |
-| P10       | 0.000303     | Muy eficiente |
-| P20       | 0.001036     | Eficiente |
-| P30       | 0.001969     | Moderadamente eficiente |
-| P40       | 0.003674     | Ligeramente eficiente |
-| **P50 (Mediana)** | **0.006326** | **Referencia** |
-| P60       | 0.013090     | Ligeramente alto |
-| P70       | 0.023881     | Alto |
-| P80       | 0.042188     | Muy alto |
-| P90       | 0.102343     | Extremo |
-| P95       | 0.198659     | Muy extremo |
-| P99       | 0.579410     | Outlier |
-| P100 (Max)| 1.072966     | Peor caso |
+| P0 (Min)  | 0.000123     | Caso más eficiente |
+| P5        | 0.001612     | Ultra eficiente |
+| P10       | 0.002885     | Muy eficiente |
+| P20       | 0.005406     | Eficiente |
+| P30       | 0.008973     | Moderadamente eficiente |
+| P40       | 0.013736     | Ligeramente eficiente |
+| **P50 (Mediana)** | **0.022489** | **Referencia** |
+| P60       | 0.034972     | Ligeramente alto |
+| P70       | 0.053997     | Alto |
+| P80       | 0.091746     | Muy alto |
+| P90       | 0.171746     | Extremo |
+| P95       | 0.241276     | Muy extremo |
+| P99       | 0.619003     | Outlier |
+| P100 (Max)| 1.472249     | Peor caso |
 
 ### Estadísticas Globales
 
 | Métrica | Valor |
 |---------|-------|
-| Media | 0.039427 gCO2 |
-| Mediana | 0.006326 gCO2 |
-| Desviación estándar | 0.094173 gCO2 |
-| Coef. de variación | 239% |
+| Media | 0.063908 gCO2 |
+| Mediana | 0.022489 gCO2 |
+| Desviación estándar | 0.113066 gCO2 |
+| Coef. de variación | 177% |
 
 > **Nota**: La alta desviación estándar y coeficiente de variación indican una distribución muy sesgada, donde la mayoría de escenarios son eficientes pero existe una "cola larga" de casos muy ineficientes.
 
@@ -63,12 +63,12 @@ Basado en percentiles de la distribución observada:
 
 | Etiqueta | Rango (gCO2/query) | Percentil | Color | Descripción |
 |----------|-------------------|-----------|-------|-------------|
-| **A** | < 0.000303 | P0-P10 | 🟢 Verde oscuro | Muy eficiente |
-| **B** | 0.000303 - 0.001969 | P10-P30 | 🟢 Verde | Eficiente |
-| **C** | 0.001969 - 0.006326 | P30-P50 | 🟡 Amarillo | Moderado |
-| **D** | 0.006326 - 0.023881 | P50-P70 | 🟠 Naranja | Alto |
-| **E** | 0.023881 - 0.102343 | P70-P90 | 🔴 Rojo claro | Muy alto |
-| **F** | ≥ 0.102343 | P90+ | 🔴 Rojo | Extremo |
+| **A** | < 0.002885 | P0-P10 | 🟢 Verde oscuro | Muy eficiente |
+| **B** | 0.002885 - 0.008973 | P10-P30 | 🟢 Verde | Eficiente |
+| **C** | 0.008973 - 0.022489 | P30-P50 | 🟡 Amarillo | Moderado |
+| **D** | 0.022489 - 0.053997 | P50-P70 | 🟠 Naranja | Alto |
+| **E** | 0.053997 - 0.171746 | P70-P90 | 🔴 Rojo claro | Muy alto |
+| **F** | ≥ 0.171746 | P90+ | 🔴 Rojo | Extremo |
 
 ### Opción B: Sistema de 9 Clases con A+++ - **✅ SELECCIONADA**
 
@@ -76,15 +76,15 @@ Para alinearse con el etiquetado europeo de electrodomésticos. Umbrales basados
 
 | Etiqueta | Rango (gCO2/query) | Percentil | Descripción |
 |----------|-------------------|-----------|-------------|
-| **A+++** | < 0.000105 | P0-P2 | 🌟 Excepcional |
-| **A++**  | 0.000105 - 0.000303 | P2-P10 | 🟢 Excelente |
-| **A+**   | 0.000303 - 0.001036 | P10-P20 | 🟢 Muy bueno |
-| **A**    | 0.001036 - 0.001969 | P20-P30 | 🟢 Bueno |
-| **B**    | 0.001969 - 0.006326 | P30-P50 | 🟡 Aceptable |
-| **C**    | 0.006326 - 0.023881 | P50-P70 | 🟡 Mejorable |
-| **D**    | 0.023881 - 0.102343 | P70-P90 | 🟠 Ineficiente |
-| **E**    | 0.102343 - 0.251990 | P90-P97 | 🔴 Muy ineficiente |
-| **F**    | ≥ 0.251990 | P97+ | 🔴 No recomendado |
+| **A+++** | < 0.000892 | P0-P2 | 🌟 Excepcional |
+| **A++**  | 0.000892 - 0.002885 | P2-P10 | 🟢 Excelente |
+| **A+**   | 0.002885 - 0.005406 | P10-P20 | 🟢 Muy bueno |
+| **A**    | 0.005406 - 0.008973 | P20-P30 | 🟢 Bueno |
+| **B**    | 0.008973 - 0.022489 | P30-P50 | 🟡 Aceptable |
+| **C**    | 0.022489 - 0.053997 | P50-P70 | 🟡 Mejorable |
+| **D**    | 0.053997 - 0.171746 | P70-P90 | 🟠 Ineficiente |
+| **E**    | 0.171746 - 0.338943 | P90-P97 | 🔴 Muy ineficiente |
+| **F**    | ≥ 0.338943 | P97+ | 🔴 No recomendado |
 
 ---
 
@@ -96,7 +96,7 @@ Dado que diferentes tipos de petición tienen distribuciones distintas, se propo
 
 | Etiqueta | Rango (gCO2) | Ejemplos de escenarios |
 |----------|--------------|------------------------|
-| A | < 0.002 | BERT/ViT + NPU + WiFi |
+| A | < 0.002 | Phi-2/Gemma + NPU + WiFi |
 | B | 0.002 - 0.008 | Mistral-7B + cualquier red |
 | C | 0.008 - 0.020 | Llama 2 70B + DC eficiente |
 | D | 0.020 - 0.050 | GPT-4 + DC medio |
@@ -133,17 +133,17 @@ Los datos muestran la siguiente contribución promedio por componente:
 
 | Componente | Contribución Media |
 |------------|-------------------|
-| **Data Center** | 42.8% |
-| **Red de transmisión** | 34.1% |
-| **Dispositivo cliente** | 23.1% |
+| **Data Center** | 78.4% |
+| **Red de transmisión** | 10.8% |
+| **Dispositivo cliente** | 10.8% |
 
 ### Implicaciones para la clasificación
 
-1. **El Data Center es el factor más determinante**: La elección del proveedor cloud y la región geográfica tiene el mayor impacto.
+1. **El Data Center es el factor claramente dominante (78.4%)**: La elección del proveedor cloud, la región geográfica y la intensidad de carbono de la red eléctrica determinan la mayor parte de las emisiones.
 
-2. **La red importa más de lo esperado**: El tipo de conexión (WiFi vs 4G vs Satélite) puede duplicar las emisiones.
+2. **Red y dispositivo tienen impacto similar (~10.8% cada uno)**: El tipo de conexión y el hardware del usuario contribuyen de forma comparable pero modesta frente al DC.
 
-3. **El dispositivo tiene impacto moderado**: Aunque NPU > CPU > GPU en eficiencia, el efecto es menor que DC y red.
+3. **La variación entre modelos es enorme**: El modelo más ineficiente (PaLM 2) emite ~35x más que el más eficiente (Phi-2).
 
 ---
 
@@ -153,23 +153,23 @@ Los datos muestran la siguiente contribución promedio por componente:
 
 | Posición | Modelo | Media (gCO2) | Clasificación Típica |
 |----------|--------|--------------|---------------------|
-| 1 | BERT Base | 0.000796 | **A** |
-| 2 | ViT Base | 0.000853 | **A** |
-| 3 | Mistral 7B | 0.007706 | **C-D** |
-| 4 | Llama 2 70B | 0.022160 | **D** |
-| 5 | GPT-4 | 0.027947 | **D-E** |
-| 6 | Falcon 40B | 0.028697 | **D-E** |
-| 7 | MPT 30B | 0.029979 | **D-E** |
-| 8 | OPT 175B | 0.034625 | **D-E** |
-| 9 | Claude 2 | 0.067086 | **E** |
-| 10 | PaLM 2 | 0.174418 | **F** |
+| 1 | Phi-2 | 0.004969 | **A+** |
+| 2 | Gemma 7B | 0.010049 | **B** |
+| 3 | Mistral 7B | 0.013761 | **B** |
+| 4 | Falcon 40B | 0.021989 | **B** |
+| 5 | MPT 30B | 0.029979 | **C** |
+| 6 | Llama 2 70B | 0.065391 | **D** |
+| 7 | Claude 2 | 0.067086 | **D** |
+| 8 | OPT 175B | 0.088464 | **D** |
+| 9 | GPT-4 | 0.162977 | **D-E** |
+| 10 | PaLM 2 | 0.174418 | **E** |
 
 ### Observaciones
 
-- **Modelos especializados** (BERT, ViT) son ~100x más eficientes que modelos generativos grandes
-- **Llama 2 y Mistral** ofrecen el mejor balance eficiencia/capacidad para LLMs
-- **GPT-4** tiene eficiencia similar a Llama 2 70B (sorprendente dado su tamaño estimado)
-- **PaLM 2** es el menos eficiente por su alta energía por token
+- **Phi-2** es el LLM más eficiente (~35x menos emisiones que PaLM 2) gracias a sus 2.7B parámetros
+- **Los modelos de 7B** (Gemma, Mistral) ofrecen excelente balance eficiencia/capacidad
+- **GPT-4** tiene emisiones altas debido a su arquitectura MoE (~280B parámetros activos)
+- **PaLM 2** es el menos eficiente por sus ~340B parámetros y alta energía por token
 
 ---
 
@@ -207,11 +207,11 @@ Para ajustar la clasificación según la región del DC:
 
 | Categoría | Dispositivos | Impacto Relativo |
 |-----------|--------------|------------------|
-| **Más eficientes** | iPhone 15 Pro, Pixel 8 Pro, tablets | ~0.025 gCO2 |
-| **Eficientes** | MacBook Air M3, smartphones budget | ~0.026 gCO2 |
-| **Moderados** | ThinkPad X1, Desktop oficina | ~0.026-0.027 gCO2 |
-| **Ineficientes** | Laptop budget, Raspberry Pi 5 | ~0.027-0.028 gCO2 |
-| **Muy ineficientes** | Jetson Orin, MacBook Pro M3 Max | ~0.032-0.035 gCO2 |
+| **Más eficientes** | iPhone 15 Pro, Pixel 8 Pro, tablets | ~0.0556 gCO2 |
+| **Eficientes** | Samsung S24 Ultra, smartphones budget | ~0.0557 gCO2 |
+| **Moderados** | MacBook Air M3, ThinkPad X1 | ~0.057-0.060 gCO2 |
+| **Ineficientes** | Desktop oficina, Dell XPS 15 | ~0.066-0.071 gCO2 |
+| **Muy ineficientes** | Mac Studio M2 Ultra, Gaming RTX4090 | ~0.079-0.123 gCO2 |
 
 ### Consideraciones sobre Procesadores
 
@@ -243,11 +243,11 @@ def get_environmental_label(co2_grams: float, request_type: str = "general") -> 
     # Umbrales para tipo general (basados en análisis de 426,000 combinaciones)
     thresholds = {
         "general": {
-            "A": 0.000303,    # P10
-            "B": 0.001969,    # P30
-            "C": 0.006326,    # P50
-            "D": 0.023881,    # P70
-            "E": 0.102343,    # P90
+            "A": 0.002885,    # P10
+            "B": 0.008973,    # P30
+            "C": 0.022489,    # P50
+            "D": 0.053997,    # P70
+            "E": 0.171746,    # P90
             "F": float('inf')
         },
         "chat_simple": {
@@ -308,11 +308,11 @@ def get_environmental_label(co2_grams: float, request_type: str = "general") -> 
 ENVIRONMENTAL_THRESHOLDS = {
     # Basados en percentiles P10, P30, P50, P70, P90
     "general": {
-        "A": {"max": 0.000303, "percentile": 10, "description": "Muy eficiente (Top 10%)"},
-        "B": {"max": 0.001969, "percentile": 30, "description": "Eficiente (Top 30%)"},
-        "C": {"max": 0.006326, "percentile": 50, "description": "Moderado (Mediana)"},
-        "D": {"max": 0.023881, "percentile": 70, "description": "Alto (Top 70%)"},
-        "E": {"max": 0.102343, "percentile": 90, "description": "Muy alto (Top 90%)"},
+        "A": {"max": 0.002885, "percentile": 10, "description": "Muy eficiente (Top 10%)"},
+        "B": {"max": 0.008973, "percentile": 30, "description": "Eficiente (Top 30%)"},
+        "C": {"max": 0.022489, "percentile": 50, "description": "Moderado (Mediana)"},
+        "D": {"max": 0.053997, "percentile": 70, "description": "Alto (Top 70%)"},
+        "E": {"max": 0.171746, "percentile": 90, "description": "Muy alto (Top 90%)"},
         "F": {"max": float('inf'), "percentile": 100, "description": "Extremo (Peor 10%)"}
     }
 }
