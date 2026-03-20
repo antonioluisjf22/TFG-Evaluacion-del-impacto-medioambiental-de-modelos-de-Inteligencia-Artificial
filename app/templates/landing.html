@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CarbonAI — Calculadora de Huella de Carbono para IA</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@600;700;800&display=swap" rel="stylesheet">
+
+    <style>
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+        html, body {
+            width: 100%; height: 100%;
+            overflow: hidden;
+            cursor: none;
+            background: #060D0A;
+        }
+
+        body { font-family: 'Inter', -apple-system, sans-serif; }
+
+        /* === Background === */
+        .bg-gradient {
+            position: fixed; inset: 0; z-index: 0;
+            background:
+                radial-gradient(ellipse 70% 60% at 15% 35%, rgba(45,80,22,0.35) 0%, transparent 65%),
+                radial-gradient(ellipse 55% 55% at 85% 65%, rgba(30,136,229,0.2) 0%, transparent 65%),
+                radial-gradient(ellipse 50% 50% at 50% 100%, rgba(64,224,208,0.1) 0%, transparent 60%),
+                linear-gradient(160deg, #060D0A 0%, #0A1528 55%, #080F0A 100%);
+        }
+
+        /* === Particles === */
+        #particles-js {
+            position: fixed; inset: 0; z-index: 1;
+        }
+
+        /* === Cursor trail === */
+        #cursor-canvas {
+            position: fixed; inset: 0; z-index: 50;
+            pointer-events: none;
+        }
+
+        /* === Custom cursor === */
+        #cursor-dot {
+            position: fixed;
+            width: 7px; height: 7px;
+            background: #4CAF50;
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 60;
+            transform: translate(-50%, -50%);
+            box-shadow: 0 0 8px #4CAF50, 0 0 16px rgba(76,175,80,0.4);
+            transition: background 0.2s;
+        }
+
+        #cursor-ring {
+            position: fixed;
+            width: 30px; height: 30px;
+            border: 1.5px solid rgba(76,175,80,0.55);
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 60;
+            transform: translate(-50%, -50%);
+        }
+
+        /* === Content === */
+        #landing-content {
+            position: fixed; inset: 0; z-index: 10;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 24px;
+        }
+
+        /* Badge "TFG" */
+        .brand-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            background: rgba(76,175,80,0.1);
+            border: 1px solid rgba(76,175,80,0.3);
+            border-radius: 100px;
+            padding: 7px 20px;
+            margin-bottom: 40px;
+            opacity: 0;
+            animation: fadeUp 0.8s ease 0.3s forwards;
+        }
+
+        .brand-dot {
+            width: 7px; height: 7px;
+            background: #4CAF50;
+            border-radius: 50%;
+            animation: pulseDot 2s ease-in-out infinite;
+        }
+
+        @keyframes pulseDot {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.55; transform: scale(0.65); }
+        }
+
+        .brand-text {
+            font-size: 11px; font-weight: 600;
+            color: rgba(76,175,80,0.85);
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+        }
+
+        /* Hero title */
+        .hero-title {
+            font-family: 'Space Grotesk', 'Inter', sans-serif;
+            font-size: clamp(38px, 7.5vw, 88px);
+            font-weight: 800;
+            line-height: 1.05;
+            letter-spacing: -2px;
+            color: #FFFFFF;
+            margin-bottom: 24px;
+            opacity: 0;
+            animation: fadeUp 0.9s ease 0.55s forwards;
+        }
+
+        .hero-title .gradient-text {
+            background: linear-gradient(135deg, #4CAF50 0%, #40E0D0 50%, #1E88E5 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        /* Subtitle */
+        .hero-subtitle {
+            font-size: clamp(15px, 2.2vw, 20px);
+            font-weight: 400;
+            color: rgba(255,255,255,0.6);
+            max-width: 540px;
+            line-height: 1.65;
+            margin-bottom: 52px;
+            opacity: 0;
+            animation: fadeUp 0.9s ease 0.8s forwards;
+        }
+
+        .hero-subtitle em {
+            font-style: normal;
+            color: rgba(76,175,80,0.8);
+            font-weight: 500;
+        }
+
+        /* Stats row */
+        .stats-row {
+            display: flex;
+            align-items: center;
+            gap: 36px;
+            margin-bottom: 56px;
+            opacity: 0;
+            animation: fadeUp 0.9s ease 1.0s forwards;
+        }
+
+        .stat-item { text-align: center; }
+
+        .stat-value {
+            font-family: 'Space Grotesk', monospace;
+            font-size: 26px; font-weight: 700;
+            color: #4CAF50;
+        }
+
+        .stat-label {
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1.2px;
+            color: rgba(255,255,255,0.35);
+            margin-top: 3px;
+        }
+
+        .stat-sep {
+            width: 1px; height: 36px;
+            background: rgba(255,255,255,0.1);
+        }
+
+        /* CTA wrapper */
+        .cta-wrapper {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 18px;
+            opacity: 0;
+            animation: fadeUp 0.9s ease 1.2s forwards;
+        }
+
+        /* Pulse rings behind button */
+        .pulse-rings {
+            position: absolute;
+            top: 28px; left: 50%;
+            transform: translateX(-50%);
+            pointer-events: none;
+        }
+
+        .pulse-ring {
+            position: absolute;
+            border: 1px solid rgba(76,175,80,0.35);
+            border-radius: 50%;
+            animation: ringExpand 2.8s ease-out infinite;
+        }
+
+        .pulse-ring:nth-child(1) { animation-delay: 0s; }
+        .pulse-ring:nth-child(2) { animation-delay: 0.9s; }
+        .pulse-ring:nth-child(3) { animation-delay: 1.8s; }
+
+        @keyframes ringExpand {
+            0%   { width: 56px; height: 56px; opacity: 0.7; transform: translate(-50%, -50%); }
+            100% { width: 260px; height: 260px; opacity: 0; transform: translate(-50%, -50%); }
+        }
+
+        /* CTA Button */
+        .cta-button {
+            position: relative; z-index: 2;
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
+            background: linear-gradient(135deg, #2D5016 0%, #4CAF50 100%);
+            color: white;
+            font-family: 'Inter', sans-serif;
+            font-size: 16px; font-weight: 600;
+            padding: 17px 48px;
+            border: none; border-radius: 100px;
+            cursor: none;
+            letter-spacing: 0.2px;
+            animation: breathe 3.2s ease-in-out 2s infinite;
+            box-shadow: 0 0 48px rgba(76,175,80,0.3), 0 6px 28px rgba(0,0,0,0.45);
+            overflow: hidden;
+            transition: box-shadow 0.3s;
+        }
+
+        .cta-button::after {
+            content: '';
+            position: absolute; inset: 0;
+            background: linear-gradient(135deg, rgba(255,255,255,0.18) 0%, transparent 60%);
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .cta-button:hover::after { opacity: 1; }
+
+        @keyframes breathe {
+            0%, 100% { transform: scale(1); box-shadow: 0 0 48px rgba(76,175,80,0.3), 0 6px 28px rgba(0,0,0,0.45); }
+            50% { transform: scale(1.022); box-shadow: 0 0 72px rgba(76,175,80,0.5), 0 10px 36px rgba(0,0,0,0.45); }
+        }
+
+        .cta-hint {
+            font-size: 11px;
+            color: rgba(255,255,255,0.28);
+            letter-spacing: 0.8px;
+            animation: blinkHint 2.5s ease-in-out 2s infinite;
+        }
+
+        @keyframes blinkHint {
+            0%, 100% { opacity: 0.28; }
+            50% { opacity: 0.65; }
+        }
+
+        /* === Fade animations === */
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(22px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        /* === Bottom marquee === */
+        .bottom-marquee {
+            position: fixed;
+            bottom: 0; left: 0; right: 0;
+            height: 44px;
+            display: flex; align-items: center;
+            overflow: hidden;
+            border-top: 1px solid rgba(255,255,255,0.05);
+            background: rgba(6,13,10,0.75);
+            backdrop-filter: blur(16px);
+            z-index: 10;
+            opacity: 0;
+            animation: fadeUp 0.8s ease 1.6s forwards;
+        }
+
+        .marquee-track {
+            display: flex;
+            animation: marqueeScroll 35s linear infinite;
+            white-space: nowrap;
+        }
+
+        .marquee-item {
+            padding: 0 28px;
+            font-size: 10px; font-weight: 600;
+            letter-spacing: 1.2px;
+            text-transform: uppercase;
+            color: rgba(255,255,255,0.28);
+        }
+
+        .marquee-item::before {
+            content: '·';
+            margin-right: 10px;
+            color: rgba(76,175,80,0.6);
+        }
+
+        @keyframes marqueeScroll {
+            from { transform: translateX(0); }
+            to   { transform: translateX(-50%); }
+        }
+
+        /* === Transition overlay === */
+        #transition-overlay {
+            position: fixed; inset: 0;
+            background: #060D0A;
+            opacity: 0; z-index: 200;
+            pointer-events: none;
+            transition: opacity 0.65s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        #transition-overlay.active {
+            opacity: 1; pointer-events: all;
+        }
+
+        /* === Responsive === */
+        @media (max-width: 600px) {
+            .stats-row { gap: 18px; }
+            .stat-value { font-size: 20px; }
+            .cta-button { padding: 15px 36px; font-size: 15px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-gradient"></div>
+    <div id="particles-js"></div>
+    <canvas id="cursor-canvas"></canvas>
+    <div id="cursor-dot"></div>
+    <div id="cursor-ring"></div>
+
+    <div id="landing-content">
+
+        <div class="brand-badge">
+            <div class="brand-dot"></div>
+            <span class="brand-text">Realizado por Antonio Luis Jiménez de la Fuente</span>
+        </div>
+
+        <h1 class="hero-title">
+            Evaluación del Impacto Medioambiental<br>
+            <span class="gradient-text">de modelos de IA</span>
+        </h1>
+
+        <p class="hero-subtitle">
+            Calculadora de Carbono para Modelos de IA<br>
+            <em>Impacto visible, futuro sostenible.</em>
+        </p>
+
+        <div class="stats-row">
+            <div class="stat-item">
+                <div class="stat-value">10</div>
+                <div class="stat-label">Modelos de IA</div>
+            </div>
+            <div class="stat-sep"></div>
+            <div class="stat-item">
+                <div class="stat-value">71</div>
+                <div class="stat-label">Data Centers</div>
+            </div>
+            <div class="stat-sep"></div>
+            <div class="stat-item">
+                <div class="stat-value">125</div>
+                <div class="stat-label">Zonas CI</div>
+            </div>
+            <div class="stat-sep"></div>
+            <div class="stat-item">
+                <div class="stat-value">gCO₂</div>
+                <div class="stat-label">Precisión</div>
+            </div>
+        </div>
+
+        <div class="cta-wrapper">
+            <div class="pulse-rings">
+                <div class="pulse-ring"></div>
+                <div class="pulse-ring"></div>
+                <div class="pulse-ring"></div>
+            </div>
+            <button class="cta-button" id="cta-btn">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"/><polyline points="12 8 16 12 12 16"/><line x1="8" y1="12" x2="16" y2="12"/>
+                </svg>
+                Empezar a calcular
+            </button>
+            <p class="cta-hint">Haz clic en cualquier parte para continuar</p>
+        </div>
+    </div>
+
+    <div class="bottom-marquee">
+        <div class="marquee-track" id="marquee-track"></div>
+    </div>
+
+    <div id="transition-overlay"></div>
+
+    <!-- particles.js -->
+    <script src="https://cdn.jsdelivr.net/npm/particles.js@2.0.0/particles.min.js"></script>
+    <script>
+    // ============================================================
+    // PARTICLES
+    // ============================================================
+    particlesJS("particles-js", {
+        particles: {
+            number: { value: 85, density: { enable: true, value_area: 900 } },
+            color: { value: ["#4CAF50", "#1E88E5", "#40E0D0", "#81C784"] },
+            shape: { type: "circle" },
+            opacity: { value: 0.55, random: true, anim: { enable: true, speed: 0.6, opacity_min: 0.1, sync: false } },
+            size: { value: 2.5, random: true },
+            line_linked: { enable: true, distance: 145, color: "#4CAF50", opacity: 0.18, width: 1 },
+            move: { enable: true, speed: 0.9, direction: "none", random: true, straight: false, out_mode: "bounce", bounce: false },
+        },
+        interactivity: {
+            detect_on: "window",
+            events: {
+                onhover: { enable: true, mode: "repulse" },
+                onclick: { enable: false },
+                resize: true,
+            },
+            modes: {
+                repulse: { distance: 110, duration: 0.4 },
+            },
+        },
+        retina_detect: true,
+    });
+
+    // ============================================================
+    // CURSOR TRAIL
+    // ============================================================
+    const canvas = document.getElementById("cursor-canvas");
+    const ctx = canvas.getContext("2d");
+    const dot = document.getElementById("cursor-dot");
+    const ring = document.getElementById("cursor-ring");
+    let W = window.innerWidth, H = window.innerHeight;
+    let mouse = { x: W / 2, y: H / 2 };
+    let ringPos = { x: W / 2, y: H / 2 };
+    let trail = [];
+    const TRAIL_LEN = 32;
+
+    function resize() {
+        W = window.innerWidth; H = window.innerHeight;
+        canvas.width = W; canvas.height = H;
+    }
+    resize();
+    window.addEventListener("resize", resize);
+
+    document.addEventListener("mousemove", e => {
+        mouse.x = e.clientX; mouse.y = e.clientY;
+        trail.push({ x: e.clientX, y: e.clientY, age: 0 });
+        if (trail.length > TRAIL_LEN) trail.shift();
+        dot.style.left = e.clientX + "px";
+        dot.style.top  = e.clientY + "px";
+    });
+
+    function lerp(a, b, t) { return a + (b - a) * t; }
+
+    function animateCursor() {
+        // Smooth ring follow
+        ringPos.x = lerp(ringPos.x, mouse.x, 0.14);
+        ringPos.y = lerp(ringPos.y, mouse.y, 0.14);
+        ring.style.left = ringPos.x + "px";
+        ring.style.top  = ringPos.y + "px";
+
+        // Trail
+        ctx.clearRect(0, 0, W, H);
+        trail.forEach(p => {
+            p.age++;
+            const t = 1 - p.age / TRAIL_LEN;
+            if (t <= 0) return;
+            const alpha = t * 0.38;
+            const r     = t * 20;
+            const grad = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, r);
+            grad.addColorStop(0, `rgba(76,200,100,${alpha})`);
+            grad.addColorStop(0.5, `rgba(64,224,208,${alpha * 0.5})`);
+            grad.addColorStop(1, "rgba(64,224,208,0)");
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
+            ctx.fillStyle = grad;
+            ctx.fill();
+        });
+        trail = trail.filter(p => p.age < TRAIL_LEN);
+
+        requestAnimationFrame(animateCursor);
+    }
+    animateCursor();
+
+    // ============================================================
+    // MARQUEE
+    // ============================================================
+    const items = [
+        "Huella de Carbono", "Modelos de IA", "Data Centers", "Intensidad de Carbono",
+        "Eficiencia Energética", "Energías Renovables", "CO₂ por Query", "GPT-4",
+        "Gemini Ultra", "Claude 3", "Llama 3", "Mistral Large", "PUE", "gCO₂/kWh",
+        "Etiqueta Energética", "Comparativa de Modelos", "Evaluación Medioambiental",
+    ];
+    const track = document.getElementById("marquee-track");
+    [...items, ...items, ...items, ...items].forEach(txt => {
+        const el = document.createElement("div");
+        el.className = "marquee-item";
+        el.textContent = txt;
+        track.appendChild(el);
+    });
+
+    // ============================================================
+    // TRANSITION
+    // ============================================================
+    function startTransition() {
+        const overlay = document.getElementById("transition-overlay");
+        overlay.classList.add("active");
+        setTimeout(() => { window.location.href = "/calculator"; }, 680);
+    }
+
+    document.getElementById("cta-btn").addEventListener("click", startTransition);
+
+    // Click anywhere on the content background also triggers it
+    document.getElementById("landing-content").addEventListener("click", e => {
+        if (e.target.id !== "cta-btn" && !document.getElementById("cta-btn").contains(e.target)) {
+            startTransition();
+        }
+    });
+    </script>
+</body>
+</html>

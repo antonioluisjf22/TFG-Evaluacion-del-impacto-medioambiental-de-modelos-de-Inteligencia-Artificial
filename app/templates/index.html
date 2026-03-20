@@ -1,0 +1,368 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<!-- ============================================================ -->
+<!-- TAB 1: FORMULARIO                                             -->
+<!-- ============================================================ -->
+<div id="tab-formulario" class="tab-content active">
+    <div class="section">
+        <form id="calc-form" autocomplete="off">
+
+            <!-- Stepper (8 pasos = 1 por parámetro) -->
+            <div class="stepper-progress" id="form-stepper">
+                <div class="stepper-step" data-step="1" data-field="model_id">
+                    <div class="stepper-num">1</div>
+                    <span class="stepper-label">Modelo</span>
+                </div>
+                <div class="stepper-line"></div>
+                <div class="stepper-step" data-step="2" data-field="request_type">
+                    <div class="stepper-num">2</div>
+                    <span class="stepper-label">Petición</span>
+                </div>
+                <div class="stepper-line"></div>
+                <div class="stepper-step" data-step="3" data-field="data_center_id">
+                    <div class="stepper-num">3</div>
+                    <span class="stepper-label">Data Center</span>
+                </div>
+                <div class="stepper-line"></div>
+                <div class="stepper-step" data-step="4" data-field="device_id">
+                    <div class="stepper-num">4</div>
+                    <span class="stepper-label">Dispositivo</span>
+                </div>
+                <div class="stepper-line"></div>
+                <div class="stepper-step" data-step="5" data-field="inference_processor">
+                    <div class="stepper-num">5</div>
+                    <span class="stepper-label">Procesador</span>
+                </div>
+                <div class="stepper-line"></div>
+                <div class="stepper-step" data-step="6" data-field="network_id">
+                    <div class="stepper-num">6</div>
+                    <span class="stepper-label">Red</span>
+                </div>
+                <div class="stepper-line"></div>
+                <div class="stepper-step" data-step="7" data-field="user_country">
+                    <div class="stepper-num">7</div>
+                    <span class="stepper-label">País</span>
+                </div>
+                <div class="stepper-line"></div>
+                <div class="stepper-step" data-step="8" data-field="utilization">
+                    <div class="stepper-num">8</div>
+                    <span class="stepper-label">Utilización</span>
+                </div>
+            </div>
+
+            <!-- Cargar ejemplo button -->
+            <button class="btn-load-example" id="btn-load-example" title="Carga datos de ejemplo en el formulario">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                Cargar ejemplo
+            </button>
+
+            <!-- Header -->
+            <div class="form-header-card">
+                <div class="form-header-left">
+                    <div class="form-header-icon"><i data-lucide="microscope"></i></div>
+                    <div>
+                        <div class="form-header-title">Parámetros de entrada</div>
+                        <div class="form-header-sub">Configura cada parámetro para obtener el cálculo de emisiones</div>
+                    </div>
+                </div>
+                <div class="form-header-chips">
+                    <span class="chip chip-green" data-tip="10 modelos de IA con datos de consumo verificados">10 modelos</span>
+                    <span class="chip chip-blue" data-tip="71 data centers reales de AWS, GCP, Azure y Deep Green">71 data centers</span>
+                    <span class="chip chip-teal" data-tip="20 dispositivos: smartphones, portátiles, tablets y PCs">20 dispositivos</span>
+                </div>
+            </div>
+
+            <!-- Section 1: Server infraestructure -->
+            <div class="card form-section-card">
+                <div class="form-section-header">
+                    <div class="form-section-icon"><i data-lucide="monitor"></i></div>
+                    <div>
+                        <div class="form-section-title">Infraestructura del servidor</div>
+                        <div class="form-section-desc">Dónde y cómo se ejecuta el modelo de IA</div>
+                    </div>
+                </div>
+                <div class="form-grid-3">
+                    <div class="input-group">
+                        <label for="model_id">
+                            <span class="field-icon"><i data-lucide="cpu"></i></span> 1. Modelo de IA
+                        </label>
+                        <p class="field-desc">El modelo que procesa tu consulta. Modelos más grandes consumen más energía pero suelen dar mejores respuestas.</p>
+                        <select id="model_id" name="model_id" required>
+                            <option value="">— Selecciona un modelo —</option>
+                        </select>
+                        <div id="model-info" class="device-info" style="display:none;"></div>
+                    </div>
+                    <div class="input-group">
+                        <label for="request_type">
+                            <span class="field-icon"><i data-lucide="message-square"></i></span> 2. Tipo de petición
+                        </label>
+                        <p class="field-desc">Qué le pides a la IA. Tareas largas (resumir, generar código) procesan más tokens y consumen más energía.</p>
+                        <select id="request_type" name="request_type">
+                            <option value="">— Selecciona tipo —</option>
+                        </select>
+                        <div id="tokens-info" class="device-info" style="display:none;"></div>
+                    </div>
+                    <div class="input-group">
+                        <label for="data_center_id">
+                            <span class="field-icon"><i data-lucide="server"></i></span> 3. Data Center
+                        </label>
+                        <p class="field-desc"><strong>Puede estar en un país distinto al tuyo.</strong> Su localización determina la huella de la electricidad del servidor. PUE mide la eficiencia (1.0 = perfecto).</p>
+                        <select id="data_center_id" name="data_center_id" required>
+                            <option value="">— Selecciona data center —</option>
+                        </select>
+                        <div id="dc-info" class="device-info" style="display:none;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Section 2: Device & connectivity -->
+            <div class="card form-section-card">
+                <div class="form-section-header">
+                    <div class="form-section-icon"><i data-lucide="smartphone"></i></div>
+                    <div>
+                        <div class="form-section-title">Tu dispositivo y conectividad</div>
+                        <div class="form-section-desc">El equipo desde el que realizas la consulta y tu conexión a internet</div>
+                    </div>
+                </div>
+                <div class="form-grid-4">
+                    <div class="input-group">
+                        <label for="device_id">
+                            <span class="field-icon"><i data-lucide="laptop"></i></span> 4. Dispositivo cliente
+                        </label>
+                        <p class="field-desc">Tu móvil, portátil, etc. Consume energía mientras espera la respuesta del servidor.</p>
+                        <select id="device_id" name="device_id" required>
+                            <option value="">— Selecciona dispositivo —</option>
+                        </select>
+                        <div id="device-info" class="device-info" style="display:none;"></div>
+                    </div>
+                    <div class="input-group">
+                        <label for="inference_processor">
+                            <span class="field-icon"><i data-lucide="zap"></i></span> 5. Procesador <span class="tooltip" data-tooltip="auto = usa el chip óptimo del dispositivo">?</span>
+                        </label>
+                        <p class="field-desc">Qué chip procesa la espera. La NPU es el más eficiente, si tu dispositivo la tiene.</p>
+                        <select id="inference_processor" name="inference_processor">
+                            <option value="">— Selecciona procesador —</option>
+                            <option value="auto">Auto (detectar óptimo)</option>
+                            <option value="cpu">CPU</option>
+                            <option value="gpu">GPU</option>
+                            <option value="npu">NPU</option>
+                        </select>
+                        <div id="proc-info" class="device-info" style="display:none;"></div>
+                    </div>
+                    <div class="input-group">
+                        <label for="network_id">
+                            <span class="field-icon"><i data-lucide="wifi"></i></span> 6. Tipo de red
+                        </label>
+                        <p class="field-desc">Cómo te conectas a internet. La fibra óptica es la opción más eficiente energéticamente.</p>
+                        <select id="network_id" name="network_id" required>
+                            <option value="">— Selecciona red —</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label for="user_country">
+                            <span class="field-icon"><i data-lucide="globe"></i></span> 7. País del usuario
+                        </label>
+                        <p class="field-desc">Tu ubicación física. Determina la intensidad de carbono de la electricidad que alimenta <strong>tu dispositivo</strong>.</p>
+                        <select id="user_country" name="user_country">
+                            <option value="">— Selecciona país —</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Section 3: Utilization -->
+            <div class="card form-section-card">
+                <div class="form-section-header">
+                    <div class="form-section-icon"><i data-lucide="bar-chart-2"></i></div>
+                    <div>
+                        <div class="form-section-title">8. Factor de utilización (U)</div>
+                        <div class="form-section-desc">Cuánto se exige tu dispositivo durante la espera — 70% es el valor típico</div>
+                    </div>
+                </div>
+                <div class="utilization-container">
+                    <div class="utilization-display">
+                        <div class="utilization-value" id="utilization-display">0</div>
+                        <div class="utilization-unit">%</div>
+                    </div>
+                    <input type="range" id="utilization" name="utilization"
+                           min="0" max="100" value="0" step="5"
+                           class="utilization-slider">
+                    <div id="utilization-formula" class="device-info" style="color: var(--primary); font-weight: 600; font-size: 13px; margin-top: 16px;">
+                        U = 0% — Mover el slider para configurar
+                    </div>
+                </div>
+            </div>
+
+            <!-- Actions -->
+            <div class="form-actions">
+                <button type="submit" class="button button-primary button-lg shimmer" id="btn-calculate">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"/><polyline points="12 8 16 12 12 16"/><line x1="8" y1="12" x2="16" y2="12"/>
+                    </svg>
+                    Calcular emisiones
+                </button>
+            </div>
+
+        </form>
+    </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- TAB 2: RESULTADOS                                             -->
+<!-- ============================================================ -->
+<div id="tab-resultados" class="tab-content">
+    <div id="results-placeholder" class="hero">
+        <h2>Sin resultados aún</h2>
+        <p>Configura los parámetros en la pestaña <strong>Formulario</strong> y pulsa <em>Calcular emisiones</em>.</p>
+    </div>
+    <div id="results-content" style="display: none;">
+        <div class="metrics-grid" id="results-metrics"></div>
+
+        <!-- CO₂ estimator inline — shows per-query estimate after calculation -->
+        <div class="card co2-estimator-inline" id="co2-estimator-inline" style="display:none;">
+            <div class="card-title"><i data-lucide="leaf"></i> CO₂ estimado por query</div>
+            <div style="display:flex;align-items:center;gap:24px;flex-wrap:wrap;">
+                <div style="text-align:center;flex:1;min-width:160px;">
+                    <div class="co2-estimator-value" id="co2-est-val" style="font-family:'JetBrains Mono',monospace;font-size:36px;font-weight:700;color:var(--primary);">—</div>
+                    <div style="font-size:12px;color:var(--text-muted);margin-top:4px;">gCO₂ / query</div>
+                </div>
+                <div style="flex:2;min-width:200px;">
+                    <p style="font-size:13px;color:var(--text-secondary);line-height:1.6;" id="co2-est-context"></p>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-title"><i data-lucide="bar-chart-2"></i> Desglose por componente</div>
+            <div class="breakdown-grid" id="results-breakdown"></div>
+        </div>
+        <div class="card">
+            <div class="card-title"><i data-lucide="globe"></i> Equivalencias intuitivas</div>
+            <div id="results-equivalencies" class="breakdown-grid"></div>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- TAB 3: DASHBOARD                                              -->
+<!-- ============================================================ -->
+<div id="tab-dashboard" class="tab-content">
+    <div id="dashboard-placeholder" class="hero">
+        <h2>Dashboard</h2>
+        <p>Se generará automáticamente tras calcular las emisiones.</p>
+    </div>
+    <div id="dashboard-content" style="display: none;">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+            <div class="chart-container">
+                <div class="card-title"><i data-lucide="pie-chart"></i> Distribución por componente</div>
+                <div class="chart-wrapper"><canvas id="pie-chart"></canvas></div>
+            </div>
+            <div class="chart-container">
+                <div class="card-title"><i data-lucide="bar-chart-2"></i> Energía por componente (Wh)</div>
+                <div class="chart-wrapper"><canvas id="bar-chart"></canvas></div>
+            </div>
+        </div>
+        <div class="card" id="dashboard-detail-cards"></div>
+    </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- TAB 4: COMPARADOR                                             -->
+<!-- ============================================================ -->
+<div id="tab-comparador" class="tab-content">
+    <div id="comparador-placeholder" class="hero">
+        <h2>Comparador de modelos</h2>
+        <p>Calcula emisiones primero para comparar todos los modelos con la misma configuración.</p>
+    </div>
+    <div id="comparador-content" style="display: none;">
+        <div class="chart-container">
+            <div class="card-title"><i data-lucide="scale"></i> CO₂ por modelo (gCO₂)</div>
+            <div class="chart-wrapper"><canvas id="comparison-chart"></canvas></div>
+        </div>
+        <div class="card">
+            <div class="card-title"><i data-lucide="table"></i> Tabla comparativa</div>
+            <div class="table-responsive" id="comparison-table"></div>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- TAB 5: SIMULACIÓN                                             -->
+<!-- ============================================================ -->
+<div id="tab-simulacion" class="tab-content">
+    <div id="simulacion-placeholder" class="hero">
+        <h2>Simulación a escala</h2>
+        <p>Calcula emisiones primero y después simula el impacto anual a escala de producción.</p>
+    </div>
+    <div id="simulacion-content" style="display: none;">
+        <div class="card">
+            <div class="card-title"><i data-lucide="activity"></i> Proyección anual</div>
+            <div class="form-grid" style="max-width: 500px;">
+                <div class="input-group">
+                    <label for="queries_per_day"><i data-lucide="hash" style="width:14px;height:14px;stroke:var(--primary)"></i> Queries por día</label>
+                    <input type="text" id="queries_per_day" value="1.000.000" inputmode="numeric">
+                </div>
+            </div>
+            <button class="button button-primary" id="btn-simulate">
+                <i data-lucide="activity"></i> Simular
+            </button>
+        </div>
+        <div id="simulation-results"></div>
+    </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- TAB 6: ETIQUETA ENERGÉTICA                                    -->
+<!-- ============================================================ -->
+<div id="tab-energy-label" class="tab-content">
+    <div id="label-placeholder" class="hero">
+        <h2>Etiqueta energética</h2>
+        <p>Se generará automáticamente tras calcular las emisiones.</p>
+    </div>
+    <div id="label-content" style="display: none;">
+        <div id="energy-label-widget"></div>
+    </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- TAB 7: MAPA GLOBAL                                            -->
+<!-- ============================================================ -->
+<div id="tab-mapa" class="tab-content">
+    <div class="section">
+        <div class="section-title"><i data-lucide="globe"></i> Mapa de data centers e intensidad de carbono</div>
+
+        <!-- Explanation panel -->
+        <div class="map-explain">
+            <div class="map-explain-title"><i data-lucide="info"></i> Qué ves en este mapa</div>
+            <div class="map-explain-grid">
+                <div class="map-explain-item">
+                    <i data-lucide="globe" style="color:var(--primary)"></i>
+                    <span>Países coloreados según la <span class="hl-green">intensidad de carbono</span> de su red eléctrica</span>
+                </div>
+                <div class="map-explain-item">
+                    <i data-lucide="map-pin" style="color:var(--accent-blue)"></i>
+                    <span>Marcadores de <span class="hl-blue">data centers</span> con color por proveedor y borde por CI del país</span>
+                </div>
+                <div class="map-explain-item">
+                    <i data-lucide="mouse-pointer" style="color:var(--text-secondary)"></i>
+                    <span>Haz clic en un marcador para ver detalles: CI, PUE, renovables y CO₂/query estimado</span>
+                </div>
+                <div class="map-explain-item">
+                    <i data-lucide="alert-triangle" style="color:var(--accent-amber)"></i>
+                    <span>DCs con <span class="hl-green">posible greenwashing</span> detectado muestran un pulso ámbar</span>
+                </div>
+            </div>
+        </div>
+
+        <div id="map" style="height: 600px; position: relative;">
+            <!-- Legend will be injected here -->
+        </div>
+
+        <!-- Bottom panels -->
+        <div class="map-panels" id="map-panels"></div>
+    </div>
+</div>
+
+{% endblock %}
