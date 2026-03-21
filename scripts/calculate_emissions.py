@@ -165,7 +165,19 @@ class EmissionResult:
     # Información de procesador (nuevo v2.4)
     processor_used: str = "cpu"                # "cpu", "gpu", o "npu"
     processor_watts: float = 0.0               # Watts consumidos por el procesador
-    
+
+    # Valores intermedios de cálculo (v2.5 — para desglose de fórmulas en frontend)
+    step_p_idle_w: float = 0.0
+    step_p_real_w: float = 0.0
+    step_utilization: float = 0.7
+    step_data_mb: float = 0.0
+    step_net_kWh_per_mb: float = 0.0
+    step_net_kWh_per_gb: float = 0.0
+    step_ci_local: float = 0.0
+    step_energy_compute_wh: float = 0.0
+    step_pue: float = 1.15
+    step_model_wh_per_1k: float = 0.0
+
     def to_dict(self) -> Dict[str, Any]:
         result = {
             "emissions_gCO2": {
@@ -200,6 +212,37 @@ class EmissionResult:
                 "provider_claimed_pct": int(self.dc_renewable_provider_pct) if self.dc_renewable_provider_pct is not None else None,
                 "carbon_intensity_gCO2_kWh": float(self.dc_carbon_intensity) if self.dc_carbon_intensity is not None else None,
                 "note": "grid_renewable_pct = mix real de red; provider_claimed_pct = declarado por proveedor (PPAs)"
+            },
+            "formula_steps": {
+                "device": {
+                    "processor": self.processor_used,
+                    "p_idle_w": round(self.step_p_idle_w, 3),
+                    "p_max_w": round(self.processor_watts, 3),
+                    "utilization": round(self.step_utilization, 2),
+                    "p_real_w": round(self.step_p_real_w, 3),
+                    "inference_time_s": round(self.inference_time_sec, 3),
+                    "energy_wh": round(self.energy_device_wh, 6),
+                    "ci_gCO2_kWh": round(self.step_ci_local, 1),
+                    "co2_g": round(self.co2_device_g, 6),
+                },
+                "network": {
+                    "tokens": self.tokens_processed,
+                    "data_mb": round(self.step_data_mb, 6),
+                    "energy_kWh_per_mb": round(self.step_net_kWh_per_mb, 6),
+                    "energy_kWh_per_gb": round(self.step_net_kWh_per_gb, 4),
+                    "energy_wh": round(self.energy_network_wh, 6),
+                    "ci_gCO2_kWh": round(self.step_ci_local, 1),
+                    "co2_g": round(self.co2_network_g, 6),
+                },
+                "datacenter": {
+                    "tokens": self.tokens_processed,
+                    "model_wh_per_1k": round(self.step_model_wh_per_1k, 6),
+                    "energy_compute_wh": round(self.step_energy_compute_wh, 6),
+                    "pue": round(self.step_pue, 3),
+                    "energy_dc_wh": round(self.energy_datacenter_wh, 6),
+                    "ci_gCO2_kWh": round(float(self.dc_carbon_intensity), 1) if self.dc_carbon_intensity is not None else 0,
+                    "co2_g": round(self.co2_datacenter_g, 6),
+                }
             }
         }
         return result
@@ -924,7 +967,9 @@ class CarbonCalculator:
         
         # ===== 3. EMISIONES DEL DATA CENTER =====
         # NUEVA LÓGICA v2.0: Usar energy_wh_per_1k_tokens del modelo si está disponible
-        
+
+        _step_model_wh_per_1k = 0.0  # Capture for formula breakdown
+
         if dc is not None:
             pue = dc['pue']
         else:
@@ -938,6 +983,7 @@ class CarbonCalculator:
                 # Cálculo directo basado en datos del modelo
                 # E_compute = (tokens / 1000) × energy_wh_per_1k_tokens
                 energy_compute_wh = (tokens_processed / 1000) * energy_per_1k
+                _step_model_wh_per_1k = energy_per_1k
             else:
                 # FALLBACK: Calcular basado en FLOPS (método anterior)
                 try:
@@ -987,7 +1033,17 @@ class CarbonCalculator:
             dc_renewable_provider_pct=dc_renewable_info['provider_renewable_pct'],
             dc_carbon_intensity=ci_dc,
             processor_used=processor_used,
-            processor_watts=processor_watts
+            processor_watts=processor_watts,
+            step_p_idle_w=p_idle,
+            step_p_real_w=device_watts,
+            step_utilization=utilization,
+            step_data_mb=data_transferred_mb,
+            step_net_kWh_per_mb=energy_per_mb,
+            step_net_kWh_per_gb=energy_per_gb,
+            step_ci_local=ci_local,
+            step_energy_compute_wh=energy_compute_wh,
+            step_pue=pue,
+            step_model_wh_per_1k=_step_model_wh_per_1k,
         )
     
     def list_available(self) -> Dict[str, list]:

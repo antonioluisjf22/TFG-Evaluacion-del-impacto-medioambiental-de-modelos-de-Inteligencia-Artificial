@@ -53,7 +53,7 @@
             </div>
 
             <!-- Cargar ejemplo button -->
-            <button class="btn-load-example" id="btn-load-example" title="Carga datos de ejemplo en el formulario">
+            <button type="button" class="btn-load-example" id="btn-load-example" title="Carga datos de ejemplo en el formulario">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                 Cargar ejemplo
             </button>
@@ -220,20 +220,6 @@
     <div id="results-content" style="display: none;">
         <div class="metrics-grid" id="results-metrics"></div>
 
-        <!-- CO₂ estimator inline — shows per-query estimate after calculation -->
-        <div class="card co2-estimator-inline" id="co2-estimator-inline" style="display:none;">
-            <div class="card-title"><i data-lucide="leaf"></i> CO₂ estimado por query</div>
-            <div style="display:flex;align-items:center;gap:24px;flex-wrap:wrap;">
-                <div style="text-align:center;flex:1;min-width:160px;">
-                    <div class="co2-estimator-value" id="co2-est-val" style="font-family:'JetBrains Mono',monospace;font-size:36px;font-weight:700;color:var(--primary);">—</div>
-                    <div style="font-size:12px;color:var(--text-muted);margin-top:4px;">gCO₂ / query</div>
-                </div>
-                <div style="flex:2;min-width:200px;">
-                    <p style="font-size:13px;color:var(--text-secondary);line-height:1.6;" id="co2-est-context"></p>
-                </div>
-            </div>
-        </div>
-
         <div class="card">
             <div class="card-title"><i data-lucide="bar-chart-2"></i> Desglose por componente</div>
             <div class="breakdown-grid" id="results-breakdown"></div>
@@ -241,6 +227,19 @@
         <div class="card">
             <div class="card-title"><i data-lucide="globe"></i> Equivalencias intuitivas</div>
             <div id="results-equivalencies" class="breakdown-grid"></div>
+        </div>
+
+        <!-- Desglose de fórmulas -->
+        <div class="card" id="formula-section">
+            <div class="card-title"><i data-lucide="sigma"></i> Desglose de fórmulas</div>
+            <p style="font-size:13px;color:var(--text-secondary);margin-bottom:20px;">Cálculo paso a paso de las emisiones de cada componente.</p>
+            <div id="results-formula"></div>
+        </div>
+        <div class="card" id="whatif-section">
+            <div class="card-title"><i data-lucide="git-branch"></i> ¿Qué hubiera pasado si...?</div>
+            <p style="font-size:13px;color:var(--text-secondary);margin-bottom:16px;">Explora cómo cambiarían tus emisiones con diferentes decisiones. Selecciona alternativas y compara en tiempo real.</p>
+            <div id="whatif-controls" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-bottom:20px;"></div>
+            <div id="whatif-results"></div>
         </div>
     </div>
 </div>

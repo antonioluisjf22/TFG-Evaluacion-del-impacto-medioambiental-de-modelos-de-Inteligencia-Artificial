@@ -75,6 +75,8 @@
                 btn.classList.add("active");
                 const target = document.getElementById("tab-" + tabId);
                 if (target) target.classList.add("active");
+                // Scroll to the top of the tab
+                window.scrollTo({ top: 0, behavior: "instant" });
                 // Re-render icons in newly visible tab
                 if (window.lucide) setTimeout(() => lucide.createIcons(), 50);
             });
@@ -176,7 +178,7 @@
             || (OPTIONS.data_centers || [])[0];
         const exDev = (OPTIONS.devices || []).find(d => /macbook/i.test(d.device_name || ''))
             || (OPTIONS.devices || [])[0];
-        const exNet = (OPTIONS.networks || []).find(n => n.network_type === 'fiber')
+        const exNet = (OPTIONS.networks || []).find(n => n.network_type.toLowerCase().includes('fiber'))
             || (OPTIONS.networks || [])[0];
         const exCountry = (OPTIONS.countries || []).find(c => c.code === 'ES')
             || (OPTIONS.countries || [])[0];
@@ -219,6 +221,9 @@
             if (!resp.ok) throw new Error("Error cargando opciones");
             OPTIONS = await resp.json();
             populateSelectors();
+            // Remover clase shimmer del botón de calcular una vez cargado
+            const btn = document.getElementById("btn-calculate");
+            if (btn) btn.classList.remove("shimmer");
         } catch (err) {
             console.error("Error cargando opciones:", err);
             showError("No se pudieron cargar los catálogos. ¿Está el servidor activo?");
@@ -285,7 +290,7 @@
         );
 
         fillSelect("user_country", OPTIONS.countries || [], item =>
-            `${countryName(item.code)} (${item.carbon_intensity} gCO₂/kWh)`,
+            `${countryName(item.code)} — ${item.carbon_intensity != null ? item.carbon_intensity + ' gCO₂/kWh' : 'N/D'}`,
             item => item.code, true
         );
 
@@ -372,21 +377,35 @@
 
     function formatRequestType(id) {
         const names = {
-            chat_simple: "Chat Simple", chat_complex: "Chat Complejo",
-            code_generation: "Generación de código", summarization: "Resumen de texto",
-            translation: "Traducción", image_analysis: "Análisis de imagen", embedding: "Embedding",
+            chat_simple: "Chat Simple",
+            chat_extended: "Chat Extendido",
+            chat_complex: "Chat Complejo",
+            generation_short: "Generación corta",
+            generation_long: "Generación larga",
+            code_generation: "Generación de código",
+            summarization: "Resumen de texto",
+            translation: "Traducción",
+            image_analysis: "Análisis de imagen",
+            embedding: "Embedding",
         };
         return names[id] || id;
     }
 
     function countryName(code) {
-        const names = {
-            ES: "España", FR: "Francia", DE: "Alemania", GB: "Reino Unido",
-            NO: "Noruega", SE: "Suecia", US: "EEUU", "US-OR": "US-OR",
-            IE: "Irlanda", NL: "Países Bajos", PL: "Polonia",
-            CN: "China", IN: "India", AU: "Australia",
+        // Full name for top-level codes; sub-zones get "Country · subzone"
+        const countries = {
+            AT: "Austria", AU: "Australia", BE: "Bélgica", BR: "Brasil",
+            CA: "Canadá", CH: "Suiza", CL: "Chile", DE: "Alemania",
+            DK: "Dinamarca", ES: "España", FI: "Finlandia", FR: "Francia",
+            GB: "Reino Unido", IE: "Irlanda", IN: "India", IT: "Italia",
+            JP: "Japón", KR: "Corea del Sur", NL: "Países Bajos", NO: "Noruega",
+            PL: "Polonia", PT: "Portugal", SE: "Suecia", SG: "Singapur",
+            US: "EEUU",
         };
-        return names[code] || code;
+        const prefix = code.split("-")[0];
+        const country = countries[prefix] || prefix;
+        if (code === prefix) return country;
+        return `${country} · ${code.substring(prefix.length + 1)}`;
     }
 
     // ------------------------------------------------------------------
@@ -456,13 +475,12 @@
             hour: '2-digit', minute: '2-digit'
         }).format(ts);
 
-        // Metrics with countup
+        // Metrics with countup (3 boxes — no percentil)
         const metricsGrid = document.getElementById("results-metrics");
         metricsGrid.innerHTML = `
             ${metricBox("leaf", "CO₂ Total", em.total, "gCO₂", "co2-counter")}
             ${metricBox("zap", "Energía Total", en.total, "Wh", "energy-counter")}
             ${metricBox("tag", "Etiqueta", null, labelInfo.label?.description || "", null, labelInfo.label?.label || "?")}
-            ${metricBox("percent", "Percentil", null, "vs. otros modelos", null, (formatNum(labelInfo.percentile) || "?") + "%")}
         `;
 
         // Animate counters
@@ -489,23 +507,16 @@
             });
         }, 200);
 
-        // Equivalencies
-        const equivDiv = document.getElementById("results-equivalencies");
-        const equivs = data.equivalencies || {};
-        equivDiv.innerHTML = Object.entries(equivs).map(([key, val]) => {
-            const icon = equivIconLucide(key);
-            const displayVal = typeof val === "object" ? JSON.stringify(val) : (typeof val === "number" ? val.toFixed(6) : String(val));
-            return `<div class="breakdown-card">
-                <div class="breakdown-icon"><i data-lucide="${icon}"></i></div>
-                <div class="breakdown-label">${key.replace(/_/g, " ")}</div>
-                <div class="breakdown-value">${displayVal}</div>
-            </div>`;
-        }).join("");
+        // Equivalencies — client-side computed
+        renderEquivalencies(em.total || 0, en.total || 0);
 
         if (window.lucide) lucide.createIcons();
 
-        // CO₂ estimator inline panel
-        renderCO2Estimator(data);
+        // What-if interactive section
+        renderWhatIf(data);
+
+        // Formula breakdown
+        renderFormulaBreakdown(data);
 
         // Render dependent tabs
         initChartDefaults();
@@ -551,6 +562,388 @@
             smartphones_carga: "smartphone", gramos_carbon: "circle", arboles_minutos: "tree-pine",
         };
         return map[key] || "bar-chart-2";
+    }
+
+    // ------------------------------------------------------------------
+    // Equivalencies — client-side computation
+    // ------------------------------------------------------------------
+    const EQUIV = {
+        google_search_g: 0.2,
+        phone_charge_g: 8.0,
+        led_9w_wh: 9.0,
+        flight_nyc_london_kg: 700,
+        car_km_g: 120,
+        household_day_kg: 12,
+    };
+
+    function renderEquivalencies(co2g, energyWh) {
+        const div = document.getElementById("results-equivalencies");
+        if (!div) return;
+
+        const googleSearches = co2g / EQUIV.google_search_g;
+        const phonePct = (co2g / EQUIV.phone_charge_g) * 100;
+        const ledMinutes = (energyWh / EQUIV.led_9w_wh) * 60;
+
+        // Inverse: how many queries to equal big things
+        const queriesPerFlight = co2g > 0 ? (EQUIV.flight_nyc_london_kg * 1000) / co2g : Infinity;
+        const queriesPerCarKm = co2g > 0 ? EQUIV.car_km_g / co2g : Infinity;
+        const queriesPerHouseholdDay = co2g > 0 ? (EQUIV.household_day_kg * 1000) / co2g : Infinity;
+
+        const cards = [
+            { icon: "search", label: "Búsquedas Google", value: fmtEquiv(googleSearches), detail: `Equivale a ${fmtEquiv(googleSearches)} búsquedas en Google` },
+            { icon: "smartphone", label: "Carga de móvil", value: fmtEquiv(phonePct) + "%", detail: `${fmtEquiv(phonePct)}% de una carga completa` },
+            { icon: "lightbulb", label: "Bombilla LED (9W)", value: fmtEquiv(ledMinutes) + " min", detail: `${fmtEquiv(ledMinutes)} minutos encendida` },
+            { icon: "plane", label: "Vuelo NYC–Londres", value: fmtBigNum(queriesPerFlight) + " queries", detail: `Necesitarías ${fmtBigNum(queriesPerFlight)} queries para igualar 1 vuelo` },
+            { icon: "car", label: "1 km en coche", value: fmtBigNum(queriesPerCarKm) + " queries", detail: `${fmtBigNum(queriesPerCarKm)} queries = 1 km en coche` },
+            { icon: "home", label: "1 día de hogar", value: fmtBigNum(queriesPerHouseholdDay) + " queries", detail: `${fmtBigNum(queriesPerHouseholdDay)} queries = 1 día de consumo doméstico` },
+        ];
+
+        div.innerHTML = cards.map(c => `
+            <div class="breakdown-card equiv-card" title="${c.detail}">
+                <div class="breakdown-icon"><i data-lucide="${c.icon}"></i></div>
+                <div class="breakdown-label">${c.label}</div>
+                <div class="breakdown-value">${c.value}</div>
+                <div class="equiv-detail">${c.detail}</div>
+            </div>
+        `).join("");
+
+        if (window.lucide) lucide.createIcons();
+    }
+
+    function fmtEquiv(n) {
+        if (!isFinite(n) || isNaN(n)) return "∞";
+        if (n >= 1000) return Math.round(n).toLocaleString("es-ES");
+        if (n >= 10) return n.toFixed(1);
+        if (n >= 1) return n.toFixed(2);
+        return n.toFixed(4);
+    }
+
+    function fmtBigNum(n) {
+        if (!isFinite(n) || isNaN(n)) return "∞";
+        if (n >= 1e9) return (n / 1e9).toFixed(1) + "B";
+        if (n >= 1e6) return (n / 1e6).toFixed(1) + "M";
+        if (n >= 1e3) return (n / 1e3).toFixed(1) + "K";
+        return Math.round(n).toLocaleString("es-ES");
+    }
+
+    // ------------------------------------------------------------------
+    // Formula Breakdown
+    // ------------------------------------------------------------------
+    function renderFormulaBreakdown(data) {
+        const container = document.getElementById("results-formula");
+        if (!container) return;
+        const fs = data.formula_steps;
+        if (!fs) { container.innerHTML = '<p style="color:var(--text-muted);font-size:13px;">No hay datos de fórmula disponibles.</p>'; return; }
+
+        const d = fs.device || {};
+        const n = fs.network || {};
+        const dc = fs.datacenter || {};
+        const meta = data.metadata || {};
+
+        function fv(v, dec) {
+            if (v == null || isNaN(v)) return "?";
+            const val = parseFloat(v);
+            if (dec !== undefined) return val.toFixed(dec);
+            if (Math.abs(val) < 0.0001) return val.toExponential(3);
+            if (Math.abs(val) < 0.1) return val.toFixed(6);
+            if (Math.abs(val) < 10) return val.toFixed(4);
+            return val.toFixed(2);
+        }
+        function hi(v, unit) {
+            return `<span class="fs-highlight">${fv(v)}</span><span class="fs-unit"> ${unit}</span>`;
+        }
+        function hiRes(v, unit) {
+            return `<span class="fs-result">${fv(v)}</span><span class="fs-unit"> ${unit}</span>`;
+        }
+
+        const procLabel = (d.processor || "cpu").toUpperCase();
+        const isAuto = meta.device_processor === d.processor;
+
+        const sections = [
+            {
+                title: "Sección 2.1.1 — Emisiones del Dispositivo",
+                steps: [
+                    {
+                        label: "Paso 1: Selección de procesador",
+                        lines: [
+                            `Procesador seleccionado: <span class="fs-highlight">${procLabel}</span>${isAuto ? ' <span class="fs-note">(óptimo para este dispositivo)</span>' : ''}`,
+                            `P<sub>idle</sub> (sistema en reposo) = ${hi(d.p_idle_w, "W")}`,
+                            `P<sub>max</sub> (inferencia ${procLabel}) = ${hi(d.p_max_w, "W")}`,
+                        ]
+                    },
+                    {
+                        label: "Paso 2: Potencia real del dispositivo",
+                        formula: "P<sub>real</sub> = P<sub>idle</sub> + (P<sub>max</sub> − P<sub>idle</sub>) × U",
+                        computed: `P<sub>real</sub> = ${fv(d.p_idle_w)} + (${fv(d.p_max_w)} − ${fv(d.p_idle_w)}) × ${fv(d.utilization, 2)} = ${hiRes(d.p_real_w, "W")}`
+                    },
+                    {
+                        label: "Paso 3: Energía del dispositivo",
+                        formula: "E<sub>disp</sub> = P<sub>real</sub> × t<sub>inferencia</sub> / 3600",
+                        computed: `E<sub>disp</sub> = ${fv(d.p_real_w)} × ${fv(d.inference_time_s, 3)} / 3600 = ${hiRes(d.energy_wh, "Wh")}`
+                    },
+                    {
+                        label: "Paso 4: CO₂ del dispositivo",
+                        formula: "CO₂<sub>disp</sub> = (E<sub>disp</sub> / 1000) × CI<sub>local</sub>",
+                        computed: `CO₂<sub>disp</sub> = (${fv(d.energy_wh)} / 1000) × ${fv(d.ci_gCO2_kWh, 0)} = ${hiRes(d.co2_g, "gCO₂")}`,
+                        note: `CI<sub>local</sub> = ${fv(d.ci_gCO2_kWh, 0)} gCO₂/kWh`
+                    },
+                ]
+            },
+            {
+                title: "Sección 2.1.2 — Emisiones de la Red",
+                steps: [
+                    {
+                        label: "Paso 1: Datos transferidos",
+                        formula: "datos<sub>MB</sub> = (1200 + tokens × 5) / 1.000.000",
+                        computed: `datos<sub>MB</sub> = (1200 + ${n.tokens} × 5) / 1.000.000 = ${hiRes(n.data_mb, "MB")}`,
+                        note: "1200 bytes = overhead HTTP fijo &nbsp;|&nbsp; 5 bytes/token = payload UTF-8"
+                    },
+                    {
+                        label: "Paso 2: Energía de la red",
+                        formula: "E<sub>red</sub> = energía<sub>kWh/MB</sub> × datos<sub>MB</sub> × 1000",
+                        computed: `E<sub>red</sub> = ${hi(n.energy_kWh_per_mb)} × ${fv(n.data_mb)} × 1000 = ${hiRes(n.energy_wh, "Wh")}`,
+                        note: `Red: ${meta.network} (${fv(n.energy_kWh_per_gb, 4)} kWh/GB)`
+                    },
+                    {
+                        label: "Paso 3: CO₂ de la red",
+                        formula: "CO₂<sub>red</sub> = (energy<sub>kWh/GB</sub> × CI<sub>local</sub> / 1000) × datos<sub>GB</sub> × 1000",
+                        computed: `carbon/GB = ${fv(n.energy_kWh_per_gb)} × ${fv(n.ci_gCO2_kWh, 0)} / 1000 = ${fv(n.energy_kWh_per_gb * n.ci_gCO2_kWh / 1000, 6)} kg CO₂/GB<br>
+                                   CO₂<sub>red</sub> = ${fv(n.data_mb / 1000, 9)} GB × ${fv(n.energy_kWh_per_gb * n.ci_gCO2_kWh / 1000, 6)} × 1000 = ${hiRes(n.co2_g, "gCO₂")}`,
+                    },
+                ]
+            },
+            {
+                title: "Sección 2.2 — Emisiones del Data Center",
+                steps: [
+                    {
+                        label: "Paso 1: Energía de cómputo (vía energy_wh_per_1k_tokens)",
+                        formula: "E<sub>compute</sub> = (tokens / 1000) × energy<sub>wh_per_1k</sub>",
+                        computed: `E<sub>compute</sub> = (${dc.tokens} / 1000) × ${hi(dc.model_wh_per_1k)} = ${hiRes(dc.energy_compute_wh, "Wh")}`,
+                        note: `Metodología: energy_wh_per_1k_tokens del modelo`
+                    },
+                    {
+                        label: "Paso 2: Energía total del Data Center (con PUE)",
+                        formula: "E<sub>dc</sub> = E<sub>compute</sub> × PUE",
+                        computed: `E<sub>dc</sub> = ${fv(dc.energy_compute_wh)} × ${hi(dc.pue)} = ${hiRes(dc.energy_dc_wh, "Wh")}`,
+                        note: `PUE = ${fv(dc.pue)} (${meta.data_center}). PUE=1.0 sería perfecto.`
+                    },
+                    {
+                        label: "Paso 3: CO₂ del Data Center",
+                        formula: "CO₂<sub>dc</sub> = (E<sub>dc</sub> / 1000) × CI<sub>datacenter</sub>",
+                        computed: `CO₂<sub>dc</sub> = (${fv(dc.energy_dc_wh)} / 1000) × ${hi(dc.ci_gCO2_kWh, 0)} = ${hiRes(dc.co2_g, "gCO₂")}`,
+                        note: `CI del data center = ${fv(dc.ci_gCO2_kWh, 0)} gCO₂/kWh`
+                    },
+                ]
+            }
+        ];
+
+        container.innerHTML = sections.map(sec => `
+            <div class="fs-section">
+                <div class="fs-section-title">${sec.title}</div>
+                ${sec.steps.map(step => `
+                    <div class="fs-step">
+                        <div class="fs-step-label">${step.label}</div>
+                        ${step.formula ? `<div class="fs-formula">${step.formula}</div>` : ''}
+                        ${step.lines ? step.lines.map(l => `<div class="fs-line">${l}</div>`).join('') : ''}
+                        ${step.computed ? `<div class="fs-computed">${step.computed}</div>` : ''}
+                        ${step.note ? `<div class="fs-note-line">${step.note}</div>` : ''}
+                    </div>
+                `).join('')}
+            </div>
+        `).join('');
+    }
+
+    // ------------------------------------------------------------------
+    // What-If Interactive Section
+    // ------------------------------------------------------------------
+    let _whatIfAbort = null;
+
+    function renderWhatIf(data) {
+        const controls = document.getElementById("whatif-controls");
+        const results = document.getElementById("whatif-results");
+        if (!controls || !results || !LAST_PARAMS) return;
+
+        const currentParams = { ...LAST_PARAMS };
+        const opts = OPTIONS;
+
+        // Build selectors for alternative scenarios
+        const selectors = [];
+
+        // Alternative model
+        if (opts.models?.length > 1) {
+            selectors.push({
+                id: "whatif-model", label: "Otro modelo", param: "model_id",
+                icon: "cpu",
+                options: opts.models.map(m => ({ value: m.model_id, label: m.model_name || m.model_id })),
+                current: currentParams.model_id
+            });
+        }
+
+        // Alternative processor
+        const procOptions = [
+            { value: "cpu", label: "CPU" },
+            { value: "gpu", label: "GPU" },
+            { value: "npu", label: "NPU" },
+        ];
+        selectors.push({
+            id: "whatif-proc", label: "Otro procesador", param: "inference_processor",
+            icon: "chip",
+            options: procOptions,
+            current: currentParams.inference_processor || "auto"
+        });
+
+        // Alternative network
+        if (opts.networks?.length > 1) {
+            selectors.push({
+                id: "whatif-network", label: "Otra red", param: "network_id",
+                icon: "wifi",
+                options: opts.networks.map(n => ({ value: n.network_type, label: n.network_type })),
+                current: currentParams.network_id
+            });
+        }
+
+        // Alternative data center
+        if (opts.data_centers?.length > 1) {
+            selectors.push({
+                id: "whatif-dc", label: "Otro data center", param: "data_center_id",
+                icon: "server",
+                options: opts.data_centers.map(d => ({ value: d.dc_id, label: `${d.provider_name} — ${d.region}` })),
+                current: currentParams.data_center_id
+            });
+        }
+
+        controls.innerHTML = selectors.map(s => `
+            <div class="whatif-control">
+                <label for="${s.id}"><i data-lucide="${s.icon}" style="width:14px;height:14px;"></i> ${s.label}</label>
+                <select id="${s.id}" class="whatif-select" data-param="${s.param}">
+                    <option value="">— Sin cambio —</option>
+                    ${s.options.map(o => `<option value="${o.value}" ${o.value === s.current ? 'disabled' : ''}>${o.label}</option>`).join("")}
+                </select>
+            </div>
+        `).join("");
+
+        // Show current baseline
+        results.innerHTML = `
+            <div class="whatif-baseline">
+                <div class="whatif-baseline-label">Resultado actual</div>
+                <div class="whatif-baseline-value">${formatNum(data.emissions_gCO2?.total)} gCO₂</div>
+            </div>
+            <div id="whatif-scenarios"></div>
+        `;
+
+        if (window.lucide) lucide.createIcons();
+
+        // Attach event listeners
+        controls.querySelectorAll(".whatif-select").forEach(sel => {
+            sel.addEventListener("change", () => runWhatIfScenarios(data));
+        });
+    }
+
+    async function runWhatIfScenarios(originalData) {
+        // Cancel any pending request
+        if (_whatIfAbort) _whatIfAbort.abort();
+        _whatIfAbort = new AbortController();
+
+        const container = document.getElementById("whatif-scenarios");
+        if (!container || !LAST_PARAMS) return;
+
+        // Gather all selected alternatives
+        const selects = document.querySelectorAll(".whatif-select");
+        const scenarios = [];
+        selects.forEach(sel => {
+            if (sel.value) {
+                scenarios.push({
+                    param: sel.dataset.param,
+                    value: sel.value,
+                    label: sel.previousElementSibling?.textContent?.trim() || sel.dataset.param,
+                    displayValue: sel.options[sel.selectedIndex].text
+                });
+            }
+        });
+
+        if (scenarios.length === 0) {
+            container.innerHTML = '<p style="text-align:center;color:var(--text-muted);font-size:13px;padding:20px;">Selecciona una alternativa arriba para comparar.</p>';
+            return;
+        }
+
+        // Show loading
+        container.innerHTML = scenarios.map(s => `
+            <div class="whatif-scenario-card whatif-loading">
+                <div class="whatif-scenario-header">
+                    <span class="whatif-scenario-label">${s.label}: <strong>${s.displayValue}</strong></span>
+                    <span class="whatif-scenario-loading"><svg class="spin" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10" stroke-dasharray="32" stroke-dashoffset="12"/></svg></span>
+                </div>
+            </div>
+        `).join("");
+
+        const originalCO2 = originalData.emissions_gCO2?.total || 0;
+
+        // Fire all scenario requests in parallel
+        const promises = scenarios.map(async (scenario) => {
+            const altParams = { ...LAST_PARAMS, [scenario.param]: scenario.value };
+            try {
+                const resp = await fetch("/api/calculate", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(altParams),
+                    signal: _whatIfAbort.signal,
+                });
+                if (!resp.ok) throw new Error("API error");
+                const result = await resp.json();
+                return { ...scenario, result, error: null };
+            } catch (err) {
+                if (err.name === "AbortError") return null;
+                return { ...scenario, result: null, error: err.message };
+            }
+        });
+
+        const results = (await Promise.all(promises)).filter(Boolean);
+
+        // Render results with animated transitions
+        container.innerHTML = results.map(s => {
+            if (s.error) {
+                return `<div class="whatif-scenario-card error">
+                    <div class="whatif-scenario-header">
+                        <span class="whatif-scenario-label">${s.label}: <strong>${s.displayValue}</strong></span>
+                        <span class="whatif-badge badge-neutral">Error</span>
+                    </div>
+                </div>`;
+            }
+            const newCO2 = s.result.emissions_gCO2?.total || 0;
+            const diff = originalCO2 > 0 ? ((newCO2 - originalCO2) / originalCO2) * 100 : 0;
+            const isBetter = diff < -0.5;
+            const isWorse = diff > 0.5;
+            const badge = isBetter ? "badge-better" : isWorse ? "badge-worse" : "badge-neutral";
+            const arrow = isBetter ? "↓" : isWorse ? "↑" : "≈";
+            const badgeText = isBetter ? `${arrow} ${Math.abs(diff).toFixed(1)}% menos` : isWorse ? `${arrow} ${Math.abs(diff).toFixed(1)}% más` : "≈ Similar";
+
+            return `<div class="whatif-scenario-card ${isBetter ? 'better' : isWorse ? 'worse' : 'neutral'}">
+                <div class="whatif-scenario-header">
+                    <span class="whatif-scenario-label">${s.label}: <strong>${s.displayValue}</strong></span>
+                    <span class="whatif-badge ${badge}">${badgeText}</span>
+                </div>
+                <div class="whatif-scenario-body">
+                    <div class="whatif-bar-container">
+                        <div class="whatif-bar whatif-bar-original" style="width:${Math.min(100, 100).toFixed(0)}%">
+                            <span>${formatNum(originalCO2)} gCO₂</span>
+                        </div>
+                        <div class="whatif-bar whatif-bar-alt ${isBetter ? 'bar-better' : isWorse ? 'bar-worse' : 'bar-neutral'}" style="width:0%" data-target-width="${Math.min(100, originalCO2 > 0 ? (newCO2 / originalCO2 * 100).toFixed(0) : 100)}%">
+                            <span>${formatNum(newCO2)} gCO₂</span>
+                        </div>
+                    </div>
+                </div>
+            </div>`;
+        }).join("");
+
+        // Animate bars
+        requestAnimationFrame(() => {
+            container.querySelectorAll('.whatif-bar-alt').forEach(bar => {
+                const target = bar.dataset.targetWidth;
+                requestAnimationFrame(() => { bar.style.width = target; });
+            });
+        });
+
+        if (window.lucide) lucide.createIcons();
     }
 
     // ------------------------------------------------------------------

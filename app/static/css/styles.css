@@ -365,13 +365,66 @@ tr:hover{background:rgba(74,222,128,.04)}
 
 .loading{text-align:center;padding:40px;color:var(--text-muted)}
 .loading::after{content:'';display:block;width:40px;height:40px;margin:16px auto 0;border:3px solid var(--border);border-top-color:var(--primary);border-radius:50%;animation:spin .8s linear infinite}
-@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+.spin{animation:spin .8s linear infinite}
 .error-msg{background:rgba(239,68,68,.08);color:var(--accent-red);padding:16px;border-radius:var(--radius-sm);border:1px solid rgba(239,68,68,.2);margin:16px 0;backdrop-filter:var(--glass-blur)}
 
 .formula-step{background:var(--bg-surface);border-left:3px solid var(--primary);padding:16px 20px;margin:12px 0;border-radius:0 8px 8px 0;font-size:13px;line-height:1.8}
 .formula-step .formula-title{font-weight:700;color:var(--primary);margin-bottom:8px;font-size:14px}
 .formula-step code{background:rgba(74,222,128,.08);padding:2px 6px;border-radius:4px;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--accent-teal)}
 .formula-step .formula-result{font-weight:700;color:var(--primary);font-family:'JetBrains Mono',monospace}
+
+/* ── Equivalencies ── */
+.equiv-card{position:relative;overflow:hidden;transition:var(--transition)}
+.equiv-card:hover{border-color:var(--primary);transform:translateY(-3px);box-shadow:0 8px 24px rgba(74,222,128,.1)}
+.equiv-detail{font-size:11px;color:var(--text-muted);margin-top:6px;line-height:1.4}
+
+/* ── What-If Section ── */
+.whatif-control label{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:var(--text-secondary);margin-bottom:6px}
+.whatif-select{width:100%;padding:10px 12px;background:var(--bg-surface);border:1px solid var(--glass-border);border-radius:var(--radius-sm);color:var(--text-primary);font-size:13px;transition:var(--transition);cursor:pointer}
+.whatif-select:hover{border-color:var(--primary)}
+.whatif-select:focus{border-color:var(--primary);outline:none;box-shadow:0 0 0 3px rgba(74,222,128,.15)}
+.whatif-baseline{display:flex;justify-content:space-between;align-items:center;padding:14px 18px;background:linear-gradient(135deg,rgba(74,222,128,.08),rgba(56,189,248,.04));border:1px solid rgba(74,222,128,.2);border-radius:var(--radius);margin-bottom:14px}
+.whatif-baseline-label{font-size:13px;color:var(--text-secondary);font-weight:600}
+.whatif-baseline-value{font-family:'JetBrains Mono',monospace;font-size:16px;font-weight:700;color:var(--primary)}
+.whatif-scenario-card{background:var(--bg-card);border:1px solid var(--glass-border);border-radius:var(--radius);overflow:hidden;margin-bottom:10px;animation:fadeUp .3s ease-out forwards;opacity:0}
+.whatif-scenario-card:nth-child(1){animation-delay:0ms}
+.whatif-scenario-card:nth-child(2){animation-delay:80ms}
+.whatif-scenario-card:nth-child(3){animation-delay:160ms}
+.whatif-scenario-card:nth-child(4){animation-delay:240ms}
+.whatif-scenario-card.better{border-left:3px solid var(--primary)}
+.whatif-scenario-card.worse{border-left:3px solid var(--accent-red)}
+.whatif-scenario-card.neutral{border-left:3px solid var(--accent-teal)}
+.whatif-scenario-header{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;gap:12px}
+.whatif-scenario-label{font-size:13px;color:var(--text-secondary)}
+.whatif-scenario-loading{display:flex;align-items:center}
+.whatif-badge{padding:4px 10px;border-radius:20px;font-size:11px;font-weight:700;font-family:'JetBrains Mono',monospace;white-space:nowrap}
+.badge-better{background:rgba(74,222,128,.12);color:var(--primary)}
+.badge-worse{background:rgba(239,68,68,.12);color:var(--accent-red)}
+.badge-neutral{background:rgba(56,189,248,.12);color:var(--accent-teal)}
+.whatif-scenario-body{padding:0 16px 14px}
+.whatif-bar-container{display:flex;flex-direction:column;gap:6px}
+.whatif-bar{height:28px;border-radius:6px;display:flex;align-items:center;padding:0 10px;font-size:11px;font-family:'JetBrains Mono',monospace;font-weight:600;color:#fff;transition:width .6s cubic-bezier(.4,0,.2,1);min-width:80px}
+.whatif-bar-original{background:linear-gradient(90deg,rgba(148,163,177,.35),rgba(148,163,177,.15))}
+.whatif-bar-alt.bar-better{background:linear-gradient(90deg,rgba(74,222,128,.5),rgba(74,222,128,.2))}
+.whatif-bar-alt.bar-worse{background:linear-gradient(90deg,rgba(239,68,68,.5),rgba(239,68,68,.2))}
+.whatif-bar-alt.bar-neutral{background:linear-gradient(90deg,rgba(56,189,248,.35),rgba(56,189,248,.15))}
+
+/* ── Formula Breakdown ── */
+.fs-section{margin-bottom:28px}
+.fs-section:last-child{margin-bottom:0}
+.fs-section-title{font-size:14px;font-weight:700;color:var(--text-primary);padding:10px 16px;background:linear-gradient(90deg,rgba(74,222,128,.08),transparent);border-left:3px solid var(--primary);border-radius:0 var(--radius-sm) var(--radius-sm) 0;margin-bottom:12px}
+.fs-step{background:var(--bg-surface);border:1px solid var(--glass-border);border-radius:var(--radius);padding:16px 18px;margin-bottom:8px;border-left:3px solid rgba(56,189,248,.3)}
+.fs-step:last-child{margin-bottom:0}
+.fs-step-label{font-size:13px;font-weight:700;color:var(--accent-teal);margin-bottom:8px}
+.fs-formula{font-size:13px;color:var(--text-secondary);margin-bottom:6px;font-style:italic}
+.fs-line{font-size:12px;color:var(--text-secondary);margin-bottom:4px;font-family:'JetBrains Mono',monospace}
+.fs-computed{font-size:13px;color:var(--text-primary);font-family:'JetBrains Mono',monospace;margin-top:6px;line-height:1.8}
+.fs-note-line{font-size:11px;color:var(--text-muted);margin-top:6px;line-height:1.5}
+.fs-highlight{color:var(--primary);font-weight:700;font-family:'JetBrains Mono',monospace}
+.fs-result{color:var(--primary);font-weight:800;font-family:'JetBrains Mono',monospace;font-size:1.05em}
+.fs-unit{color:var(--text-muted);font-size:.9em}
+.fs-note{font-size:11px;color:var(--text-muted);font-style:italic}
 
 /* ── Responsive ── */
 @media(max-width:768px){

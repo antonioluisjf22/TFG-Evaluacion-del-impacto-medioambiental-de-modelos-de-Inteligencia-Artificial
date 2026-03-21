@@ -33,8 +33,8 @@ class CalculatorService:
         if df is None:
             return []
         cols = [
-            "model_id", "model_name", "organization", "num_parameters",
-            "energy_wh_per_1k_tokens", "latency_ms_per_token",
+            "model_id", "model_name", "organization",
+            "num_parameters", "energy_wh_per_1k_tokens", "latency_ms_per_token",
             "tokens_per_second", "context_window", "max_output_tokens",
         ]
         return _df_to_records(df, cols)
@@ -43,7 +43,9 @@ class CalculatorService:
         df = self.calculator.data_centers_df
         if df is None:
             return []
-        cols = ["dc_id", "provider_name", "region", "country_code", "pue"]
+        cols = [
+            "dc_id", "provider_name", "region", "country_code", "pue",
+        ]
         return _df_to_records(df, cols)
 
     def _get_devices_list(self) -> list[dict]:
@@ -63,22 +65,43 @@ class CalculatorService:
         df = self.calculator.network_df
         if df is None:
             return []
-        cols = ["network_type", "energy_kWh_per_MB", "energy_kWh_per_GB"]
+        cols = [
+            "network_type", "energy_kWh_per_MB", "energy_kWh_per_GB",
+        ]
         return _df_to_records(df, cols)
 
     def _get_request_types_list(self) -> list[dict]:
         return [
-            {"id": k, "tokens_input": v["tokens_input"], "tokens_output": v["tokens_output"]}
+            {
+                "id": k,
+                "tokens_input": v["tokens_input"],
+                "tokens_output": v["tokens_output"],
+            }
             for k, v in self.calculator.request_types.items()
         ]
 
-    @staticmethod
-    def _get_countries_list() -> list[dict]:
-        return [
-            {"code": code, "carbon_intensity": ci}
-            for code, ci in DEFAULT_CARBON_INTENSITY.items()
-            if code != "GLOBAL"
-        ]
+    def _get_countries_list(self) -> list[dict]:
+        """Devuelve todas las zonas del CSV carbon_intensity.csv (125+ zonas)."""
+        df = self.calculator.ci_zones_df
+        if df is None or df.empty:
+            # Fallback to hardcoded defaults
+            return [
+                {"code": code, "carbon_intensity": ci}
+                for code, ci in DEFAULT_CARBON_INTENSITY.items()
+                if code != "GLOBAL"
+            ]
+        result = []
+        for _, row in df.iterrows():
+            zone = str(row.get("zone", "")).strip()
+            if not zone:
+                continue
+            ci_val = row.get("carbon_intensity_gCO2_kWh")
+            try:
+                ci_int = int(float(ci_val)) if ci_val is not None and str(ci_val) != "" else None
+            except (ValueError, TypeError):
+                ci_int = None
+            result.append({"code": zone, "carbon_intensity": ci_int})
+        return sorted(result, key=lambda x: x["code"])
 
     # ------------------------------------------------------------------
     # Cálculo de emisiones
