@@ -23,6 +23,8 @@ Controles que modifican el análisis **en tiempo real** sin necesidad de volver 
 
   En este conjunto de datos, Phi-2 es genuinamente mejor que todos los demás en las 4 dimensiones a la vez (menor CO₂, mayor velocidad, menor latencia y menos parámetros), por lo que el frente se mantiene en 1 modelo con cualquier combinación de criterios.
 
+  Caso especial: si **no hay ningún criterio activo**, la relación de dominancia de Pareto queda indefinida (no hay dimensiones que comparar), por lo que ningún modelo puede dominar a otro y todos se marcan como ★. La línea del frente no se dibuja porque no tendría sentido. El gráfico lo indica con una nota en cursiva.
+
   | Situación | Efecto en el frente al añadir criterios |
   |---|---|
   | Existen trade-offs en la nueva dimensión | El frente crece (más modelos Pareto-óptimos) |
@@ -41,7 +43,7 @@ Controles que modifican el análisis **en tiempo real** sin necesidad de volver 
 _Solo CO₂ y Velocidad activos._
 
 ![Barra Pareto — 4 criterios](../images/comparador/02_pareto_bar_4crit.png)
-_Los 4 criterios activos: CO₂, Velocidad, Latencia y Parámetros._
+_Los 4 criterios activos: CO₂, Velocidad, Latencia y Tamaño del modelo._
 
 - **Escala logarítmica / lineal** — Los valores de CO₂ y velocidad varían varios órdenes de magnitud entre modelos (ej. GPT-4 emite ~0.059 gCO₂, Phi-2 ~0.00008 gCO₂, una diferencia de ×700). Con **escala lineal** cada división del eje vale lo mismo (0.01, 0.02, 0.03…): GPT-4 aparece lejos arriba, pero Mistral y Phi-2 se pegan al eje y son casi indistinguibles aunque Mistral emita 4 veces más que Phi-2. Con **escala logarítmica** cada división multiplica por 10 (0.0001 → 0.001 → 0.01 → 0.1): ahora la distancia visual entre Phi-2 y Mistral ocupa el mismo espacio que entre Mistral y GPT-4, porque ambas diferencias son del mismo *orden de magnitud relativo*. En la práctica: usa **log** (opción por defecto) para ver todos los modelos separados y comparar proporciones; usa **lineal** solo si los modelos que quieres comparar tienen valores muy similares y te interesan las diferencias absolutas exactas.
 - **Modelo de referencia** — Al elegir un modelo del desplegable, el scatter dibuja flechas discontinuas cian desde ese modelo hacia cada Pareto-óptimo, indicando visualmente "hacia estos deberías migrar si quieres mejorar".
@@ -50,7 +52,7 @@ _Los 4 criterios activos: CO₂, Velocidad, Latencia y Parámetros._
 ## 3. Scatter plot Pareto mejorado
 Eje X = velocidad de inferencia (tok/s), Eje Y = emisiones CO₂ por consulta (gCO₂). El **modelo ideal** estaría en la esquina inferior-derecha (rápido y limpio). Características visuales:
 
-- **Frontera de Pareto** — Línea verde escalonada ("step-after") que delimita el frente eficiente. Todo lo que queda debajo-derecha de esa línea no existe: ningún modelo real llega ahí. El área sombreada en verde suave bajo la línea representa esa zona ideal inalcanzada.
+- **Frontera de Pareto** — Línea verde escalonada ("step-after") que delimita el frente eficiente. Todo lo que queda debajo-derecha de esa línea no existe: ningún modelo real llega ahí. El área sombreada en verde suave bajo la línea representa esa zona ideal inalcanzada. Cuando solo hay un modelo Pareto-óptimo, se dibuja una "L" invertida (línea horizontal + vertical) desde ese punto, indicando que todo lo que queda abajo-derecha es inalcanzable. La frontera solo se visualiza cuando los criterios CO₂ y Velocidad están ambos activos, ya que son los ejes del gráfico; con otros criterios los modelos ★ siguen siendo correctamente Pareto-óptimos pero la línea no se traza porque no tendría sentido en la proyección 2D.
 - **Puntos pulsantes** — Los modelos ★ tienen anillos que se expanden y contraen en bucle continuo (animación `requestAnimationFrame`), haciéndolos fácilmente identificables.
 - **Tamaño de punto variable** — Cuanto mayor es el score TOPSIS de un modelo (ver §4), mayor es el radio de su punto en el scatter. Así se integra visualmente la valoración multi-criterio en el propio gráfico.
 - **Colores** — Cian (#00e5ff) = modelo actualmente seleccionado por el usuario. Dorado (#ffd600) = Pareto-óptimo. El resto usa el color de su clase energética (verde A+++→A, naranja C, rojo D-E).
