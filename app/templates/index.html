@@ -264,6 +264,7 @@
             </div>
         </div>
         <div class="card" id="dashboard-detail-cards"></div>
+        <div class="card" id="dashboard-greenwashing"></div>
     </div>
 </div>
 
@@ -276,14 +277,89 @@
         <p>Calcula emisiones primero para comparar todos los modelos con la misma configuración.</p>
     </div>
     <div id="comparador-content" style="display: none;">
-        <div class="chart-container">
-            <div class="card-title"><i data-lucide="scale"></i> CO₂ por modelo (gCO₂)</div>
-            <div class="chart-wrapper"><canvas id="comparison-chart"></canvas></div>
+
+        <!-- 7. Config bar + PDF button -->
+        <div class="comp-config-bar" id="comp-config-bar"></div>
+
+        <!-- Nota metodológica -->
+        <div class="comp-methodology-note">
+            <div class="comp-note-icon"><i data-lucide="info"></i></div>
+            <div class="comp-note-body">
+                <strong>Nota metodológica: alcance del comparador</strong>
+                <p>Este comparador evalúa exclusivamente las emisiones de CO₂ asociadas a los <strong>modelos de IA durante el periodo de inferencia</strong>. El resto de parámetros (dispositivo del usuario, red de datos y data center) se mantienen fijos según la configuración del último cálculo, de modo que la única variable entre modelos es su consumo energético por cada 1.000 tokens procesados (<em>energy_wh_per_1k_tokens</em>). Esto permite una comparación directa, equitativa y bajo condiciones idénticas.</p>
+            </div>
         </div>
+
+        <!-- ═══ PARETO MULTI-CRITERIA ANALYSIS ═══ -->
+
+        <!-- Pareto Configuration Bar -->
+        <div class="pareto-config-bar" id="pareto-config-bar"></div>
+
+        <!-- Main Grid: Enhanced Scatter + Side Panel -->
+        <div class="pareto-main-grid">
+            <!-- Enhanced Pareto Scatter Plot -->
+            <div class="chart-container pareto-scatter-wrap">
+                <div class="card-title"><i data-lucide="crosshair"></i> Rendimiento vs Sostenibilidad — Frente de Pareto</div>
+                <p class="comp-chart-desc" id="pareto-scatter-desc">Eje X: velocidad de inferencia (tokens/s). Eje Y: huella de CO₂ por consulta (gCO₂). El modelo ideal se sitúa abajo-derecha (rápido y limpio). Los modelos ★ son <strong>Pareto-óptimos</strong>: ningún otro modelo los supera simultáneamente en todos los criterios seleccionados. La zona sombreada en verde representa el <strong>frente de Pareto eficiente</strong>. Arrastra sobre el gráfico para seleccionar múltiples modelos.</p>
+                <div class="chart-wrapper pareto-chart-wrapper" style="min-height:420px;position:relative">
+                    <canvas id="scatter-chart"></canvas>
+                    <div class="pareto-lasso-rect" id="lasso-rect"></div>
+                </div>
+                <div class="pareto-lasso-info" id="lasso-info"></div>
+                <!-- Custom tooltip overlay -->
+                <div class="pareto-tooltip" id="pareto-tooltip"></div>
+            </div>
+
+            <!-- Tabbed Analysis Panel -->
+            <div class="pareto-side-panel" id="pareto-side-panel">
+                <div class="pareto-tabs-header">
+                    <button class="pareto-tab active" data-ptab="dominance">🏆 Dominancia</button>
+                    <button class="pareto-tab" data-ptab="topsis">⚖️ TOPSIS</button>
+                    <button class="pareto-tab" data-ptab="radar">📊 Radar</button>
+                </div>
+                <div class="pareto-tab-body active" id="ptab-dominance"></div>
+                <div class="pareto-tab-body" id="ptab-topsis"></div>
+                <div class="pareto-tab-body" id="ptab-radar">
+                    <div id="radar-model-select"></div>
+                    <div class="pareto-radar-wrap"><canvas id="radar-chart"></canvas></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Dominance Matrix -->
+        <div class="card pareto-matrix-card">
+            <div class="card-title"><i data-lucide="grid-3x3"></i> Matriz de dominancia cruzada</div>
+            <p class="comp-chart-desc">Celda <span class="dom-legend-g">verde</span> = la fila domina a la columna en todos los criterios. Celda <span class="dom-legend-r">roja</span> = es dominada. Celda <span class="dom-legend-y">gris</span> = trade-off (ninguno domina al otro). Pasa el ratón sobre una celda para resaltar ambos modelos en el scatter plot.</p>
+            <div class="table-responsive" id="dominance-matrix-wrap"></div>
+            <div class="pareto-matrix-actions">
+                <button class="pareto-btn-secondary" id="btn-export-matrix-csv"><i data-lucide="download"></i> Exportar CSV</button>
+            </div>
+        </div>
+
+        <!-- Wizard Modal -->
+        <div class="pareto-modal-overlay" id="wizard-modal">
+            <div class="pareto-modal">
+                <button class="pareto-modal-close" id="wizard-close">&times;</button>
+                <div id="wizard-content"></div>
+            </div>
+        </div>
+
+        <!-- ═══ END PARETO ANALYSIS ═══ -->
+
+        <!-- 3. Detailed comparison table -->
         <div class="card">
-            <div class="card-title"><i data-lucide="table"></i> Tabla comparativa</div>
-            <div class="table-responsive" id="comparison-table"></div>
+            <div class="card-title"><i data-lucide="list-ordered"></i> Comparativa detallada</div>
+            <p class="comp-chart-desc">Ordenados de menor a mayor emisión. La barra muestra el CO₂ relativo al modelo más contaminante. El ahorro es respecto al modelo seleccionado en el formulario.</p>
+            <div class="table-responsive" id="detailed-comparison-table"></div>
         </div>
+
+        <!-- 4. Vertical bar chart — CO₂/query -->
+        <div class="chart-container">
+            <div class="card-title"><i data-lucide="bar-chart-2"></i> Comparativa de emisiones CO₂/query</div>
+            <div class="chart-wrapper" style="min-height:400px"><canvas id="vertical-bar-chart"></canvas></div>
+        </div>
+
+
     </div>
 </div>
 
@@ -338,11 +414,11 @@
             <div class="map-explain-grid">
                 <div class="map-explain-item">
                     <i data-lucide="globe" style="color:var(--primary)"></i>
-                    <span>Países coloreados según la <span class="hl-green">intensidad de carbono</span> de su red eléctrica</span>
+                    <span>Países coloreados (choropleth) según la <span class="hl-green">intensidad de carbono</span> real de su red eléctrica, con datos de Electricity Maps</span>
                 </div>
                 <div class="map-explain-item">
                     <i data-lucide="map-pin" style="color:var(--accent-blue)"></i>
-                    <span>Marcadores de <span class="hl-blue">data centers</span> con color por proveedor y borde por CI del país</span>
+                    <span>Marcadores de <span class="hl-blue">data centers</span> con color por proveedor (A=AWS, G=GCP, Z=Azure, D=Deep Green) y borde por CI</span>
                 </div>
                 <div class="map-explain-item">
                     <i data-lucide="mouse-pointer" style="color:var(--text-secondary)"></i>

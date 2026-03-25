@@ -80,6 +80,20 @@ class CalculatorService:
             for k, v in self.calculator.request_types.items()
         ]
 
+    # ISO-alpha2 → nombre legible (para tooltips del mapa)
+    _COUNTRY_NAMES: dict[str, str] = {
+        "AT": "Austria", "AU": "Australia", "BE": "Bélgica", "BR": "Brasil",
+        "CA": "Canadá", "CH": "Suiza", "CL": "Chile", "CO": "Colombia",
+        "CZ": "Chequia", "DE": "Alemania", "DK": "Dinamarca", "ES": "España",
+        "FI": "Finlandia", "FR": "Francia", "GB": "Reino Unido", "IE": "Irlanda",
+        "IN": "India", "IT": "Italia", "JP": "Japón", "KR": "Corea del Sur",
+        "MX": "México", "NL": "Países Bajos", "NO": "Noruega", "NZ": "Nueva Zelanda",
+        "PL": "Polonia", "PT": "Portugal", "SE": "Suecia", "SG": "Singapur",
+        "TW": "Taiwán", "US": "Estados Unidos", "ZA": "Sudáfrica", "AR": "Argentina",
+        "IL": "Israel", "AE": "Emiratos Árabes", "SA": "Arabia Saudí",
+        "HK": "Hong Kong", "MY": "Malasia", "ID": "Indonesia", "TH": "Tailandia",
+    }
+
     def _get_countries_list(self) -> list[dict]:
         """Devuelve todas las zonas del CSV carbon_intensity.csv (125+ zonas)."""
         df = self.calculator.ci_zones_df
@@ -100,7 +114,10 @@ class CalculatorService:
                 ci_int = int(float(ci_val)) if ci_val is not None and str(ci_val) != "" else None
             except (ValueError, TypeError):
                 ci_int = None
-            result.append({"code": zone, "carbon_intensity": ci_int})
+            # Extraer código de país ISO-alpha2 del código de zona
+            iso = zone.split("-")[0] if "-" in zone else zone
+            country_name = self._COUNTRY_NAMES.get(iso, "")
+            result.append({"code": zone, "carbon_intensity": ci_int, "country_name": country_name})
         return sorted(result, key=lambda x: x["code"])
 
     # ------------------------------------------------------------------

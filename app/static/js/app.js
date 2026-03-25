@@ -12,7 +12,7 @@
     let OPTIONS = {};
     let LAST_RESULT = null;
     let LAST_PARAMS = null;
-    let pieChart = null, barChart = null, compChart = null, projChart = null;
+    let pieChart = null, barChart = null, projChart = null;
 
     // CountUp helper — lazy because script is deferred
     function getCountUp() {
@@ -79,6 +79,15 @@
                 window.scrollTo({ top: 0, behavior: "instant" });
                 // Re-render icons in newly visible tab
                 if (window.lucide) setTimeout(() => lucide.createIcons(), 50);
+                // When comparador tab becomes visible, resize charts so they
+                // fill the now-visible container (fixes blurry canvas + tooltip offset)
+                if (tabId === 'comparador') {
+                    requestAnimationFrame(() => {
+                        if (scatterChart) scatterChart.resize();
+                        if (radarChart) radarChart.resize();
+                        if (vertBarChart) vertBarChart.resize();
+                    });
+                }
             });
         });
     }
@@ -952,6 +961,9 @@
     function renderDashboard(data) {
         const em = data.emissions_gCO2 || {};
         const en = data.energy_Wh || {};
+        const fs = data.formula_steps || {};
+        const meta = data.metadata || {};
+        const dcRen = data.datacenter_renewable_info || {};
 
         // Destroy old charts
         if (pieChart) pieChart.destroy();
@@ -1032,16 +1044,175 @@
                 }
             }]
         });
+
+        // ── Detailed breakdown table + key metrics ──────────────────
+        const detailCards = document.getElementById("dashboard-detail-cards");
+        if (detailCards) {
+            const ciLocal = fs.device?.ci_gCO2_kWh ?? 0;
+            const ciDC = fs.datacenter?.ci_gCO2_kWh ?? dcRen.carbon_intensity_gCO2_kWh ?? 0;
+            const pue = fs.datacenter?.pue ?? 1.15;
+            const latencyMs = meta.inference_time_sec ? (meta.inference_time_sec * 1000).toFixed(0) : '?';
+            const tokensOut = meta.tokens_processed ? meta.tokens_processed : '?';
+            const dcName = meta.data_center || '';
+
+            const rows = [
+                { label: 'Dispositivo', energy: en.device, ci: ciLocal, co2: em.device, pct: (em.device / (em.total||1) * 100) },
+                { label: 'Red',         energy: en.network, ci: ciLocal, co2: em.network, pct: (em.network / (em.total||1) * 100) },
+                { label: 'Data Center', energy: en.datacenter, ci: ciDC, co2: em.datacenter, pct: (em.datacenter / (em.total||1) * 100) },
+            ];
+
+            detailCards.innerHTML = `
+                <div class="card-title"><i data-lucide="table-2"></i> Datos técnicos detallados</div>
+                <div class="table-responsive">
+                    <table class="data-table">
+                        <thead><tr>
+                            <th>Componente</th>
+                            <th>Energía (Wh)</th>
+                            <th>CI (gCO₂/kWh)</th>
+                            <th>CO₂ (gCO₂)</th>
+                            <th>% del Total</th>
+                        </tr></thead>
+                        <tbody>
+                            ${rows.map(r => `<tr>
+                                <td>${r.label}</td>
+                                <td class="mono">${formatNum(r.energy)}</td>
+                                <td class="mono">${r.ci ? Math.round(r.ci) : '—'}</td>
+                                <td class="mono">${formatNum(r.co2)}</td>
+                                <td><span class="pct-bar-wrap"><span class="pct-bar-fill" style="width:${Math.min(100,r.pct).toFixed(1)}%"></span></span> ${r.pct.toFixed(1)}%</td>
+                            </tr>`).join('')}
+                        </tbody>
+                        <tfoot><tr>
+                            <td><strong>TOTAL</strong></td>
+                            <td class="mono"><strong>${formatNum(en.total)}</strong></td>
+                            <td class="mono">—</td>
+                            <td class="mono"><strong>${formatNum(em.total)}</strong></td>
+                            <td><strong>100%</strong></td>
+                        </tr></tfoot>
+                    </table>
+                </div>
+                <div class="dash-kpi-grid">
+                    ${dashKpi('CI local (' + (LAST_PARAMS?.user_country || 'ES') + ')', Math.round(ciLocal), 'gCO₂/kWh', 'zap')}
+                    ${dashKpi('CI Data Center', Math.round(ciDC), 'gCO₂/kWh', 'server')}
+                    ${dashKpi('PUE', pue.toFixed(4), dcName, 'activity')}
+                    ${dashKpi('Latencia total', latencyMs, 'ms (' + tokensOut + ' tokens output)', 'timer')}
+                </div>
+            `;
+            if (window.lucide) setTimeout(() => lucide.createIcons(), 50);
+        }
+
+        // ── Greenwashing section ──────────────────────────────────────
+        const gwDiv = document.getElementById("dashboard-greenwashing");
+        if (gwDiv) {
+            const gridPct   = dcRen.grid_renewable_pct   != null ? Math.round(dcRen.grid_renewable_pct)   : null;
+            const claimPct  = dcRen.provider_claimed_pct != null ? Math.round(dcRen.provider_claimed_pct) : null;
+            const hasBoth   = gridPct != null && claimPct != null;
+            const gap       = hasBoth ? claimPct - gridPct : 0;
+            const isGW      = gap > 5;
+
+            const gwAlert = isGW
+                ? `<div class="gw-alert gw-alert-warn">
+                    <strong>Posible greenwashing:</strong> El proveedor declara <strong>${claimPct}% renovables</strong> (vía PPAs y certificados),
+                    pero la red eléctrica real de la zona solo tiene <strong>${gridPct}% renovables</strong>.
+                    La diferencia de <strong>${gap} puntos porcentuales</strong> se cubre con certificados de energía renovable,
+                    no con energía verde real en la red.
+                   </div>`
+                : gridPct != null
+                    ? `<div class="gw-alert gw-alert-ok">Los datos del proveedor son coherentes con el mix real de la red eléctrica.</div>`
+                    : '';
+
+            const barsHtml = hasBoth ? `
+                <div class="gw-bars">
+                    <div class="gw-bar-label">Renovables reales en la red <span class="gw-tag gw-tag-grid">(renewable_grid_pct)</span></div>
+                    <div class="gw-bar-track"><div class="gw-bar-fill gw-bar-grid" style="width:${gridPct}%"></div></div>
+                    <div class="gw-bar-pct">${gridPct}%</div>
+                    <div class="gw-bar-label" style="margin-top:10px">Declarado por proveedor <span class="gw-tag gw-tag-claim">(provider_renewable_pct)</span></div>
+                    <div class="gw-bar-track"><div class="gw-bar-fill gw-bar-claim" style="width:${claimPct}%"></div></div>
+                    <div class="gw-bar-pct gw-pct-claim">${claimPct}%</div>
+                </div>` : `<p class="gw-na">No hay datos de renovables disponibles para este data center.</p>`;
+
+            gwDiv.innerHTML = `
+                <div class="card-title"><i data-lucide="leaf"></i> Renovables reales vs. declaradas — Greenwashing</div>
+                <p class="gw-intro">Diferencia entre el porcentaje de renovables en la red eléctrica real de la zona
+                    (<code>renewable_grid_pct</code>) y el porcentaje declarado por el proveedor mediante PPAs y certificados
+                    (<code>provider_renewable_pct</code>).</p>
+
+                ${barsHtml}
+                ${gwAlert}
+
+                <details class="gw-explainer">
+                    <summary><strong>¿Qué es el greenwashing energético?</strong></summary>
+                    <div class="gw-explainer-body">
+                        <p>El <strong>greenwashing energético</strong> ocurre cuando una empresa declara consumir más energía
+                        renovable de la que realmente existe en la red eléctrica que alimenta sus instalaciones.
+                        Esto se logra mediante tres mecanismos principales:</p>
+                        <ol>
+                            <li><strong>PPAs (Power Purchase Agreements):</strong> contratos a largo plazo con productores
+                            de energía renovable que permiten "reclamar" esa energía aunque físicamente fluya por la red
+                            general, no directamente hacia el data center.</li>
+                            <li><strong>RECs / GOs (Renewable Energy Certificates / Garantías de Origen):</strong> certificados
+                            negociables que acreditan que un MWh fue generado de forma renovable. Un proveedor compra estos
+                            certificados de otro país o región con más solar/eólica, sin que su mix local cambie en absoluto.</li>
+                            <li><strong>Additionality gap:</strong> la energía renovable contratada puede ser de instalaciones
+                            ya existentes, por lo que no supone nueva capacidad verde añadida a la red ni reduce las emisiones
+                            reales del sistema eléctrico.</li>
+                        </ol>
+                        <p>El indicador clave es la diferencia entre <code>renewable_grid_pct</code> (mix real de la red
+                        según Electricity Maps) y <code>provider_renewable_pct</code> (declarado en la web del proveedor).
+                        Una diferencia elevada no implica fraude, pero sí que <em>el carbono real emitido
+                        por la red</em> que alimenta al data center es mayor que el que se contabiliza en las
+                        declaraciones de sostenibilidad del proveedor.</p>
+                    </div>
+                </details>
+            `;
+            if (window.lucide) setTimeout(() => lucide.createIcons(), 50);
+        }
+    }
+
+    function dashKpi(label, value, unit, icon) {
+        return `<div class="dash-kpi">
+            <div class="dash-kpi-icon"><i data-lucide="${icon}"></i></div>
+            <div class="dash-kpi-label">${label}</div>
+            <div class="dash-kpi-value">${value}</div>
+            <div class="dash-kpi-unit">${unit}</div>
+        </div>`;
     }
 
     // ------------------------------------------------------------------
-    // Comparator (Tab 4)
+    // Comparator (Tab 4) — Multi-criteria Pareto Analysis
     // ------------------------------------------------------------------
+    let scatterChart = null, vertBarChart = null, radarChart = null;
+
+    // Centralized energy class theme
+    const ENERGY_CLASSES = {
+        'A+++': { color: '#00e676', bg: 'rgba(0,230,118,0.15)' },
+        'A++':  { color: '#00e676', bg: 'rgba(0,230,118,0.12)' },
+        'A+':   { color: '#4ade80', bg: 'rgba(74,222,128,0.12)' },
+        'A':    { color: '#4ade80', bg: 'rgba(74,222,128,0.10)' },
+        'B':    { color: '#ffd600', bg: 'rgba(255,214,0,0.10)' },
+        'C':    { color: '#f97316', bg: 'rgba(249,115,22,0.10)' },
+        'D':    { color: '#ef4444', bg: 'rgba(239,68,68,0.10)' },
+        'E':    { color: '#ef4444', bg: 'rgba(239,68,68,0.10)' },
+    };
+
+    // Pareto state (shared across scatter, tabs, matrix)
+    const PS = {
+        criteria: { co2: true, speed: true, latency: false, params: false },
+        scaleLog: true,
+        referenceModel: null,
+        selectedModels: [],
+        topsisWeights: { co2: 0.40, speed: 0.35, latency: 0.25 },
+        highlightPair: null,
+        table: [],
+        paretoModels: [],
+        currentModel: '',
+        pulsePhase: 0,
+        pulseRAF: null,
+    };
+
     async function doCompare() {
         if (!LAST_PARAMS) return;
         const params = { ...LAST_PARAMS };
         delete params.model_id;
-
         try {
             const resp = await fetch("/api/compare", {
                 method: "POST",
@@ -1051,135 +1222,1655 @@
             if (!resp.ok) return;
             const data = await resp.json();
             renderComparison(data);
-        } catch (err) {
-            console.error("Error en comparación:", err);
-        }
+        } catch (err) { console.error("Error en comparación:", err); }
     }
 
+    // ── Color helpers ──
     function getBarColor(label) {
-        if (!label) return 'rgba(74,222,128,0.6)';
-        const l = label.toUpperCase();
-        if (l.includes('A')) return 'rgba(74,222,128,0.7)';
-        if (l === 'B' || l === 'C') return 'rgba(251,191,36,0.7)';
+        if (!label) return 'rgba(0,230,118,0.6)';
+        const l = (typeof label === 'string' ? label : '').toUpperCase();
+        if (l.includes('A')) return 'rgba(0,230,118,0.7)';
+        if (l === 'B') return 'rgba(255,214,0,0.7)';
+        if (l === 'C') return 'rgba(249,115,22,0.7)';
         return 'rgba(239,68,68,0.7)';
     }
-
+    function getBarColorSolid(label) {
+        if (!label) return '#00e676';
+        const l = (typeof label === 'string' ? label : '').toUpperCase();
+        if (l.includes('A')) return '#00e676';
+        if (l === 'B') return '#ffd600';
+        if (l === 'C') return '#f97316';
+        return '#ef4444';
+    }
     function getLabelBadge(labelObj) {
         if (!labelObj) return '<span class="label-badge" style="background:rgba(100,100,100,.2);color:#999">?</span>';
         const color = labelObj.color_hex || '#999';
         return `<span class="label-badge" style="background:${color}20;color:${color};border:1px solid ${color}40">${labelObj.label || '?'}</span>`;
     }
+    function sciNotation(n) {
+        if (n == null || isNaN(n)) return '—';
+        if (n === 0) return '0';
+        if (Math.abs(n) >= 0.01 && Math.abs(n) < 1000) return formatNum(n);
+        const exp = Math.floor(Math.log10(Math.abs(n)));
+        const mantissa = (n / Math.pow(10, exp)).toFixed(2);
+        return `<span class="sci-mantissa">${mantissa}</span><span class="sci-exp">×10<sup>${exp}</sup></span>`;
+    }
+    function formatParams(n) {
+        if (!n) return '—';
+        if (n >= 1e12) return (n / 1e12).toFixed(1) + 'T';
+        if (n >= 1e9) return (n / 1e9).toFixed(0) + 'B';
+        if (n >= 1e6) return (n / 1e6).toFixed(0) + 'M';
+        return n.toLocaleString('es-ES');
+    }
 
+    // ── Flexible Pareto detection (multi-criteria) ──
+    function findParetoOptimal(rows) {
+        const c = PS.criteria;
+        const pareto = [];
+        for (const r of rows) {
+            const dominated = rows.some(other => {
+                if (other === r) return false;
+                let dominated_all = true, better_one = false;
+                if (c.co2) {
+                    if (other.co2_gCO2 > r.co2_gCO2) dominated_all = false;
+                    if (other.co2_gCO2 < r.co2_gCO2) better_one = true;
+                }
+                if (c.speed) {
+                    const ot = other.tokens_per_second || 0, rt = r.tokens_per_second || 0;
+                    if (ot < rt) dominated_all = false;
+                    if (ot > rt) better_one = true;
+                }
+                if (c.latency) {
+                    const ol = other.latency_ms_per_token || Infinity, rl = r.latency_ms_per_token || Infinity;
+                    if (ol > rl) dominated_all = false;
+                    if (ol < rl) better_one = true;
+                }
+                if (c.params) {
+                    const op = other.num_parameters || 0, rp = r.num_parameters || 0;
+                    if (op > rp) dominated_all = false;
+                    if (op < rp) better_one = true;
+                }
+                return dominated_all && better_one;
+            });
+            if (!dominated) pareto.push(r.model);
+        }
+        return pareto;
+    }
+
+    // ── TOPSIS algorithm ──
+    function calculateTOPSIS(models, weights) {
+        const criteria = [
+            { key: 'co2_gCO2', w: weights.co2, benefit: false },
+            { key: 'tokens_per_second', w: weights.speed, benefit: true },
+            { key: 'latency_ms_per_token', w: weights.latency, benefit: false },
+        ];
+        const n = models.length, m = criteria.length;
+        // Decision matrix
+        const matrix = models.map(mdl => criteria.map(c => mdl[c.key] || 0));
+        // Vector normalization
+        const norm = matrix.map(row => [...row]);
+        for (let j = 0; j < m; j++) {
+            const sq = Math.sqrt(matrix.reduce((s, r) => s + r[j] * r[j], 0));
+            if (sq > 0) for (let i = 0; i < n; i++) norm[i][j] = matrix[i][j] / sq;
+        }
+        // Weighted
+        const w = norm.map(row => row.map((v, j) => v * criteria[j].w));
+        // Ideal / anti-ideal
+        const ideal = criteria.map((c, j) => {
+            const col = w.map(r => r[j]);
+            return c.benefit ? Math.max(...col) : Math.min(...col);
+        });
+        const anti = criteria.map((c, j) => {
+            const col = w.map(r => r[j]);
+            return c.benefit ? Math.min(...col) : Math.max(...col);
+        });
+        // Distances & closeness
+        return w.map(row => {
+            const dI = Math.sqrt(row.reduce((s, v, j) => s + (v - ideal[j]) ** 2, 0));
+            const dA = Math.sqrt(row.reduce((s, v, j) => s + (v - anti[j]) ** 2, 0));
+            return (dI + dA) > 0 ? dA / (dI + dA) : 0;
+        });
+    }
+
+    // ── Dominance check (does A dominate B?) ──
+    function dominates(a, b) {
+        const c = PS.criteria;
+        let dominated_all = true, better_one = false;
+        if (c.co2) {
+            if (a.co2_gCO2 > b.co2_gCO2) dominated_all = false;
+            if (a.co2_gCO2 < b.co2_gCO2) better_one = true;
+        }
+        if (c.speed) {
+            const at = a.tokens_per_second || 0, bt = b.tokens_per_second || 0;
+            if (at < bt) dominated_all = false;
+            if (at > bt) better_one = true;
+        }
+        if (c.latency) {
+            const al = a.latency_ms_per_token || Infinity, bl = b.latency_ms_per_token || Infinity;
+            if (al > bl) dominated_all = false;
+            if (al < bl) better_one = true;
+        }
+        if (c.params) {
+            const ap = a.num_parameters || 0, bp = b.num_parameters || 0;
+            if (ap > bp) dominated_all = false;
+            if (ap < bp) better_one = true;
+        }
+        return dominated_all && better_one;
+    }
+
+    // ══════════════════════════════════════════════════════════════════
+    // MAIN ORCHESTRATOR
+    // ══════════════════════════════════════════════════════════════════
     function renderComparison(data) {
         const table = data.comparative_table || [];
         if (table.length === 0) return;
 
-        const sorted = [...table].sort((a, b) => a.co2_gCO2 - b.co2_gCO2);
+        PS.currentModel = LAST_PARAMS?.model_id || '';
+        PS.table = table;
+        PS.paretoModels = findParetoOptimal(table);
+        if (PS.selectedModels.length === 0) PS.selectedModels = table.slice(0, 3).map(r => r.model);
 
-        // Horizontal bar chart
-        if (compChart) compChart.destroy();
-        const ctx = document.getElementById("comparison-chart")?.getContext("2d");
+        const sorted = [...table].sort((a, b) => a.co2_gCO2 - b.co2_gCO2);
+        const maxCo2 = Math.max(...sorted.map(r => r.co2_gCO2));
+
+        renderConfigBar(PS.currentModel);
+        renderParetoConfigBar();
+        renderParetoScatter();
+        initParetoTabs();
+        renderDominanceTab();
+        renderTopsisTab();
+        renderRadarTab();
+        renderDominanceMatrix();
+        renderDetailedTable(sorted, maxCo2, PS.currentModel);
+        renderVerticalBarChart(sorted, PS.currentModel);
+
+        if (window.lucide) lucide.createIcons();
+    }
+
+    // ══════════════════════════════════════════════════════════════════
+    // CONFIG BAR (parameters + PDF)
+    // ══════════════════════════════════════════════════════════════════
+    function renderConfigBar(currentModel) {
+        const bar = document.getElementById('comp-config-bar');
+        if (!bar) return;
+        const p = LAST_PARAMS || {};
+        const modelObj = (OPTIONS.models || []).find(m => m.model_id === currentModel);
+        const modelName = modelObj?.model_name || currentModel || '—';
+        const dcObj = (OPTIONS.data_centers || []).find(d => d.dc_id === p.data_center_id);
+        const dcLabel = dcObj ? `${dcObj.provider_name} (${dcObj.region || dcObj.dc_id})` : p.data_center_id || '—';
+        const deviceName = (OPTIONS.devices || []).find(d => d.device_id === p.device_id)?.device_name || p.device_id || '—';
+
+        bar.innerHTML = `
+            <div class="comp-config-chips">
+                <span class="comp-config-label">CONFIGURACIÓN ACTIVA</span>
+                <span class="comp-chip"><strong>${formatRequestType(p.request_type || 'chat_simple')}</strong> ${p.tokens_input || '—'}+${p.tokens_output || '—'} tok</span>
+                <span class="comp-chip" title="Modelo seleccionado">${modelName}</span>
+                <span class="comp-chip" title="Data Center">${dcLabel}</span>
+                <span class="comp-chip" title="Dispositivo">${deviceName}</span>
+                <span class="comp-chip" title="Red">${p.network_id || '—'}</span>
+                <span class="comp-chip" title="País">${p.user_country || 'ES'}</span>
+                <span class="comp-chip" title="Procesador">${(p.inference_processor || 'auto').toUpperCase()}</span>
+                <span class="comp-chip" title="Utilización">${p.utilization != null ? Math.round(p.utilization * 100) + '%' : '70%'}</span>
+            </div>
+            <button class="comp-btn-pdf" id="btn-comp-pdf" title="Descargar informe PDF">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                PDF
+            </button>`;
+        document.getElementById('btn-comp-pdf')?.addEventListener('click', () => exportComparatorPDF());
+    }
+
+    // ══════════════════════════════════════════════════════════════════
+    // PARETO CONFIG BAR (criteria toggles, scale, reference, wizard)
+    // ══════════════════════════════════════════════════════════════════
+    function renderParetoConfigBar() {
+        const bar = document.getElementById('pareto-config-bar');
+        if (!bar) return;
+
+        const models = PS.table;
+        const currentModelName = (OPTIONS.models || []).find(m => m.model_id === PS.currentModel)?.model_name || '';
+
+        bar.innerHTML = `
+            <div class="pcfg-group">
+                <span class="pcfg-label">CRITERIOS PARETO</span>
+                <label class="pcfg-toggle"><input type="checkbox" id="pcrit-co2" ${PS.criteria.co2 ? 'checked' : ''}><span class="pcfg-check"></span> CO₂</label>
+                <label class="pcfg-toggle"><input type="checkbox" id="pcrit-speed" ${PS.criteria.speed ? 'checked' : ''}><span class="pcfg-check"></span> Velocidad</label>
+                <label class="pcfg-toggle"><input type="checkbox" id="pcrit-latency" ${PS.criteria.latency ? 'checked' : ''}><span class="pcfg-check"></span> Latencia</label>
+                <label class="pcfg-toggle"><input type="checkbox" id="pcrit-params" ${PS.criteria.params ? 'checked' : ''}><span class="pcfg-check"></span> Tamaño modelo</label>
+            </div>
+            <div class="pcfg-group">
+                <span class="pcfg-label">ESCALA</span>
+                <button class="pcfg-scale-btn ${PS.scaleLog ? 'active' : ''}" id="pcfg-log">Log</button>
+                <button class="pcfg-scale-btn ${!PS.scaleLog ? 'active' : ''}" id="pcfg-lin">Linear</button>
+            </div>
+            <div class="pcfg-group">
+                <span class="pcfg-label">REFERENCIA</span>
+                <select class="pcfg-select" id="pcfg-ref">
+                    <option value="">— Ninguno —</option>
+                    ${models.map(m => `<option value="${m.model}" ${m.model === currentModelName ? 'selected' : ''}>${m.model}</option>`).join('')}
+                </select>
+            </div>
+            <button class="pcfg-wizard-btn" id="pcfg-wizard">🧭 ¿Qué modelo me conviene?</button>
+        `;
+
+        // Criteria toggles
+        ['co2', 'speed', 'latency', 'params'].forEach(k => {
+            document.getElementById(`pcrit-${k}`)?.addEventListener('change', e => {
+                PS.criteria[k] = e.target.checked;
+                PS.paretoModels = findParetoOptimal(PS.table);
+                renderParetoScatter();
+                renderDominanceTab();
+                renderDominanceMatrix();
+            });
+        });
+        // Scale toggle
+        document.getElementById('pcfg-log')?.addEventListener('click', () => {
+            PS.scaleLog = true;
+            bar.querySelector('.pcfg-scale-btn.active')?.classList.remove('active');
+            document.getElementById('pcfg-log').classList.add('active');
+            renderParetoScatter();
+        });
+        document.getElementById('pcfg-lin')?.addEventListener('click', () => {
+            PS.scaleLog = false;
+            bar.querySelector('.pcfg-scale-btn.active')?.classList.remove('active');
+            document.getElementById('pcfg-lin').classList.add('active');
+            renderParetoScatter();
+        });
+        // Reference model
+        document.getElementById('pcfg-ref')?.addEventListener('change', e => {
+            PS.referenceModel = e.target.value || null;
+            renderParetoScatter();
+        });
+        // Wizard
+        document.getElementById('pcfg-wizard')?.addEventListener('click', () => showWizardModal());
+    }
+
+    // ══════════════════════════════════════════════════════════════════
+    // ENHANCED PARETO SCATTER PLOT
+    // ══════════════════════════════════════════════════════════════════
+    function updateScatterDesc() {
+        const el = document.getElementById('pareto-scatter-desc');
+        if (!el) return;
+        const names = [];
+        if (PS.criteria.co2) names.push('CO₂');
+        if (PS.criteria.speed) names.push('Velocidad');
+        if (PS.criteria.latency) names.push('Latencia');
+        if (PS.criteria.params) names.push('Tamaño modelo');
+        const n = names.length;
+        const criteriaHtml = n > 0
+            ? ` <span class="desc-dynamic"><strong>Criterios activos:</strong> ${names.join(', ')}. Un modelo ★ debe ser mejor en ${n === 1 ? 'ese criterio' : `esos ${n} criterios`} simultáneamente que cualquier otro. El tamaño del frente depende de los trade-offs reales del conjunto de datos.</span>`
+            : '';
+        const refHtml = PS.referenceModel
+            ? ` <span class="desc-dynamic desc-dynamic--ref"><strong>Referencia activa: ${PS.referenceModel}.</strong> Las flechas cian parten de ese modelo hacia cada Pareto-óptimo, mostrando qué alternativas lo mejoran objetivamente en los criterios seleccionados.</span>`
+            : '';
+        const axesCriteria = PS.criteria.co2 && PS.criteria.speed;
+        const extraCriteria = (PS.criteria.latency || PS.criteria.params) && !axesCriteria;
+        const projNote = (!axesCriteria && (PS.criteria.co2 || PS.criteria.speed || PS.criteria.latency || PS.criteria.params))
+            ? ' <em>Nota: los criterios activos no coinciden con los ejes del gráfico; la frontera step-after no se dibuja, pero los modelos ★ son correctamente Pareto-óptimos en las dimensiones seleccionadas.</em>'
+            : '';
+        el.innerHTML = `Eje X: velocidad de inferencia (tokens/s). Eje Y: huella de CO₂ por consulta (gCO₂). El modelo ideal se sitúa abajo-derecha (rápido y limpio). Los modelos ★ son <strong>Pareto-óptimos</strong>: ningún otro modelo los supera simultáneamente en todos los criterios activos.${axesCriteria ? ' La zona sombreada en verde representa el <strong>frente de Pareto eficiente</strong>.' : ''} Arrastra sobre el gráfico para seleccionar múltiples modelos.${criteriaHtml}${projNote}${refHtml}`;
+    }
+
+    function renderParetoScatter() {
+        updateScatterDesc();
+        if (scatterChart) scatterChart.destroy();
+        if (PS.pulseRAF) cancelAnimationFrame(PS.pulseRAF);
+        const ctx = document.getElementById('scatter-chart')?.getContext('2d');
         if (!ctx) return;
 
-        compChart = new Chart(ctx, {
+        const table = PS.table;
+        const paretoModels = PS.paretoModels;
+        const currentModelName = (OPTIONS.models || []).find(m => m.model_id === PS.currentModel)?.model_name || '';
+
+        const points = table
+            .filter(r => r.tokens_per_second && r.tokens_per_second > 0)
+            .map(r => ({
+                x: r.tokens_per_second,
+                y: r.co2_gCO2,
+                model: r.model,
+                org: r.organization || '',
+                label: r.environmental_label?.label || '?',
+                isPareto: paretoModels.includes(r.model),
+                isCurrent: r.model === currentModelName,
+                tps: r.tokens_per_second,
+                latency: r.latency_ms_per_token,
+                co2: r.co2_gCO2,
+                envLabel: r.environmental_label,
+            }));
+
+        // Compute TOPSIS scores for point sizing
+        const topsisScores = calculateTOPSIS(table, PS.topsisWeights);
+        const scoreMap = {};
+        table.forEach((r, i) => { scoreMap[r.model] = topsisScores[i]; });
+
+        const bgColors = points.map(p => {
+            if (p.isCurrent) return '#00e5ff';
+            if (p.isPareto) return '#ffd600';
+            const ec = ENERGY_CLASSES[p.label] || ENERGY_CLASSES['A'];
+            return ec ? ec.color : '#00e676';
+        });
+        const borderColors = points.map(p => {
+            if (p.isCurrent) return '#00e5ff';
+            if (p.isPareto) return '#ffd600';
+            return 'transparent';
+        });
+        const pointRadii = points.map(p => {
+            const base = p.isCurrent ? 11 : (p.isPareto ? 10 : 6);
+            const tScore = scoreMap[p.model] || 0;
+            return base + tScore * 3;
+        });
+        const borderWidths = points.map(p => p.isCurrent ? 3 : (p.isPareto ? 2.5 : 0));
+        const pointStyles = points.map(p => p.isPareto ? 'star' : 'circle');
+        const alphas = points.map(p => p.isPareto || p.isCurrent ? 1.0 : 0.6);
+
+        // ── Pareto front plugin (only draws when both CO₂ & Speed are active) ──
+        const paretoFrontPlugin = {
+            id: 'paretoFront',
+            beforeDatasetsDraw(chart) {
+                if (!PS.criteria.co2 || !PS.criteria.speed) return;
+                const c = chart.ctx;
+                const meta = chart.getDatasetMeta(0);
+                const data = chart.data.datasets[0].data;
+                const paretoPts = data
+                    .map((d, i) => ({ ...d, px: meta.data[i]?.x, py: meta.data[i]?.y }))
+                    .filter(d => d.isPareto && d.px != null)
+                    .sort((a, b) => a.x - b.x);
+                if (paretoPts.length < 2) return;
+
+                const area = chart.chartArea;
+                c.save();
+
+                // Gradient fill under step-after line
+                c.beginPath();
+                c.moveTo(area.left, paretoPts[0].py);
+                c.lineTo(paretoPts[0].px, paretoPts[0].py);
+                for (let i = 1; i < paretoPts.length; i++) {
+                    c.lineTo(paretoPts[i].px, paretoPts[i - 1].py);
+                    c.lineTo(paretoPts[i].px, paretoPts[i].py);
+                }
+                c.lineTo(area.right, paretoPts[paretoPts.length - 1].py);
+                c.lineTo(area.right, area.bottom);
+                c.lineTo(area.left, area.bottom);
+                c.closePath();
+                const grad = c.createLinearGradient(0, area.top, 0, area.bottom);
+                grad.addColorStop(0, 'rgba(0,230,118,0.10)');
+                grad.addColorStop(1, 'rgba(0,230,118,0.01)');
+                c.fillStyle = grad;
+                c.fill();
+
+                // Step-after line
+                c.beginPath();
+                c.strokeStyle = '#00e676';
+                c.lineWidth = 2;
+                c.setLineDash([8, 4]);
+                c.moveTo(area.left, paretoPts[0].py);
+                c.lineTo(paretoPts[0].px, paretoPts[0].py);
+                for (let i = 1; i < paretoPts.length; i++) {
+                    c.lineTo(paretoPts[i].px, paretoPts[i - 1].py);
+                    c.lineTo(paretoPts[i].px, paretoPts[i].py);
+                }
+                c.lineTo(area.right, paretoPts[paretoPts.length - 1].py);
+                c.stroke();
+                c.setLineDash([]);
+                c.restore();
+            }
+        };
+
+        // ── Pulsing ring plugin ──
+        const pulsePlugin = {
+            id: 'pulseRing',
+            afterDatasetsDraw(chart) {
+                const c = chart.ctx;
+                const meta = chart.getDatasetMeta(0);
+                const data = chart.data.datasets[0].data;
+                const phase = PS.pulsePhase;
+
+                data.forEach((d, i) => {
+                    if (!d.isPareto) return;
+                    const el = meta.data[i];
+                    if (!el) return;
+                    const radius = 14 + Math.sin(phase + i * 0.8) * 4;
+                    const alpha = 0.25 + Math.sin(phase + i * 0.8) * 0.15;
+                    c.save();
+                    c.beginPath();
+                    c.arc(el.x, el.y, radius, 0, Math.PI * 2);
+                    c.strokeStyle = `rgba(0,230,118,${alpha})`;
+                    c.lineWidth = 2;
+                    c.stroke();
+                    c.restore();
+                });
+            }
+        };
+
+        // ── Reference model arrows plugin ──
+        const refArrowPlugin = {
+            id: 'refArrows',
+            afterDatasetsDraw(chart) {
+                if (!PS.referenceModel) return;
+                const c = chart.ctx;
+                const meta = chart.getDatasetMeta(0);
+                const data = chart.data.datasets[0].data;
+                const refPt = data.find(d => d.model === PS.referenceModel);
+                if (!refPt) return;
+                const refIdx = data.indexOf(refPt);
+                const refEl = meta.data[refIdx];
+                if (!refEl) return;
+
+                data.forEach((d, i) => {
+                    if (!d.isPareto || d.model === PS.referenceModel) return;
+                    const el = meta.data[i];
+                    if (!el) return;
+                    c.save();
+                    c.beginPath();
+                    c.setLineDash([4, 3]);
+                    c.strokeStyle = 'rgba(0,229,255,0.4)';
+                    c.lineWidth = 1.5;
+                    c.moveTo(refEl.x, refEl.y);
+                    c.lineTo(el.x, el.y);
+                    c.stroke();
+                    // Arrowhead
+                    const angle = Math.atan2(el.y - refEl.y, el.x - refEl.x);
+                    c.setLineDash([]);
+                    c.fillStyle = 'rgba(0,229,255,0.6)';
+                    c.beginPath();
+                    c.moveTo(el.x, el.y);
+                    c.lineTo(el.x - 8 * Math.cos(angle - 0.4), el.y - 8 * Math.sin(angle - 0.4));
+                    c.lineTo(el.x - 8 * Math.cos(angle + 0.4), el.y - 8 * Math.sin(angle + 0.4));
+                    c.closePath();
+                    c.fill();
+                    c.restore();
+                });
+            }
+        };
+
+        // ── Labels plugin ──
+        const labelsPlugin = {
+            id: 'scatterLabels',
+            afterDatasetsDraw(chart) {
+                const c = chart.ctx;
+                const meta = chart.getDatasetMeta(0);
+                meta.data.forEach((el, i) => {
+                    const p = chart.data.datasets[0].data[i];
+                    c.save();
+                    c.fillStyle = p.isCurrent ? '#00e5ff' : (p.isPareto ? '#ffd600' : 'rgba(200,214,207,0.7)');
+                    c.font = p.isCurrent ? '700 10px Inter' : '500 9px Inter';
+                    c.textAlign = 'center';
+                    c.fillText(p.model, el.x, el.y - (p.isPareto ? 13 : 8));
+                    if (p.isPareto && !p.isCurrent) {
+                        c.fillStyle = '#00e676';
+                        c.font = '700 12px Inter';
+                        c.fillText('★', el.x, el.y - 21);
+                    }
+                    c.restore();
+                });
+            }
+        };
+
+        // ── Highlight pair plugin (from matrix hover) ──
+        const highlightPlugin = {
+            id: 'highlightPair',
+            afterDatasetsDraw(chart) {
+                if (!PS.highlightPair) return;
+                const c = chart.ctx;
+                const meta = chart.getDatasetMeta(0);
+                const data = chart.data.datasets[0].data;
+                const [mA, mB] = PS.highlightPair;
+                [mA, mB].forEach(name => {
+                    const idx = data.findIndex(d => d.model === name);
+                    if (idx < 0) return;
+                    const el = meta.data[idx];
+                    c.save();
+                    c.beginPath();
+                    c.arc(el.x, el.y, 18, 0, Math.PI * 2);
+                    c.strokeStyle = '#00e5ff';
+                    c.lineWidth = 2.5;
+                    c.stroke();
+                    c.restore();
+                });
+            }
+        };
+
+        // ── External custom tooltip ──
+        const externalTooltipHandler = (context) => {
+            const { chart, tooltip } = context;
+            const el = document.getElementById('pareto-tooltip');
+            if (!el) return;
+            if (tooltip.opacity === 0) { el.style.display = 'none'; return; }
+            const dp = tooltip.dataPoints?.[0];
+            if (!dp) return;
+            const raw = dp.raw;
+            const ec = ENERGY_CLASSES[raw.label] || {};
+            el.innerHTML = `
+                <div class="pt-name">${raw.model}</div>
+                <div class="pt-org">${raw.org}</div>
+                <div class="pt-row"><span>CO₂/query</span><span class="pt-val" style="color:#00e676">${sciNotation(raw.co2)} gCO₂</span></div>
+                <div class="pt-row"><span>Velocidad</span><span class="pt-val">${raw.tps} tok/s</span></div>
+                ${raw.latency ? `<div class="pt-row"><span>Latencia</span><span class="pt-val">${raw.latency.toFixed(1)} ms/tok</span></div>` : ''}
+                <div class="pt-row"><span>Clase</span><span class="pt-badge" style="color:${ec.color || '#999'}">${raw.label}</span></div>
+                ${raw.isPareto ? '<div class="pt-pareto">★ Pareto-óptimo</div>' : ''}
+                <div class="pt-minibar"><div class="pt-minibar-fill" style="width:${Math.min(100, (raw.co2 / Math.max(...points.map(p => p.co2))) * 100)}%"></div></div>
+            `;
+            el.style.display = 'block';
+            const pos = chart.canvas.getBoundingClientRect();
+            // Use the exact pixel center of the hovered point instead of caretX/caretY
+            const idx = dp.dataIndex;
+            const meta = chart.getDatasetMeta(dp.datasetIndex);
+            const ptEl = meta.data[idx];
+            const ptX = ptEl ? ptEl.x : tooltip.caretX;
+            const ptY = ptEl ? ptEl.y : tooltip.caretY;
+            const absX = ptX + pos.left;
+            const absY = ptY + pos.top;
+            const ttW = el.offsetWidth || 220;
+            const ttH = el.offsetHeight || 180;
+            const gap = 6;
+            // Prefer right of point; flip left if near right edge
+            const left = (absX + gap + ttW > window.innerWidth)
+                ? absX - ttW - gap
+                : absX + gap;
+            // Center vertically on the point; clamp to viewport
+            const top = Math.min(
+                Math.max(absY - ttH / 2, gap),
+                window.innerHeight - ttH - gap
+            );
+            el.style.left = left + 'px';
+            el.style.top = top + 'px';
+        };
+
+        scatterChart = new Chart(ctx, {
+            type: 'scatter',
+            data: {
+                datasets: [{
+                    label: 'Modelos',
+                    data: points,
+                    backgroundColor: bgColors.map((c, i) => {
+                        const a = alphas[i];
+                        // Adjust alpha for non-Pareto
+                        if (a < 1) return c.replace(/[\d.]+\)$/, a + ')').replace(/#([0-9a-f]{6})/i, (m, hex) => {
+                            const r = parseInt(hex.slice(0, 2), 16), g = parseInt(hex.slice(2, 4), 16), b = parseInt(hex.slice(4, 6), 16);
+                            return `rgba(${r},${g},${b},${a})`;
+                        });
+                        return c;
+                    }),
+                    borderColor: borderColors,
+                    borderWidth: borderWidths,
+                    pointRadius: pointRadii,
+                    pointStyle: pointStyles,
+                    pointHoverRadius: 14,
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                animation: { duration: 800, easing: 'easeOutCubic' },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: { enabled: false, external: externalTooltipHandler },
+                    zoom: {
+                        pan: { enabled: true, mode: 'xy', modifierKey: 'ctrl' },
+                        zoom: {
+                            wheel: { enabled: true, modifierKey: 'ctrl' },
+                            pinch: { enabled: true },
+                            mode: 'xy',
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        type: PS.scaleLog ? 'logarithmic' : 'linear',
+                        title: { display: true, text: 'Velocidad (tokens/s)', color: '#5a7a64', font: { size: 11 } },
+                        grid: { color: 'rgba(255,255,255,0.06)' },
+                        ticks: { color: '#5a7a64' },
+                    },
+                    y: {
+                        type: PS.scaleLog ? 'logarithmic' : 'linear',
+                        title: { display: true, text: 'CO₂/query (gCO₂)', color: '#5a7a64', font: { size: 11 } },
+                        grid: { color: 'rgba(255,255,255,0.06)' },
+                        ticks: { color: '#5a7a64' },
+                    }
+                }
+            },
+            plugins: [paretoFrontPlugin, pulsePlugin, refArrowPlugin, labelsPlugin, highlightPlugin]
+        });
+
+        // ── Pulse animation loop ──
+        function animatePulse() {
+            PS.pulsePhase += 0.04;
+            if (scatterChart) scatterChart.draw();
+            PS.pulseRAF = requestAnimationFrame(animatePulse);
+        }
+        PS.pulseRAF = requestAnimationFrame(animatePulse);
+
+        // ── Lasso / brush selection ──
+        initLassoSelection(ctx.canvas);
+
+        // Tooltip only appears on hover — no auto-show on load
+    }
+
+    // ══════════════════════════════════════════════════════════════════
+    // LASSO / BRUSH SELECTION
+    // ══════════════════════════════════════════════════════════════════
+    function initLassoSelection(canvas) {
+        const rect = document.getElementById('lasso-rect');
+        const info = document.getElementById('lasso-info');
+        if (!rect || !info) return;
+
+        let dragging = false, sx = 0, sy = 0;
+
+        canvas.addEventListener('mousedown', e => {
+            if (e.ctrlKey) return; // ctrl = pan
+            const r = canvas.getBoundingClientRect();
+            sx = e.clientX - r.left; sy = e.clientY - r.top;
+            dragging = true;
+            rect.style.display = 'block';
+            rect.style.left = sx + 'px'; rect.style.top = sy + 'px';
+            rect.style.width = '0'; rect.style.height = '0';
+        });
+        canvas.addEventListener('mousemove', e => {
+            if (!dragging) return;
+            const r = canvas.getBoundingClientRect();
+            const cx = e.clientX - r.left, cy = e.clientY - r.top;
+            const x = Math.min(sx, cx), y = Math.min(sy, cy);
+            const w = Math.abs(cx - sx), h = Math.abs(cy - sy);
+            rect.style.left = x + 'px'; rect.style.top = y + 'px';
+            rect.style.width = w + 'px'; rect.style.height = h + 'px';
+        });
+        canvas.addEventListener('mouseup', e => {
+            if (!dragging) return;
+            dragging = false;
+            rect.style.display = 'none';
+            const r = canvas.getBoundingClientRect();
+            const cx = e.clientX - r.left, cy = e.clientY - r.top;
+            const x1 = Math.min(sx, cx), y1 = Math.min(sy, cy);
+            const x2 = Math.max(sx, cx), y2 = Math.max(sy, cy);
+            if (x2 - x1 < 10 || y2 - y1 < 10) { info.style.display = 'none'; return; }
+
+            // Find points inside the selection rectangle
+            const meta = scatterChart.getDatasetMeta(0);
+            const data = scatterChart.data.datasets[0].data;
+            const selected = [];
+            data.forEach((d, i) => {
+                const el = meta.data[i];
+                if (el && el.x >= x1 && el.x <= x2 && el.y >= y1 && el.y <= y2) {
+                    selected.push(d.model);
+                }
+            });
+            if (selected.length > 0) {
+                PS.selectedModels = selected.slice(0, 4);
+                info.style.display = 'flex';
+                info.innerHTML = `<span class="lasso-label">Seleccionados (${selected.length}): </span>` +
+                    selected.map(m => `<span class="lasso-chip">${m}</span>`).join('') +
+                    `<button class="lasso-clear" id="lasso-clear">✕</button>`;
+                document.getElementById('lasso-clear')?.addEventListener('click', () => {
+                    PS.selectedModels = PS.table.slice(0, 3).map(r => r.model);
+                    info.style.display = 'none';
+                    renderRadarTab();
+                });
+                renderRadarTab();
+            }
+        });
+    }
+
+    // ══════════════════════════════════════════════════════════════════
+    // SIDE PANEL — Tab switching
+    // ══════════════════════════════════════════════════════════════════
+    function initParetoTabs() {
+        const panel = document.getElementById('pareto-side-panel');
+        if (!panel) return;
+        panel.querySelectorAll('.pareto-tab').forEach(btn => {
+            btn.addEventListener('click', () => {
+                panel.querySelectorAll('.pareto-tab').forEach(b => b.classList.remove('active'));
+                panel.querySelectorAll('.pareto-tab-body').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                const target = document.getElementById('ptab-' + btn.dataset.ptab);
+                if (target) target.classList.add('active');
+            });
+        });
+    }
+
+    // ══════════════════════════════════════════════════════════════════
+    // TAB 1 — Dominancia Pareto
+    // ══════════════════════════════════════════════════════════════════
+    function renderDominanceTab() {
+        const el = document.getElementById('ptab-dominance');
+        if (!el) return;
+
+        const table = PS.table;
+        const paretoModels = PS.paretoModels;
+        const paretoRows = table.filter(r => paretoModels.includes(r.model));
+
+        // Utopian point: min CO₂, max tokens/s
+        const minCo2 = Math.min(...table.map(r => r.co2_gCO2));
+        const maxTps = Math.max(...table.map(r => r.tokens_per_second || 0));
+
+        // Distance to utopian (normalized)
+        const maxCo2 = Math.max(...table.map(r => r.co2_gCO2));
+        const distances = paretoRows.map(r => {
+            const dCo2 = maxCo2 > minCo2 ? (r.co2_gCO2 - minCo2) / (maxCo2 - minCo2) : 0;
+            const dTps = maxTps > 0 ? (1 - (r.tokens_per_second || 0) / maxTps) : 0;
+            return { model: r.model, dist: Math.sqrt(dCo2 * dCo2 + dTps * dTps), row: r };
+        }).sort((a, b) => a.dist - b.dist);
+
+        // Dominance count for each Pareto model
+        const domCounts = {};
+        paretoRows.forEach(r => {
+            domCounts[r.model] = table.filter(o => o.model !== r.model && dominates(r, o)).length;
+        });
+
+        el.innerHTML = `
+            <div class="ptab-header">🏆 Dominancia Pareto</div>
+            <div class="ptab-desc">Modelos del frente de Pareto ordenados por proximidad al punto utópico ideal (mín CO₂ + máx velocidad).</div>
+            <div class="ptab-list">
+                ${distances.map((d, i) => {
+                    const lbl = d.row.environmental_label?.label || '?';
+                    const ec = ENERGY_CLASSES[lbl] || {};
+                    return `
+                    <div class="ptab-item ${d.row.model === ((OPTIONS.models || []).find(m => m.model_id === PS.currentModel)?.model_name || '') ? 'ptab-item-current' : ''}">
+                        <div class="ptab-rank">#${i + 1}</div>
+                        <div class="ptab-info">
+                            <div class="ptab-model">${d.row.model} <span class="ptab-label-badge" style="color:${ec.color || '#999'}">${lbl}</span></div>
+                            <div class="ptab-meta">${d.row.organization || ''} · ${sciNotation(d.row.co2_gCO2)} gCO₂ · ${d.row.tokens_per_second || 0} tok/s</div>
+                            <div class="ptab-bars">
+                                <span class="ptab-bar-label">Dist. utópica: ${d.dist.toFixed(3)}</span>
+                                <div class="ptab-bar"><div class="ptab-bar-fill" style="width:${(1 - d.dist) * 100}%;background:${ec.color || '#00e676'}"></div></div>
+                            </div>
+                            <div class="ptab-dom">Domina a <strong>${domCounts[d.row.model] || 0}</strong> modelos</div>
+                        </div>
+                    </div>`;
+                }).join('')}
+            </div>
+        `;
+    }
+
+    // ══════════════════════════════════════════════════════════════════
+    // TAB 2 — Análisis TOPSIS
+    // ══════════════════════════════════════════════════════════════════
+    function renderTopsisTab() {
+        const el = document.getElementById('ptab-topsis');
+        if (!el) return;
+
+        const table = PS.table;
+        const weights = PS.topsisWeights;
+        const scores = calculateTOPSIS(table, weights);
+        const ranked = table.map((r, i) => ({ ...r, score: scores[i] }))
+            .sort((a, b) => b.score - a.score);
+        const best = ranked[0];
+
+        el.innerHTML = `
+            <div class="ptab-header">⚖️ Análisis TOPSIS</div>
+            <div class="ptab-desc">Ranking multicriterio — ajusta los pesos para recalcular en tiempo real.</div>
+            <div class="topsis-sliders">
+                <div class="topsis-slider-group">
+                    <label>CO₂ <span class="topsis-w" id="tw-co2">${Math.round(weights.co2 * 100)}%</span></label>
+                    <input type="range" min="0" max="100" value="${Math.round(weights.co2 * 100)}" class="topsis-range" data-tw="co2">
+                </div>
+                <div class="topsis-slider-group">
+                    <label>Velocidad <span class="topsis-w" id="tw-speed">${Math.round(weights.speed * 100)}%</span></label>
+                    <input type="range" min="0" max="100" value="${Math.round(weights.speed * 100)}" class="topsis-range" data-tw="speed">
+                </div>
+                <div class="topsis-slider-group">
+                    <label>Latencia <span class="topsis-w" id="tw-latency">${Math.round(weights.latency * 100)}%</span></label>
+                    <input type="range" min="0" max="100" value="${Math.round(weights.latency * 100)}" class="topsis-range" data-tw="latency">
+                </div>
+            </div>
+            <div class="topsis-crown">
+                🥇 Óptimo bajo tus preferencias: <strong>${best?.model || '—'}</strong> (score: ${best?.score.toFixed(3) || '—'})
+            </div>
+            <div class="topsis-ranking" id="topsis-ranking">
+                ${ranked.map((r, i) => {
+                    const ec = ENERGY_CLASSES[r.environmental_label?.label] || {};
+                    const isCurrent = r.model === ((OPTIONS.models || []).find(m => m.model_id === PS.currentModel)?.model_name || '');
+                    return `
+                    <div class="topsis-row ${isCurrent ? 'topsis-current' : ''}">
+                        <span class="topsis-pos">${i + 1}</span>
+                        <span class="topsis-name">${r.model}</span>
+                        <div class="topsis-score-bar"><div class="topsis-score-fill" style="width:${r.score * 100}%;background:${ec.color || '#00e676'}"></div></div>
+                        <span class="topsis-score">${r.score.toFixed(3)}</span>
+                    </div>`;
+                }).join('')}
+            </div>
+        `;
+
+        // Slider listeners
+        el.querySelectorAll('.topsis-range').forEach(slider => {
+            slider.addEventListener('input', () => {
+                const key = slider.dataset.tw;
+                const raw = {};
+                el.querySelectorAll('.topsis-range').forEach(s => { raw[s.dataset.tw] = parseInt(s.value); });
+                const total = (raw.co2 || 0) + (raw.speed || 0) + (raw.latency || 0);
+                if (total === 0) return;
+                PS.topsisWeights = { co2: raw.co2 / total, speed: raw.speed / total, latency: raw.latency / total };
+                // Update weight labels
+                Object.keys(raw).forEach(k => {
+                    const wEl = document.getElementById(`tw-${k}`);
+                    if (wEl) wEl.textContent = Math.round(PS.topsisWeights[k] * 100) + '%';
+                });
+                // Recalculate
+                const newScores = calculateTOPSIS(PS.table, PS.topsisWeights);
+                const newRanked = PS.table.map((r, i) => ({ ...r, score: newScores[i] }))
+                    .sort((a, b) => b.score - a.score);
+                const crown = el.querySelector('.topsis-crown');
+                if (crown) crown.innerHTML = `🥇 Óptimo bajo tus preferencias: <strong>${newRanked[0]?.model || '—'}</strong> (score: ${newRanked[0]?.score.toFixed(3) || '—'})`;
+                const ranking = document.getElementById('topsis-ranking');
+                if (ranking) {
+                    ranking.innerHTML = newRanked.map((r, i) => {
+                        const ec = ENERGY_CLASSES[r.environmental_label?.label] || {};
+                        const isCur = r.model === ((OPTIONS.models || []).find(m => m.model_id === PS.currentModel)?.model_name || '');
+                        return `<div class="topsis-row ${isCur ? 'topsis-current' : ''}">
+                            <span class="topsis-pos">${i + 1}</span>
+                            <span class="topsis-name">${r.model}</span>
+                            <div class="topsis-score-bar"><div class="topsis-score-fill" style="width:${r.score * 100}%;background:${ec.color || '#00e676'}"></div></div>
+                            <span class="topsis-score">${r.score.toFixed(3)}</span>
+                        </div>`;
+                    }).join('');
+                }
+                // Update scatter point sizes
+                renderParetoScatter();
+            });
+        });
+    }
+
+    // ══════════════════════════════════════════════════════════════════
+    // TAB 3 — Radar Chart comparativo
+    // ══════════════════════════════════════════════════════════════════
+    function renderRadarTab() {
+        const selectEl = document.getElementById('radar-model-select');
+        const canvasEl = document.getElementById('radar-chart');
+        if (!selectEl || !canvasEl) return;
+
+        const table = PS.table;
+        const radarColors = ['#00e676', '#00e5ff', '#ffd600', '#ff6b6b'];
+
+        // Model checkboxes
+        selectEl.innerHTML = `
+            <div class="radar-select-label">Selecciona 2–4 modelos:</div>
+            <div class="radar-checks">
+                ${table.map(r => `
+                    <label class="radar-check ${PS.selectedModels.includes(r.model) ? 'checked' : ''}">
+                        <input type="checkbox" value="${r.model}" ${PS.selectedModels.includes(r.model) ? 'checked' : ''}>
+                        <span>${r.model}</span>
+                    </label>
+                `).join('')}
+            </div>
+        `;
+
+        selectEl.querySelectorAll('input[type=checkbox]').forEach(cb => {
+            cb.addEventListener('change', () => {
+                const checked = Array.from(selectEl.querySelectorAll('input:checked')).map(c => c.value);
+                if (checked.length > 4) { cb.checked = false; return; }
+                if (checked.length < 1) { cb.checked = true; return; }
+                PS.selectedModels = checked;
+                selectEl.querySelectorAll('.radar-check').forEach(lbl => {
+                    lbl.classList.toggle('checked', lbl.querySelector('input').checked);
+                });
+                drawRadar();
+            });
+        });
+
+        function drawRadar() {
+            if (radarChart) radarChart.destroy();
+            const ctx = canvasEl.getContext('2d');
+            if (!ctx) return;
+
+            const sel = table.filter(r => PS.selectedModels.includes(r.model));
+            if (sel.length < 1) return;
+
+            // Normalize dimensions to 0-1
+            const maxCo2 = Math.max(...table.map(r => r.co2_gCO2));
+            const maxTps = Math.max(...table.map(r => r.tokens_per_second || 0));
+            const maxLat = Math.max(...table.filter(r => r.latency_ms_per_token).map(r => r.latency_ms_per_token));
+            const maxParams = Math.max(...table.filter(r => r.num_parameters).map(r => r.num_parameters));
+            const maxEnergy = Math.max(...table.map(r => r.energy_Wh || 0));
+
+            const datasets = sel.map((r, i) => {
+                const color = radarColors[i % radarColors.length];
+                return {
+                    label: r.model,
+                    data: [
+                        maxCo2 > 0 ? (1 - r.co2_gCO2 / maxCo2) : 0,           // CO₂ efficiency (inverted)
+                        maxTps > 0 ? ((r.tokens_per_second || 0) / maxTps) : 0, // Speed
+                        maxLat > 0 ? (1 - (r.latency_ms_per_token || 0) / maxLat) : 0, // Latency efficiency
+                        maxEnergy > 0 ? (1 - (r.energy_Wh || 0) / maxEnergy) : 0, // Energy efficiency
+                        maxParams > 0 ? (1 - (r.num_parameters || 0) / maxParams) : 0, // Param efficiency (inverted)
+                    ],
+                    backgroundColor: color + '20',
+                    borderColor: color,
+                    borderWidth: 2,
+                    pointBackgroundColor: color,
+                    pointRadius: 4,
+                };
+            });
+
+            radarChart = new Chart(ctx, {
+                type: 'radar',
+                data: {
+                    labels: ['CO₂ Eficiencia', 'Velocidad', 'Latencia Efic.', 'Energía Efic.', 'Eficiencia Params'],
+                    datasets: datasets,
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            labels: { color: '#c8d6cf', font: { size: 11 } },
+                            onClick: (e, legendItem, legend) => {
+                                const idx = legendItem.datasetIndex;
+                                const meta = legend.chart.getDatasetMeta(idx);
+                                meta.hidden = !meta.hidden;
+                                legend.chart.update();
+                            }
+                        }
+                    },
+                    scales: {
+                        r: {
+                            beginAtZero: true, max: 1,
+                            grid: { color: 'rgba(255,255,255,0.08)' },
+                            angleLines: { color: 'rgba(255,255,255,0.08)' },
+                            pointLabels: { color: '#94a3b1', font: { size: 10 } },
+                            ticks: { display: false },
+                        }
+                    }
+                }
+            });
+        }
+
+        drawRadar();
+    }
+
+    // ══════════════════════════════════════════════════════════════════
+    // DOMINANCE MATRIX (N×N)
+    // ══════════════════════════════════════════════════════════════════
+    function renderDominanceMatrix() {
+        const wrap = document.getElementById('dominance-matrix-wrap');
+        if (!wrap) return;
+
+        const table = PS.table;
+        const n = table.length;
+
+        // Build matrix: matrix[i][j] = 'dom' if i dominates j, 'sub' if dominated, 'trade' otherwise
+        const matrix = [];
+        for (let i = 0; i < n; i++) {
+            matrix[i] = [];
+            for (let j = 0; j < n; j++) {
+                if (i === j) { matrix[i][j] = 'self'; continue; }
+                if (dominates(table[i], table[j])) matrix[i][j] = 'dom';
+                else if (dominates(table[j], table[i])) matrix[i][j] = 'sub';
+                else matrix[i][j] = 'trade';
+            }
+        }
+
+        const cellClass = { dom: 'dm-dom', sub: 'dm-sub', trade: 'dm-trade', self: 'dm-self' };
+        const cellChar = { dom: '▼', sub: '▲', trade: '↔', self: '·' };
+        const cellTitle = { dom: 'Domina', sub: 'Dominado', trade: 'Trade-off', self: '' };
+
+        let html = `<table class="dominance-table"><thead><tr><th></th>`;
+        table.forEach(r => { html += `<th class="dm-header" title="${r.model}">${r.model.substring(0, 8)}</th>`; });
+        html += `</tr></thead><tbody>`;
+        for (let i = 0; i < n; i++) {
+            html += `<tr><th class="dm-row-header" title="${table[i].model}">${table[i].model.substring(0, 10)}</th>`;
+            for (let j = 0; j < n; j++) {
+                const val = matrix[i][j];
+                html += `<td class="dm-cell ${cellClass[val]}" data-row="${i}" data-col="${j}" title="${table[i].model} ${cellTitle[val]} ${table[j].model}">${cellChar[val]}</td>`;
+            }
+            html += `</tr>`;
+        }
+        html += `</tbody></table>`;
+        wrap.innerHTML = html;
+
+        // Hover → highlight pair in scatter
+        wrap.querySelectorAll('.dm-cell').forEach(td => {
+            td.addEventListener('mouseenter', () => {
+                const ri = parseInt(td.dataset.row), ci = parseInt(td.dataset.col);
+                if (ri === ci) return;
+                PS.highlightPair = [table[ri].model, table[ci].model];
+                if (scatterChart) scatterChart.draw();
+            });
+            td.addEventListener('mouseleave', () => {
+                PS.highlightPair = null;
+                if (scatterChart) scatterChart.draw();
+            });
+        });
+
+        // Export CSV button
+        document.getElementById('btn-export-matrix-csv')?.addEventListener('click', () => {
+            let csv = ',' + table.map(r => r.model).join(',') + '\n';
+            for (let i = 0; i < n; i++) {
+                csv += table[i].model + ',' + matrix[i].map(v => cellTitle[v] || '').join(',') + '\n';
+            }
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url; a.download = 'dominance_matrix.csv'; a.click();
+            URL.revokeObjectURL(url);
+        });
+    }
+
+    // ══════════════════════════════════════════════════════════════════
+    // WIZARD MODAL — "¿Qué modelo me conviene?"
+    // ══════════════════════════════════════════════════════════════════
+    function showWizardModal() {
+        const overlay = document.getElementById('wizard-modal');
+        const content = document.getElementById('wizard-content');
+        if (!overlay || !content) return;
+        overlay.style.display = 'flex';
+        let step = 0;
+        const answers = { priority: null, speed: null, budget: null };
+
+        function renderStep() {
+            const steps = [
+                {
+                    q: '¿Cuál es tu prioridad principal?',
+                    desc: 'Elige qué aspecto valoras más al seleccionar un modelo de IA.',
+                    options: [
+                        { val: 'sustainability', icon: '🌿', label: 'Sostenibilidad', desc: 'Minimizar emisiones de CO₂' },
+                        { val: 'speed', icon: '⚡', label: 'Velocidad', desc: 'Máxima rapidez de inferencia' },
+                        { val: 'balance', icon: '⚖️', label: 'Balance', desc: 'Compromiso entre ambos' },
+                    ]
+                },
+                {
+                    q: '¿Necesitas baja latencia?',
+                    desc: 'Algunas aplicaciones (chatbots en tiempo real, APIs) requieren baja latencia.',
+                    options: [
+                        { val: 'yes', icon: '🏎️', label: 'Sí, es crítica', desc: '< 20ms por token' },
+                        { val: 'no', icon: '🐢', label: 'No es prioritaria', desc: 'Puedo tolerar latencia alta' },
+                    ]
+                },
+                {
+                    q: '¿Prefiere modelos con más parámetros?',
+                    desc: 'Modelos más grandes suelen ser más capaces, pero más costosos.',
+                    options: [
+                        { val: 'large', icon: '🧠', label: 'Sí, mayor capacidad', desc: 'Modelos >100B parámetros' },
+                        { val: 'small', icon: '💡', label: 'No, eficiencia primero', desc: 'Modelos compactos y eficientes' },
+                    ]
+                }
+            ];
+
+            if (step < 3) {
+                const s = steps[step];
+                content.innerHTML = `
+                    <div class="wizard-step">
+                        <div class="wizard-progress"><div class="wizard-progress-fill" style="width:${((step + 1) / 3) * 100}%"></div></div>
+                        <div class="wizard-step-num">Paso ${step + 1} de 3</div>
+                        <h3 class="wizard-question">${s.q}</h3>
+                        <p class="wizard-desc">${s.desc}</p>
+                        <div class="wizard-options">
+                            ${s.options.map(o => `
+                                <button class="wizard-option" data-val="${o.val}">
+                                    <span class="wizard-opt-icon">${o.icon}</span>
+                                    <span class="wizard-opt-label">${o.label}</span>
+                                    <span class="wizard-opt-desc">${o.desc}</span>
+                                </button>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+                content.querySelectorAll('.wizard-option').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        const keys = ['priority', 'speed', 'budget'];
+                        answers[keys[step]] = btn.dataset.val;
+                        step++;
+                        renderStep();
+                    });
+                });
+            } else {
+                // Calculate recommendation
+                const w = { co2: 0.33, speed: 0.33, latency: 0.34 };
+                if (answers.priority === 'sustainability') { w.co2 = 0.55; w.speed = 0.25; w.latency = 0.20; }
+                else if (answers.priority === 'speed') { w.co2 = 0.15; w.speed = 0.55; w.latency = 0.30; }
+                else { w.co2 = 0.35; w.speed = 0.35; w.latency = 0.30; }
+                if (answers.speed === 'yes') { w.latency += 0.10; w.co2 -= 0.05; w.speed -= 0.05; }
+                const total = w.co2 + w.speed + w.latency;
+                w.co2 /= total; w.speed /= total; w.latency /= total;
+
+                const scores = calculateTOPSIS(PS.table, w);
+                let filtered = PS.table.map((r, i) => ({ ...r, score: scores[i] }));
+                if (answers.budget === 'small') filtered = filtered.filter(r => (r.num_parameters || Infinity) < 100e9);
+                filtered.sort((a, b) => b.score - a.score);
+                const rec = filtered[0];
+                const ec = ENERGY_CLASSES[rec?.environmental_label?.label] || {};
+
+                content.innerHTML = `
+                    <div class="wizard-result">
+                        <div class="wizard-progress"><div class="wizard-progress-fill" style="width:100%"></div></div>
+                        <div class="wizard-crown">🏆</div>
+                        <h3 class="wizard-rec-title">Tu modelo recomendado</h3>
+                        <div class="wizard-rec-model">${rec?.model || '—'}</div>
+                        <div class="wizard-rec-org">${rec?.organization || ''}</div>
+                        <div class="wizard-rec-stats">
+                            <div class="wizard-stat"><span class="wizard-stat-val" style="color:#00e676">${sciNotation(rec?.co2_gCO2)}</span><span class="wizard-stat-label">gCO₂/query</span></div>
+                            <div class="wizard-stat"><span class="wizard-stat-val" style="color:#00e5ff">${rec?.tokens_per_second || '—'}</span><span class="wizard-stat-label">tok/s</span></div>
+                            <div class="wizard-stat"><span class="wizard-stat-val" style="color:${ec.color || '#ffd600'}">${rec?.environmental_label?.label || '?'}</span><span class="wizard-stat-label">Clase</span></div>
+                        </div>
+                        <p class="wizard-rec-reason">Basado en tus preferencias: ${
+                            answers.priority === 'sustainability' ? 'prioridad en sostenibilidad' :
+                            answers.priority === 'speed' ? 'prioridad en velocidad' : 'balance equilibrado'
+                        }${answers.speed === 'yes' ? ', baja latencia requerida' : ''}${answers.budget === 'small' ? ', modelos eficientes preferidos' : ''}.</p>
+                        <div class="wizard-weights">Pesos TOPSIS: CO₂ ${Math.round(w.co2 * 100)}% · Velocidad ${Math.round(w.speed * 100)}% · Latencia ${Math.round(w.latency * 100)}%</div>
+                        <button class="wizard-restart" id="wizard-restart">Volver a empezar</button>
+                    </div>
+                `;
+                // Highlight in scatter
+                PS.referenceModel = rec?.model || null;
+                document.getElementById('pcfg-ref').value = rec?.model || '';
+                renderParetoScatter();
+
+                document.getElementById('wizard-restart')?.addEventListener('click', () => { step = 0; renderStep(); });
+            }
+        }
+
+        renderStep();
+
+        // Close handlers
+        document.getElementById('wizard-close')?.addEventListener('click', () => { overlay.style.display = 'none'; });
+        overlay.addEventListener('click', e => { if (e.target === overlay) overlay.style.display = 'none'; });
+    }
+
+    // ──────────────────────────────────────────────────────────────────
+    // 3. Detailed comparison table
+    // ──────────────────────────────────────────────────────────────────
+    function renderDetailedTable(sorted, maxCo2, currentModel) {
+        const tableDiv = document.getElementById('detailed-comparison-table');
+        if (!tableDiv) return;
+
+        const currentModelName = (OPTIONS.models || []).find(m => m.model_id === currentModel)?.model_name || '';
+        const currentRow = sorted.find(r => r.model === currentModelName);
+        const currentCo2 = currentRow ? currentRow.co2_gCO2 : sorted[0]?.co2_gCO2 || 1;
+
+        const arrowSvg = '<span class="sort-arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 3 18 9"/></svg></span>';
+
+        const renderRows = (rows) => rows.map(r => {
+            const isActive = r.model === currentModelName;
+            const pct = maxCo2 > 0 ? (r.co2_gCO2 / maxCo2 * 100) : 0;
+            const savings = currentCo2 > 0 ? ((r.co2_gCO2 / currentCo2 - 1) * 100) : 0;
+            const savingsStr = savings <= -0.5
+                ? `<span class="comp-savings-positive">−${Math.abs(Math.round(savings))}%</span>`
+                : savings >= 0.5
+                    ? `<span class="comp-savings-negative">+${Math.round(savings)}%</span>`
+                    : '<span style="color:var(--text-muted)">—</span>';
+            const latency = r.latency_ms_per_token
+                ? (r.latency_ms_per_token * (r.tokens_processed || 285)).toFixed(0) + ' ms'
+                : r.inference_time_sec ? (r.inference_time_sec * 1000).toFixed(0) + ' ms' : '—';
+
+            return `<tr${isActive ? ' style="background:rgba(0,229,255,.04)"' : ''}>
+                <td style="font-weight:600;color:var(--text-primary);white-space:nowrap">
+                    ${r.model}${isActive ? ' <span class="comp-actual-badge">ACTUAL</span>' : ''}
+                    ${r.environmental_label?.label?.includes('Pareto') ? ' ★' : ''}
+                </td>
+                <td style="color:var(--text-muted);font-size:12px">${r.organization || ''}</td>
+                <td class="font-mono" style="color:var(--primary)">${formatNum(r.co2_gCO2)}</td>
+                <td style="min-width:120px">
+                    <div class="comp-emission-bar"><div class="comp-emission-fill" style="width:${pct}%;background:${getBarColorSolid(r.environmental_label?.label)}"></div></div>
+                </td>
+                <td>${savingsStr}</td>
+                <td class="font-mono" style="color:${r.tokens_per_second > 100 ? 'var(--primary)' : 'var(--text-secondary)'}">${r.tokens_per_second || '—'}</td>
+                <td class="font-mono">${latency}</td>
+                <td>${getLabelBadge(r.environmental_label)}</td>
+            </tr>`;
+        }).join('');
+
+        tableDiv.innerHTML = `
+            <table id="detailed-comp-table">
+                <thead><tr>
+                    <th data-sort="model">Modelo ${arrowSvg}</th>
+                    <th data-sort="organization">Org. ${arrowSvg}</th>
+                    <th data-sort="co2_gCO2">CO₂/query (gCO₂) ${arrowSvg}</th>
+                    <th>Emisión relativa</th>
+                    <th data-sort="savings">Ahorro vs actual ${arrowSvg}</th>
+                    <th data-sort="tokens_per_second">Tokens/s ${arrowSvg}</th>
+                    <th data-sort="latency">Latencia ${arrowSvg}</th>
+                    <th data-sort="label">Etiqueta ${arrowSvg}</th>
+                </tr></thead>
+                <tbody>${renderRows(sorted)}</tbody>
+            </table>
+        `;
+
+        // Sorting
+        let sortState = {};
+        tableDiv.querySelectorAll('th[data-sort]').forEach(th => {
+            th.addEventListener('click', () => {
+                const key = th.dataset.sort;
+                // Toggle sort state
+                tableDiv.querySelectorAll('th').forEach(h => h.classList.remove('sort-asc', 'sort-desc'));
+                sortState[key] = !sortState[key];
+                th.classList.add(sortState[key] ? 'sort-asc' : 'sort-desc');
+                const dir = sortState[key] ? 1 : -1;
+
+                const rows = [...sorted].sort((a, b) => {
+                    if (key === 'model' || key === 'organization') return dir * (a[key] || '').localeCompare(b[key] || '');
+                    if (key === 'label') return dir * ((a.environmental_label?.label || 'Z').localeCompare(b.environmental_label?.label || 'Z'));
+                    if (key === 'savings') {
+                        const sA = currentCo2 > 0 ? (a.co2_gCO2 / currentCo2 - 1) : 0;
+                        const sB = currentCo2 > 0 ? (b.co2_gCO2 / currentCo2 - 1) : 0;
+                        return dir * (sA - sB);
+                    }
+                    if (key === 'latency') return dir * ((a.inference_time_sec || 0) - (b.inference_time_sec || 0));
+                    return dir * ((a[key] || 0) - (b[key] || 0));
+                });
+                tableDiv.querySelector('tbody').innerHTML = renderRows(rows);
+            });
+        });
+    }
+
+    // ──────────────────────────────────────────────────────────────────
+    // 4. Vertical bar chart — CO₂/query
+    // ──────────────────────────────────────────────────────────────────
+    function renderVerticalBarChart(sorted, currentModel) {
+        if (vertBarChart) vertBarChart.destroy();
+        const ctx = document.getElementById('vertical-bar-chart')?.getContext('2d');
+        if (!ctx) return;
+
+        const currentModelName = (OPTIONS.models || []).find(m => m.model_id === currentModel)?.model_name || '';
+
+        // Build colors — highlight selected model with distinct border
+        const bgColors = sorted.map(r => {
+            if (r.model === currentModelName) return 'rgba(0,229,255,0.75)';
+            return getBarColor(r.environmental_label?.label);
+        });
+        const borderColors = sorted.map(r => {
+            if (r.model === currentModelName) return '#00e5ff';
+            return 'transparent';
+        });
+        const borderWidths = sorted.map(r => r.model === currentModelName ? 2 : 0);
+
+        vertBarChart = new Chart(ctx, {
             type: 'bar',
             data: {
                 labels: sorted.map(r => r.model),
                 datasets: [{
-                    label: 'gCO₂',
+                    label: 'gCO₂/query',
                     data: sorted.map(r => r.co2_gCO2),
-                    backgroundColor: sorted.map(r => getBarColor(r.environmental_label?.label)),
+                    backgroundColor: bgColors,
+                    borderColor: borderColors,
+                    borderWidth: borderWidths,
                     borderRadius: 4,
                     borderSkipped: false,
+                    barPercentage: 0.7,
                 }]
             },
             options: {
-                indexAxis: 'y',
                 responsive: true,
                 maintainAspectRatio: false,
-                animation: { duration: 1200 },
+                animation: { duration: 1200, easing: 'easeOutCubic' },
                 plugins: {
                     legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            afterLabel: (item) => {
+                                const r = sorted[item.dataIndex];
+                                return [
+                                    `Tokens/s: ${r.tokens_per_second || '—'}`,
+                                    r.latency_ms_per_token ? `Latencia: ${r.latency_ms_per_token.toFixed(1)} ms/tok` : '',
+                                    r.model === currentModelName ? '← Modelo seleccionado' : '',
+                                ].filter(Boolean);
+                            }
+                        }
+                    }
                 },
                 scales: {
-                    x: {
-                        grid: { color: 'rgba(255,255,255,0.04)' },
-                        ticks: { color: '#5a7a64' },
-                        title: { display: true, text: 'gCO₂', color: '#5a7a64' }
-                    },
                     y: {
+                        type: 'logarithmic',
+                        grid: { color: 'rgba(255,255,255,0.04)' },
+                        ticks: { color: '#5a7a64', callback: (v) => formatNum(v) },
+                        title: { display: true, text: 'CO₂ total (gCO₂/query)', color: '#5a7a64' }
+                    },
+                    x: {
                         grid: { display: false },
-                        ticks: { color: '#94a3b1', font: { size: 11 } },
+                        ticks: {
+                            color: (ctx) => {
+                                const label = sorted[ctx.index]?.model;
+                                return label === currentModelName ? '#00e5ff' : '#94a3b1';
+                            },
+                            font: (ctx) => {
+                                const label = sorted[ctx.index]?.model;
+                                return { size: 10, weight: label === currentModelName ? '700' : '400' };
+                            },
+                            maxRotation: 45,
+                        },
                     }
                 }
             },
             plugins: [{
-                id: 'barValueLabels',
+                id: 'vertBarLabels',
                 afterDatasetsDraw(chart) {
-                    const ctx = chart.ctx;
+                    const c = chart.ctx;
                     chart.getDatasetMeta(0).data.forEach((bar, j) => {
-                        const val = chart.data.datasets[0].data[j];
-                        ctx.save();
-                        ctx.fillStyle = '#e8f0eb';
-                        ctx.font = '600 10px JetBrains Mono';
-                        ctx.textBaseline = 'middle';
-                        ctx.fillText(formatNum(val), bar.x + 6, bar.y);
-                        ctx.restore();
+                        const r = sorted[j];
+                        const lbl = r.environmental_label?.label || '';
+                        const isCurrent = r.model === currentModelName;
+                        c.save();
+                        c.fillStyle = isCurrent ? '#00e5ff' : getBarColorSolid(lbl);
+                        c.font = isCurrent ? '700 11px Inter' : '700 10px Inter';
+                        c.textAlign = 'center';
+                        // Label above bar + ACTUAL tag for selected model
+                        if (isCurrent) {
+                            c.fillText('ACTUAL', bar.x, bar.y - 20);
+                            c.fillText(lbl, bar.x, bar.y - 8);
+                        } else {
+                            c.fillText(lbl, bar.x, bar.y - 8);
+                        }
+                        c.restore();
                     });
                 }
             }]
         });
+    }
 
-        // Table with sort
-        const tableDiv = document.getElementById("comparison-table");
-        const arrowSvg = '<span class="sort-icon"><svg viewBox="0 0 24 24"><path d="M7 15l5 5 5-5M7 9l5-5 5 5" stroke="currentColor" fill="none" stroke-width="2"/></svg></span>';
+    // ──────────────────────────────────────────────────────────────────
+    // PDF export — Professional Report using jsPDF
+    // ──────────────────────────────────────────────────────────────────
+    function exportComparatorPDF() {
+        if (!window.jspdf) { showError('jsPDF no está cargado todavía, inténtalo de nuevo.'); return; }
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+        const W = 210, H = 297;
+        const ML = 18, MR = 18, MT = 15;
+        const CW = W - ML - MR; // content width
 
-        tableDiv.innerHTML = `
-            <table id="comp-table">
-                <thead>
-                    <tr>
-                        <th data-sort="model">Modelo ${arrowSvg}</th>
-                        <th data-sort="co2_gCO2">CO₂ Total (g) ${arrowSvg}</th>
-                        <th data-sort="energy_Wh">Energía (Wh) ${arrowSvg}</th>
-                        <th data-sort="label">Etiqueta ${arrowSvg}</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${sorted.map(r => `
-                        <tr>
-                            <td style="font-weight:600;color:var(--text-primary)">${r.model}</td>
-                            <td class="font-mono">${formatNum(r.co2_gCO2)}</td>
-                            <td class="font-mono">${formatNum(r.energy_Wh)}</td>
-                            <td>${getLabelBadge(r.environmental_label)}</td>
-                        </tr>
-                    `).join("")}
-                </tbody>
-            </table>
-        `;
+        const p = LAST_PARAMS || {};
+        const currentModelName = (OPTIONS.models || []).find(m => m.model_id === p.model_id)?.model_name || p.model_id || '—';
 
-        // Column sort
-        let sortAsc = {};
-        tableDiv.querySelectorAll('th[data-sort]').forEach(th => {
-            th.addEventListener('click', () => {
-                const key = th.dataset.sort;
-                sortAsc[key] = !sortAsc[key];
-                const dir = sortAsc[key] ? 1 : -1;
-                const rows = [...sorted].sort((a, b) => {
-                    if (key === 'model') return dir * a.model.localeCompare(b.model);
-                    if (key === 'label') return dir * ((a.environmental_label?.label || 'Z').localeCompare(b.environmental_label?.label || 'Z'));
-                    return dir * ((a[key] || 0) - (b[key] || 0));
+        // ── Utility helpers ──
+        function darkPage() { doc.setFillColor(10, 20, 14); doc.rect(0, 0, W, H, 'F'); }
+        function greenLine(y) { doc.setDrawColor(74, 222, 128); doc.setLineWidth(0.3); doc.line(ML, y, W - MR, y); }
+        function sectionTitle(title, y) {
+            doc.setFont('helvetica', 'bold'); doc.setFontSize(13); doc.setTextColor(74, 222, 128);
+            doc.text(title, ML, y);
+            greenLine(y + 2);
+            return y + 8;
+        }
+        function bodyText(text, x, y, opts) {
+            doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(200, 214, 207);
+            const lines = doc.splitTextToSize(text, opts?.maxWidth || CW);
+            doc.text(lines, x, y);
+            return y + lines.length * 4;
+        }
+        function labelText(label, value, x, y) {
+            doc.setFont('helvetica', 'bold'); doc.setFontSize(8.5); doc.setTextColor(56, 189, 248);
+            doc.text(label, x, y);
+            doc.setFont('helvetica', 'normal'); doc.setTextColor(200, 214, 207);
+            doc.text(String(value), x + 42, y);
+            return y + 5;
+        }
+        function checkPage(y, need) { if (y + need > H - 20) { doc.addPage(); darkPage(); return MT + 5; } return y; }
+
+        // ═══════════════════════════════════════════════════════════════
+        // PAGE 1: Cover + Configuration + Methodology + Summary
+        // ═══════════════════════════════════════════════════════════════
+        darkPage();
+
+        // Header decoration
+        doc.setFillColor(14, 35, 20);
+        doc.roundedRect(ML - 3, 10, CW + 6, 42, 3, 3, 'F');
+        doc.setDrawColor(74, 222, 128); doc.setLineWidth(0.5);
+        doc.roundedRect(ML - 3, 10, CW + 6, 42, 3, 3, 'S');
+
+        // Title
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(20); doc.setTextColor(74, 222, 128);
+        doc.text('Informe Comparativo de Modelos de IA', ML + 2, 26);
+
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(11); doc.setTextColor(200, 214, 207);
+        doc.text('Evaluación del impacto medioambiental — Emisiones de CO₂ en inferencia', ML + 2, 34);
+
+        doc.setFontSize(9); doc.setTextColor(148, 163, 177);
+        doc.text(`Generado: ${new Date().toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}`, ML + 2, 42);
+        doc.text('Calculadora de Carbono para IA — TFG Antonio Luis Jiménez de la Fuente', ML + 2, 48);
+
+        let y = 60;
+
+        // Section: Configuration
+        y = sectionTitle('1. Configuración del escenario', y);
+
+        const dcObj = (OPTIONS.data_centers || []).find(d => d.dc_id === p.data_center_id);
+        const deviceObj = (OPTIONS.devices || []).find(d => d.device_id === p.device_id);
+
+        y = labelText('Modelo seleccionado:', currentModelName, ML, y);
+        y = labelText('Tipo de petición:', formatRequestType(p.request_type || 'chat_simple'), ML, y);
+        y = labelText('Tokens (in + out):', `${p.tokens_input || '—'} + ${p.tokens_output || '—'}`, ML, y);
+        y = labelText('Data Center:', dcObj ? `${dcObj.provider_name} — ${dcObj.region || ''} (${dcObj.country_code || ''})` : (p.data_center_id || '—'), ML, y);
+        y = labelText('PUE del DC:', dcObj?.pue || '—', ML, y);
+        y = labelText('Dispositivo:', deviceObj?.device_name || p.device_id || '—', ML, y);
+        y = labelText('Red:', p.network_id || '—', ML, y);
+        y = labelText('País usuario:', p.user_country || 'ES', ML, y);
+        y = labelText('Procesador:', (p.inference_processor || 'auto').toUpperCase(), ML, y);
+        y = labelText('Utilización:', `${p.utilization != null ? Math.round(p.utilization * 100) : 70}%`, ML, y);
+        y += 4;
+
+        // Section: Methodology
+        y = sectionTitle('2. Nota metodológica', y);
+        y = bodyText(
+            'Este comparador evalúa exclusivamente las emisiones de CO₂ asociadas a los modelos de IA durante el periodo de inferencia. ' +
+            'El resto de parámetros (dispositivo del usuario, red de datos y data center) se mantienen fijos según la configuración indicada arriba, ' +
+            'de modo que la única variable entre modelos es su consumo energético por cada 1.000 tokens procesados (energy_wh_per_1k_tokens). ' +
+            'Esto permite una comparación directa, equitativa y bajo condiciones idénticas. ' +
+            'Las etiquetas de eficiencia se calculan en base a percentiles de la distribución de emisiones de todos los modelos del dataset.',
+            ML, y
+        );
+        y += 4;
+
+        // Section: Summary statistics
+        const tableEl = document.getElementById('detailed-comp-table');
+        const allRows = tableEl ? Array.from(tableEl.querySelectorAll('tbody tr')) : [];
+        const modelCount = allRows.length;
+
+        y = sectionTitle('3. Resumen ejecutivo', y);
+        // Get data from the DOM table
+        const summaryData = [];
+        allRows.forEach(row => {
+            const cells = Array.from(row.querySelectorAll('td'));
+            if (cells.length >= 7) {
+                summaryData.push({
+                    model: cells[0].textContent.replace('ACTUAL', '').trim(),
+                    org: cells[1].textContent.trim(),
+                    co2: cells[2].textContent.trim(),
+                    savings: cells[4].textContent.trim(),
+                    tps: cells[5].textContent.trim(),
+                    latency: cells[6].textContent.trim(),
+                    label: cells[7]?.textContent.trim() || '—',
                 });
-                const tbody = tableDiv.querySelector('tbody');
-                tbody.innerHTML = rows.map(r => `
-                    <tr>
-                        <td style="font-weight:600;color:var(--text-primary)">${r.model}</td>
-                        <td class="font-mono">${formatNum(r.co2_gCO2)}</td>
-                        <td class="font-mono">${formatNum(r.energy_Wh)}</td>
-                        <td>${getLabelBadge(r.environmental_label)}</td>
-                    </tr>
-                `).join("");
-            });
+            }
         });
+
+        const bestModel = summaryData[0];
+        const worstModel = summaryData[summaryData.length - 1];
+
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(200, 214, 207);
+        y = labelText('Modelos analizados:', modelCount, ML, y);
+        y = labelText('Modelo más eficiente:', bestModel ? `${bestModel.model} (${bestModel.co2} gCO₂) — Clase ${bestModel.label}` : '—', ML, y);
+        y = labelText('Modelo menos eficiente:', worstModel ? `${worstModel.model} (${worstModel.co2} gCO₂) — Clase ${worstModel.label}` : '—', ML, y);
+        if (bestModel && worstModel) {
+            const bco2 = parseFloat(bestModel.co2) || 0;
+            const wco2 = parseFloat(worstModel.co2) || 0;
+            const spread = wco2 > 0 ? ((wco2 / (bco2 || 1) - 1) * 100).toFixed(0) : 0;
+            y = labelText('Diferencia máx.:', `El modelo menos eficiente emite un ${spread}% más que el más eficiente`, ML, y);
+        }
+        y = labelText('Modelo seleccionado:', currentModelName, ML, y);
+
+        // ═══════════════════════════════════════════════════════════════
+        // PAGE 2: Detailed comparison table
+        // ═══════════════════════════════════════════════════════════════
+        doc.addPage(); darkPage();
+        y = MT + 5;
+        y = sectionTitle('4. Tabla comparativa detallada', y);
+
+        // Table header
+        const cols = [
+            { label: 'Modelo', x: ML, w: 32 },
+            { label: 'Organización', x: ML + 32, w: 30 },
+            { label: 'CO₂ (gCO₂)', x: ML + 62, w: 22 },
+            { label: 'Ahorro vs actual', x: ML + 84, w: 26 },
+            { label: 'Tokens/s', x: ML + 110, w: 18 },
+            { label: 'Latencia', x: ML + 128, w: 20 },
+            { label: 'Etiqueta', x: ML + 148, w: 18 },
+        ];
+
+        // Header row
+        doc.setFillColor(14, 35, 20);
+        doc.rect(ML, y - 4, CW, 7, 'F');
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(7.5); doc.setTextColor(56, 189, 248);
+        cols.forEach(c => doc.text(c.label, c.x + 1, y));
+        y += 5;
+        greenLine(y - 2);
+
+        // Data rows
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5);
+        summaryData.forEach((row, idx) => {
+            y = checkPage(y, 7);
+            const isCurrent = row.model === currentModelName;
+
+            if (isCurrent) {
+                doc.setFillColor(0, 229, 255, 8);
+                doc.rect(ML, y - 3.5, CW, 6, 'F');
+            } else if (idx % 2 === 0) {
+                doc.setFillColor(14, 28, 18);
+                doc.rect(ML, y - 3.5, CW, 6, 'F');
+            }
+
+            doc.setTextColor(isCurrent ? 0 : 232, isCurrent ? 229 : 240, isCurrent ? 255 : 235);
+            doc.setFont('helvetica', isCurrent ? 'bold' : 'normal');
+            doc.text((row.model + (isCurrent ? ' ★' : '')).substring(0, 18), cols[0].x + 1, y);
+            doc.setFont('helvetica', 'normal');
+            doc.setTextColor(200, 214, 207);
+            doc.text(row.org.substring(0, 16), cols[1].x + 1, y);
+
+            // CO₂ in green
+            doc.setTextColor(74, 222, 128);
+            doc.text(row.co2, cols[2].x + 1, y);
+
+            // Savings — color coded
+            const savingsVal = row.savings;
+            if (savingsVal.includes('−') || savingsVal.includes('-')) {
+                doc.setTextColor(74, 222, 128);
+            } else if (savingsVal.includes('+')) {
+                doc.setTextColor(249, 115, 22);
+            } else {
+                doc.setTextColor(148, 163, 177);
+            }
+            doc.text(savingsVal || '—', cols[3].x + 1, y);
+
+            doc.setTextColor(200, 214, 207);
+            doc.text(row.tps, cols[4].x + 1, y);
+            doc.text(row.latency, cols[5].x + 1, y);
+
+            // Label with color
+            const lbl = row.label;
+            if (lbl.includes('A')) doc.setTextColor(74, 222, 128);
+            else if (lbl === 'B') doc.setTextColor(251, 191, 36);
+            else if (lbl === 'C') doc.setTextColor(249, 115, 22);
+            else doc.setTextColor(239, 68, 68);
+            doc.setFont('helvetica', 'bold');
+            doc.text(lbl, cols[6].x + 4, y);
+            doc.setFont('helvetica', 'normal');
+
+            y += 6;
+        });
+
+        y += 6;
+
+        // ═══════════════════════════════════════════════════════════════
+        // Section: Pareto-optimal models (from PS state)
+        // ═══════════════════════════════════════════════════════════════
+        y = checkPage(y, 50);
+        y = sectionTitle('5. Modelos Pareto-óptimos', y);
+
+        if (PS.paretoModels && PS.paretoModels.length > 0) {
+            PS.paretoModels.forEach((modelName, idx) => {
+                const m = PS.table.find(r => r.model === modelName);
+                if (!m) return;
+                y = checkPage(y, 22);
+                const ec = ENERGY_CLASSES[m.environmental_label?.label] || { color: '#4ade80' };
+                const co2Str = m.co2_gCO2 < 0.01 ? m.co2_gCO2.toExponential(2) : m.co2_gCO2.toFixed(4);
+
+                doc.setFillColor(14, 35, 20);
+                doc.roundedRect(ML, y - 4, CW, 18, 2, 2, 'F');
+                doc.setDrawColor(74, 222, 128); doc.setLineWidth(0.2);
+                doc.roundedRect(ML, y - 4, CW, 18, 2, 2, 'S');
+
+                doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(0, 230, 118);
+                doc.text(`★ Pareto #${idx + 1}`, ML + 3, y);
+
+                doc.setFontSize(10); doc.setTextColor(232, 240, 235);
+                doc.text(m.model, ML + 3, y + 6);
+
+                doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(148, 163, 177);
+                doc.text(`${m.organization}  ·  ${co2Str} gCO₂  ·  ${(m.tokens_per_second || 0).toFixed(1)} tok/s  ·  Clase ${m.environmental_label?.label || '?'}`, ML + 3, y + 11);
+
+                y += 22;
+            });
+        } else {
+            y = bodyText('No se identificaron modelos Pareto-óptimos con los criterios actuales.', ML, y);
+        }
+
+        // ═══════════════════════════════════════════════════════════════
+        // PAGE 3+: Charts
+        // ═══════════════════════════════════════════════════════════════
+        const charts = [
+            { id: 'scatter-chart', title: '6. Rendimiento vs Sostenibilidad (Scatter Plot)',
+              desc: 'Relación entre velocidad de inferencia (tokens/s) y emisiones de CO₂ por consulta. Escala logarítmica en ambos ejes. Los modelos Pareto-óptimos (★) representan las mejores combinaciones de velocidad y sostenibilidad.' },
+            { id: 'radar-chart', title: '7. Radar comparativo multi-criterio',
+              desc: 'Comparación de hasta 4 modelos seleccionados en 5 dimensiones normalizadas: Eficiencia CO₂, Velocidad, Eficiencia de latencia, Eficiencia energética y Capacidad (parámetros).' },
+            { id: 'vertical-bar-chart', title: '8. Comparativa de emisiones CO₂/query',
+              desc: 'Emisiones de CO₂ por consulta para cada modelo, con escala logarítmica. Las barras se colorean según la etiqueta de eficiencia energética. El modelo seleccionado se destaca en cian.' },
+        ];
+
+        charts.forEach(ch => {
+            const canvas = document.getElementById(ch.id);
+            if (!canvas) return;
+            try {
+                const img = canvas.toDataURL('image/png', 0.9);
+                doc.addPage(); darkPage();
+                y = MT + 5;
+                y = sectionTitle(ch.title, y);
+                y = bodyText(ch.desc, ML, y);
+                y += 2;
+                const ratio = canvas.width / canvas.height;
+                const imgW = Math.min(CW, 170);
+                const imgH = imgW / ratio;
+                doc.addImage(img, 'PNG', ML, y, imgW, imgH);
+            } catch (_) { /* canvas tainted */ }
+        });
+
+        // ═══════════════════════════════════════════════════════════════
+        // LAST PAGE: Glossary + Footer
+        // ═══════════════════════════════════════════════════════════════
+        doc.addPage(); darkPage();
+        y = MT + 5;
+        y = sectionTitle('9. Glosario y metodología', y);
+
+        const glossary = [
+            ['CO₂/query (gCO₂)', 'Gramos de CO₂ equivalente emitidos por una sola consulta al modelo de IA, considerando exclusivamente la fase de inferencia.'],
+            ['Energía (Wh)', 'Energía eléctrica consumida durante el procesamiento de una consulta, expresada en vatios-hora.'],
+            ['Tokens/s', 'Velocidad de generación de tokens del modelo. Mayor valor indica mayor rapidez de respuesta.'],
+            ['Latencia (ms)', 'Tiempo total estimado desde el envío de la consulta hasta la recepción completa de la respuesta.'],
+            ['Etiqueta energética', 'Clasificación de eficiencia basada en percentiles del dataset: A+++ (top 5%), A++ (5-15%), A+ (15-30%), A (30-50%), B (50-70%), C (70-85%), D (85-95%), E (>95%).'],
+            ['Pareto-óptimo (★)', 'Modelo que no es superado simultáneamente en todos los criterios activos (CO₂, velocidad, latencia) por ningún otro. Representan las mejores elecciones objetivas según la frontera de Pareto.'],
+            ['TOPSIS', 'Technique for Order of Preference by Similarity to Ideal Solution — método de decisión multicriterio que ordena alternativas midiendo su distancia al escenario ideal y anti-ideal.'],
+            ['PUE', 'Power Usage Effectiveness — ratio de eficiencia del data center. Un PUE de 1.2 significa que por cada 1 Wh de cómputo se usan 0.2 Wh adicionales en refrigeración e infraestructura.'],
+            ['energy_wh_per_1k_tokens', 'Consumo energético del modelo por cada 1.000 tokens procesados. Es la variable diferencial en este comparador.'],
+            ['Ahorro vs actual', 'Porcentaje de reducción (−) o incremento (+) de emisiones respecto al modelo seleccionado como referencia.'],
+        ];
+
+        glossary.forEach(([term, def]) => {
+            y = checkPage(y, 14);
+            doc.setFont('helvetica', 'bold'); doc.setFontSize(8.5); doc.setTextColor(74, 222, 128);
+            doc.text(term, ML, y);
+            y += 4;
+            y = bodyText(def, ML + 2, y, { maxWidth: CW - 4 });
+            y += 2;
+        });
+
+        y = checkPage(y, 20);
+        y += 6;
+        greenLine(y);
+        y += 6;
+
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(148, 163, 177);
+        doc.text('Este informe ha sido generado automáticamente por la Calculadora de Carbono para IA.', ML, y);
+        y += 4;
+        doc.text('TFG — Evaluación del impacto medioambiental de modelos de Inteligencia Artificial', ML, y);
+        y += 4;
+        doc.text('Autor: Antonio Luis Jiménez de la Fuente — Universidad de Huelva', ML, y);
+        y += 4;
+        doc.text(`Fecha de generación: ${new Date().toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}`, ML, y);
+
+        doc.save('informe_comparativa_modelos_IA.pdf');
     }
 
     // ------------------------------------------------------------------
@@ -1353,27 +3044,34 @@
     }
 
     // ------------------------------------------------------------------
-    // Map (Tab 7)
+    // Map (Tab 7) — Choropleth + Data Centers
     // ------------------------------------------------------------------
     let map = null;
 
     const providerColors = {
-        'AWS': '#f97316', 'GCP': '#4ade80', 'Azure': '#38bdf8', 'Deep Green': '#a78bfa',
+        'AWS': '#f97316', 'Google Cloud': '#4ade80', 'GCP': '#4ade80',
+        'Microsoft Azure': '#38bdf8', 'Azure': '#38bdf8', 'Deep Green': '#a78bfa',
     };
 
-    const ciColorRanges = [
-        { max: 100,  color: 'rgba(74, 222, 128, 0.25)' },
-        { max: 200,  color: 'rgba(74, 222, 128, 0.15)' },
-        { max: 300,  color: 'rgba(251, 191, 36, 0.20)' },
-        { max: 400,  color: 'rgba(249, 115, 22, 0.25)' },
-        { max: 600,  color: 'rgba(239, 68, 68, 0.25)' },
-        { max: 99999,color: 'rgba(185, 28, 28, 0.35)' },
+    const providerLetters = {
+        'AWS': 'A', 'Google Cloud': 'G', 'GCP': 'G',
+        'Microsoft Azure': 'Z', 'Azure': 'Z', 'Deep Green': 'D',
+    };
+
+    // Choropleth fill colors (higher opacity for visibility on dark basemap)
+    const ciChoroplethRanges = [
+        { max: 100,   fill: 'rgba(74, 222, 128, 0.55)',  label: '< 100 (Muy limpio)' },
+        { max: 200,   fill: 'rgba(134, 239, 172, 0.45)', label: '100–200 (Limpio)' },
+        { max: 300,   fill: 'rgba(251, 191, 36, 0.45)',  label: '200–300 (Medio)' },
+        { max: 400,   fill: 'rgba(249, 115, 22, 0.50)',  label: '300–400 (Alto)' },
+        { max: 600,   fill: 'rgba(239, 68, 68, 0.50)',   label: '400–600 (Muy alto)' },
+        { max: 99999, fill: 'rgba(185, 28, 28, 0.55)',   label: '> 600 (Crítico)' },
     ];
 
-    function ciColor(ci) {
-        if (ci == null) return '#666';
-        for (const r of ciColorRanges) { if (ci < r.max) return r.color; }
-        return 'rgba(185, 28, 28, 0.35)';
+    function ciChoroplethFill(ci) {
+        if (ci == null) return 'rgba(128,128,128,0.1)';
+        for (const r of ciChoroplethRanges) { if (ci < r.max) return r.fill; }
+        return 'rgba(185, 28, 28, 0.55)';
     }
 
     function ciColorSolid(ci) {
@@ -1388,10 +3086,20 @@
 
     function getProviderColor(provider) {
         if (!provider) return '#666';
+        if (providerColors[provider]) return providerColors[provider];
         for (const [key, color] of Object.entries(providerColors)) {
             if (provider.toLowerCase().includes(key.toLowerCase())) return color;
         }
         return '#666';
+    }
+
+    function getProviderLetter(provider) {
+        if (!provider) return '?';
+        if (providerLetters[provider]) return providerLetters[provider];
+        for (const [key, letter] of Object.entries(providerLetters)) {
+            if (provider.toLowerCase().includes(key.toLowerCase())) return letter;
+        }
+        return '?';
     }
 
     function renewableBadge(pct) {
@@ -1402,12 +3110,14 @@
     }
 
     function detectGreenwash(dc) {
-        // If provider claims high renewable but country CI is high
         const pRenew = dc.provider_renewable_pct;
         const ci = dc.carbon_intensity;
         if (pRenew != null && ci != null && pRenew > 80 && ci > 300) return true;
         return false;
     }
+
+    // ISO-3166 numeric → alpha-2 mapping for TopoJSON → country matching
+    const iso3ToIso2 = {"004":"AF","008":"AL","010":"AQ","012":"DZ","016":"AS","020":"AD","024":"AO","028":"AG","031":"AZ","032":"AR","036":"AU","040":"AT","044":"BS","048":"BH","050":"BD","051":"AM","056":"BE","060":"BM","064":"BT","068":"BO","070":"BA","072":"BW","076":"BR","084":"BZ","086":"IO","090":"SB","092":"VG","096":"BN","100":"BG","104":"MM","108":"BI","112":"BY","116":"KH","120":"CM","124":"CA","132":"CV","140":"CF","144":"LK","148":"TD","152":"CL","156":"CN","158":"TW","162":"CX","166":"CC","170":"CO","174":"KM","175":"YT","178":"CG","180":"CD","184":"CK","188":"CR","191":"HR","192":"CU","196":"CY","203":"CZ","204":"BJ","208":"DK","212":"DM","214":"DO","218":"EC","222":"SV","226":"GQ","231":"ET","232":"ER","233":"EE","234":"FO","238":"FK","242":"FJ","246":"FI","250":"FR","254":"GF","258":"PF","260":"TF","262":"DJ","266":"GA","268":"GE","270":"GM","275":"PS","276":"DE","288":"GH","292":"GI","296":"KI","300":"GR","304":"GL","308":"GD","312":"GP","316":"GU","320":"GT","324":"GN","328":"GY","332":"HT","336":"VA","340":"HN","344":"HK","348":"HU","352":"IS","356":"IN","360":"ID","364":"IR","368":"IQ","372":"IE","376":"IL","380":"IT","384":"CI","388":"JM","392":"JP","398":"KZ","400":"JO","404":"KE","408":"KP","410":"KR","414":"KW","417":"KG","418":"LA","422":"LB","426":"LS","428":"LV","430":"LR","434":"LY","438":"LI","440":"LT","442":"LU","446":"MO","450":"MG","454":"MW","458":"MY","462":"MV","466":"ML","470":"MT","474":"MQ","478":"MR","480":"MU","484":"MX","492":"MC","496":"MN","498":"MD","499":"ME","500":"MS","504":"MA","508":"MZ","512":"OM","516":"NA","520":"NR","524":"NP","528":"NL","531":"CW","533":"AW","540":"NC","548":"VU","554":"NZ","558":"NI","562":"NE","566":"NG","570":"NU","574":"NF","578":"NO","580":"MP","583":"FM","584":"MH","585":"PW","586":"PK","591":"PA","598":"PG","600":"PY","604":"PE","608":"PH","612":"PN","616":"PL","620":"PT","624":"GW","626":"TL","630":"PR","634":"QA","638":"RE","642":"RO","643":"RU","646":"RW","652":"BL","654":"SH","659":"KN","660":"AI","662":"LC","663":"MF","666":"PM","670":"VC","674":"SM","678":"ST","682":"SA","686":"SN","688":"RS","690":"SC","694":"SL","702":"SG","703":"SK","704":"VN","705":"SI","706":"SO","710":"ZA","716":"ZW","724":"ES","728":"SS","729":"SD","732":"EH","740":"SR","744":"SJ","748":"SZ","752":"SE","756":"CH","760":"SY","762":"TJ","764":"TH","768":"TG","772":"TK","776":"TO","780":"TT","784":"AE","788":"TN","792":"TR","795":"TM","796":"TC","798":"TV","800":"UG","804":"UA","807":"MK","818":"EG","826":"GB","831":"GG","832":"JE","833":"IM","834":"TZ","840":"US","850":"VI","854":"BF","858":"UY","860":"UZ","862":"VE","876":"WF","882":"WS","887":"YE","894":"ZM"};
 
     function initMap() {
         const mapEl = document.getElementById("map");
@@ -1425,51 +3135,116 @@
     }
 
     async function createMap() {
-        map = L.map("map", { zoomControl: true }).setView([30, 0], 2);
+        map = L.map("map", { zoomControl: true }).setView([25, 0], 2);
 
-        L.tileLayer("https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.png", {
-            attribution: '&copy; <a href="https://stadiamaps.com/">Stadia Maps</a> &copy; <a href="https://openmaptiles.org/">OpenMapTiles</a> &copy; <a href="https://openstreetmap.org">OpenStreetMap</a>',
+        // CARTO dark basemap
+        L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
+            attribution: '&copy; <a href="https://openstreetmap.org">OSM</a> &copy; <a href="https://carto.com/">CARTO</a>',
             maxZoom: 18,
+            subdomains: 'abcd',
         }).addTo(map);
 
-        // Legend
+        // Legend (rectangles for CI, dots for providers)
         const legendDiv = document.createElement('div');
         legendDiv.className = 'map-legend';
         legendDiv.innerHTML = `
-            <h4>Intensidad Carbono</h4>
-            <div class="map-legend-item"><div class="map-legend-dot" style="background:#4ade80"></div> &lt;100 gCO₂/kWh</div>
-            <div class="map-legend-item"><div class="map-legend-dot" style="background:#86efac"></div> 100–200</div>
-            <div class="map-legend-item"><div class="map-legend-dot" style="background:#fbbf24"></div> 200–300</div>
-            <div class="map-legend-item"><div class="map-legend-dot" style="background:#f97316"></div> 300–400</div>
-            <div class="map-legend-item"><div class="map-legend-dot" style="background:#ef4444"></div> 400–600</div>
-            <div class="map-legend-item"><div class="map-legend-dot" style="background:#b91c1c"></div> &gt;600</div>
+            <h4>Intensidad Carbono (gCO₂/kWh)</h4>
+            ${ciChoroplethRanges.map(r => `<div class="map-legend-item"><div class="map-legend-rect" style="background:${r.fill}"></div> ${r.label}</div>`).join('')}
             <hr class="map-legend-divider">
             <h4>Proveedores</h4>
+            <div class="map-legend-item"><div class="map-legend-dot" style="background:#a78bfa"></div> Deep Green</div>
             <div class="map-legend-item"><div class="map-legend-dot" style="background:#f97316"></div> AWS</div>
             <div class="map-legend-item"><div class="map-legend-dot" style="background:#4ade80"></div> GCP</div>
             <div class="map-legend-item"><div class="map-legend-dot" style="background:#38bdf8"></div> Azure</div>
-            <div class="map-legend-item"><div class="map-legend-dot" style="background:#a78bfa"></div> Deep Green</div>
-            <p class="map-legend-note">Color borde = CI del país · Color icono = proveedor</p>
+            <p class="map-legend-note">Color del país = CI de la red eléctrica<br>Color del icono = proveedor</p>
         `;
         document.getElementById("map").appendChild(legendDiv);
 
         try {
-            const resp = await fetch("/api/map-data");
-            if (!resp.ok) return;
-            const data = await resp.json();
+            // Fetch map data and world TopoJSON in parallel
+            const [mapResp, topoResp] = await Promise.all([
+                fetch("/api/map-data"),
+                fetch("https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json")
+            ]);
+            if (!mapResp.ok) return;
+            const data = await mapResp.json();
             const dcs = data.data_centers || [];
+            const zones = data.countries || [];
 
-            // Stats for bottom panels
+            // ── Aggregate zones to country-level CI ──
+            const countryCI = {};  // { "US": { sum, count, name } }
+            zones.forEach(z => {
+                if (z.carbon_intensity == null) return;
+                const iso = z.code.includes('-') ? z.code.split('-')[0] : z.code;
+                if (!countryCI[iso]) countryCI[iso] = { sum: 0, count: 0, name: z.country_name || iso };
+                countryCI[iso].sum += z.carbon_intensity;
+                countryCI[iso].count++;
+            });
+            // { "US": { avg, count, name } }
+            for (const iso of Object.keys(countryCI)) {
+                const c = countryCI[iso];
+                c.avg = Math.round(c.sum / c.count);
+            }
+
+            // ── Choropleth layer ──
+            if (topoResp.ok && typeof topojson !== 'undefined') {
+                const topoData = await topoResp.json();
+                const countries = topojson.feature(topoData, topoData.objects.countries);
+
+                let hoveredLayer = null;
+                const defaultStyle = (feature) => {
+                    const numericId = feature.id || feature.properties?.id;
+                    const iso2 = iso3ToIso2[String(numericId)] || '';
+                    const cData = countryCI[iso2];
+                    return {
+                        fillColor: cData ? ciChoroplethFill(cData.avg) : 'rgba(128,128,128,0.08)',
+                        fillOpacity: 1,
+                        color: 'rgba(255,255,255,0.12)',
+                        weight: 0.8,
+                    };
+                };
+
+                const choroplethLayer = L.geoJSON(countries, {
+                    style: defaultStyle,
+                    onEachFeature: (feature, layer) => {
+                        const numericId = feature.id || feature.properties?.id;
+                        const iso2 = iso3ToIso2[String(numericId)] || '';
+                        const cData = countryCI[iso2];
+                        const name = cData?.name || feature.properties?.name || iso2;
+                        const ciText = cData ? `${cData.avg} gCO₂/kWh` : 'Sin datos';
+                        const zonesText = cData && cData.count > 1 ? ` (${cData.count} zonas)` : '';
+                        layer.bindTooltip(`<strong>${name}</strong><br>${ciText}${zonesText}`, {
+                            sticky: true,
+                            className: 'choropleth-tooltip',
+                        });
+                        layer.on('mouseover', () => {
+                            hoveredLayer = layer;
+                            layer.setStyle({ weight: 2, color: 'rgba(255,255,255,0.5)' });
+                            layer.bringToFront();
+                        });
+                        layer.on('mouseout', () => {
+                            if (hoveredLayer === layer) {
+                                choroplethLayer.resetStyle(layer);
+                                hoveredLayer = null;
+                            }
+                        });
+                    },
+                }).addTo(map);
+            }
+
+            // ── Data center markers ──
             let totalDCs = dcs.length;
             let providers = {};
             let pueSum = 0, pueCount = 0, bestPUE = 99, worstPUE = 0, bestPUE_name = '', worstPUE_name = '';
 
             dcs.forEach(dc => {
                 if (dc.latitude == null || dc.longitude == null) return;
+                if (dc.dc_id && dc.dc_id.endsWith('-global')) return; // Skip global averages
 
                 const ci = dc.carbon_intensity;
                 const provColor = getProviderColor(dc.provider);
                 const borderColor = ciColorSolid(ci);
+                const letter = getProviderLetter(dc.provider);
                 const isGreenwash = detectGreenwash(dc);
 
                 // Provider stats
@@ -1480,12 +3255,12 @@
                     if (dc.pue > worstPUE) { worstPUE = dc.pue; worstPUE_name = `${dc.provider} ${dc.region}`; }
                 }
 
-                // Create divIcon marker
-                const size = 14;
+                // Marker with provider letter
+                const size = 18;
                 const extraClass = isGreenwash ? ' greenwash' : '';
                 const icon = L.divIcon({
                     className: '',
-                    html: `<div class="dc-marker${extraClass}" style="width:${size}px;height:${size}px;background:${provColor};border:2px solid ${borderColor};"></div>`,
+                    html: `<div class="dc-marker${extraClass}" style="width:${size}px;height:${size}px;background:${provColor};border:2px solid ${borderColor};"><span class="dc-marker-letter">${letter}</span></div>`,
                     iconSize: [size, size],
                     iconAnchor: [size/2, size/2],
                 });
@@ -1502,33 +3277,39 @@
 
                 const popupHtml = `
                     <div class="popup-header">
-                        <div class="popup-name">${dc.provider || ''} — ${dc.region || ''}</div>
-                        <div class="popup-region">${dc.country_code || ''} · ${dc.dc_id || ''}</div>
+                        <span class="popup-provider-dot" style="background:${provColor}"></span>
+                        <div>
+                            <div class="popup-name">${dc.provider || ''}</div>
+                            <div class="popup-region">${dc.region || ''} (${dc.country_code || ''})</div>
+                        </div>
                     </div>
                     <div class="popup-body">
                         <div class="popup-row">
-                            <span class="popup-row-label"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg> Intens. carbono</span>
+                            <span class="popup-row-label">Intensidad carbono</span>
                             <span class="popup-row-value" style="color:${ciColorSolid(ci)}">${ci != null ? ci.toFixed(0) + ' gCO₂/kWh' : 'N/D'}</span>
                         </div>
                         <div class="popup-row">
-                            <span class="popup-row-label"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg> PUE</span>
+                            <span class="popup-row-label">PUE</span>
                             <span class="popup-row-value">${dc.pue ? dc.pue.toFixed(2) : 'N/D'}</span>
                         </div>
                         <div class="popup-row">
-                            <span class="popup-row-label">Renovables</span>
+                            <span class="popup-row-label">Renovables declaradas</span>
                             <span>${renewableBadge(renewPct)}</span>
                         </div>
                         ${gwBadge}
-                        ${co2Estimate ? `
                         <hr class="popup-divider">
                         <div class="popup-co2">
-                            <div class="popup-co2-value">${co2Estimate} gCO₂</div>
-                            <div class="popup-co2-label">Estimación CO₂/query${LAST_PARAMS?.model_id ? ' · ' + LAST_PARAMS.model_id : ''}</div>
-                        </div>` : ''}
+                            ${co2Estimate
+                                ? `<div class="popup-co2-label">Estimación CO₂/query en este DC:</div>
+                                   <div class="popup-co2-value">${co2Estimate} gCO₂</div>
+                                   <div class="popup-co2-sub">${LAST_PARAMS?.model_id || ''} | ${LAST_PARAMS?.request_type || 'Petición'}</div>`
+                                : `<div class="popup-co2-label" style="color:#64748b;font-style:italic;">Realiza un cálculo primero para ver la estimación de CO₂/query</div>`
+                            }
+                        </div>
                     </div>
                 `;
 
-                L.marker([dc.latitude, dc.longitude], { icon })
+                L.marker([dc.latitude, dc.longitude], { icon, zIndexOffset: 500 })
                     .addTo(map)
                     .bindPopup(popupHtml, { maxWidth: 320 });
             });

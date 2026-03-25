@@ -184,6 +184,61 @@ def report_production():
 # GET /api/map-data — datos geográficos para el mapa
 # ------------------------------------------------------------------
 
+# Coordenadas aproximadas de regiones de data centers (lat, lng)
+_DC_COORDINATES: dict[str, tuple[float, float]] = {
+    # Deep Green
+    "deepgreen-uk-exmouth": (50.63, -3.41),
+    # GCP — US
+    "gcp-us-west1": (45.59, -122.59), "gcp-us-or1-a": (45.59, -122.79),
+    "gcp-us-east5": (39.96, -83.00), "gcp-us-oh1": (40.10, -83.10),
+    "gcp-us-central1": (41.88, -93.10), "gcp-us-ia1-b": (41.70, -93.30),
+    "gcp-us-east4": (39.04, -77.49), "gcp-us-va1-a": (38.90, -77.50),
+    "gcp-us-va1-b": (38.95, -77.55), "gcp-us-nv1": (36.17, -115.14),
+    "gcp-us-nv2": (36.10, -115.20), "gcp-us-ne1": (41.25, -96.00),
+    "gcp-us-ga1": (33.75, -84.39), "gcp-us-west4": (36.27, -115.00),
+    "gcp-us-al1": (33.45, -86.80), "gcp-us-east1": (33.85, -81.16),
+    "gcp-us-tx1": (32.78, -96.80), "gcp-us-tn1": (35.95, -86.78),
+    "gcp-us-south1": (29.76, -95.37), "gcp-us-ok1": (35.47, -97.52),
+    "gcp-us-nc1": (35.60, -78.85),
+    # GCP — Europe
+    "gcp-europe-west3": (55.68, 12.57), "gcp-europe-west4": (52.37, 4.90),
+    "gcp-europe-west2": (53.35, -6.26), "gcp-europe-west1": (50.85, 4.35),
+    "gcp-europe-north1": (60.22, 24.93),
+    # GCP — Other
+    "gcp-au-sy1": (-33.87, 151.21), "gcp-au-mel1": (-37.81, 144.96),
+    "gcp-southamerica-west1": (-33.45, -70.67),
+    "gcp-asia-east1": (25.03, 121.57), "gcp-asia-southeast1": (1.35, 103.82),
+    "gcp-asia-southeast1-b": (1.30, 103.85),
+    "gcp-global": (37.42, -122.08),
+    # AWS — US
+    "aws-us-east-1": (38.95, -77.45), "aws-us-east-2": (40.00, -83.00),
+    "aws-us-west-1": (37.35, -121.96), "aws-us-west-2": (45.85, -119.70),
+    # AWS — Europe
+    "aws-eu-north-1": (59.33, 18.07), "aws-eu-west-1": (53.35, -6.26),
+    "aws-eu-south-2": (40.42, -3.70), "aws-eu-central-1": (50.11, 8.68),
+    # AWS — Other
+    "aws-ca-west-1": (51.05, -114.07), "aws-ca-central-1": (45.50, -73.57),
+    "aws-sa-east-1": (-23.55, -46.63), "aws-ap-southeast-2": (-33.87, 151.21),
+    "aws-ap-northeast-1": (35.68, 139.69), "aws-ap-southeast-1": (1.35, 103.82),
+    "aws-ap-south-1": (19.08, 72.88), "aws-ap-south-2": (17.39, 78.49),
+    "aws-af-south-1": (-33.93, 18.42), "aws-cn-north-1": (37.50, 106.23),
+    "aws-me-central-1": (24.45, 54.65), "aws-me-south-1": (26.07, 50.56),
+    "aws-global": (38.95, -77.45),
+    # Azure — US
+    "azure-eastus": (37.55, -78.85), "azure-centralus": (41.60, -93.61),
+    "azure-westus2": (47.60, -122.33), "azure-southcentralus": (29.42, -98.49),
+    "azure-wyoming": (43.08, -107.29), "azure-arizona": (33.45, -112.07),
+    "azure-washington": (47.60, -120.51), "azure-iowa": (41.70, -93.60),
+    "azure-illinois": (41.88, -87.63), "azure-texas": (32.78, -96.80),
+    # Azure — Europe
+    "azure-westeurope": (52.37, 4.90), "azure-northeurope": (53.35, -6.26),
+    "azure-sweden-central": (59.33, 18.07), "azure-poland-central": (52.23, 21.01),
+    # Azure — Other
+    "azure-southeastasia": (1.35, 103.82),
+    "azure-global": (47.60, -122.33),
+}
+
+
 @api_bp.route("/map-data", methods=["GET"])
 def map_data():
     """
@@ -215,8 +270,12 @@ def map_data():
                 ci_row = ci_match.iloc[0]
                 dc_entry["carbon_intensity"] = _safe_float(ci_row.get("carbon_intensity_gCO2_kWh"))
                 dc_entry["renewable_pct"] = _safe_float(ci_row.get("renewable_pct"))
-                dc_entry["latitude"] = _safe_float(ci_row.get("latitude"))
-                dc_entry["longitude"] = _safe_float(ci_row.get("longitude"))
+
+        # Coordenadas desde el mapeo estático
+        coords = _DC_COORDINATES.get(dc_id)
+        if coords:
+            dc_entry["latitude"] = coords[0]
+            dc_entry["longitude"] = coords[1]
 
         dcs.append(dc_entry)
 
