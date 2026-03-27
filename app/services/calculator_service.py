@@ -92,10 +92,13 @@ class CalculatorService:
         "TW": "Taiwán", "US": "Estados Unidos", "ZA": "Sudáfrica", "AR": "Argentina",
         "IL": "Israel", "AE": "Emiratos Árabes", "SA": "Arabia Saudí",
         "HK": "Hong Kong", "MY": "Malasia", "ID": "Indonesia", "TH": "Tailandia",
+        "CN": "China", "BH": "Baréin",
     }
 
     def _get_countries_list(self) -> list[dict]:
-        """Devuelve todas las zonas del CSV carbon_intensity.csv (125+ zonas)."""
+        """Devuelve todas las zonas del CSV carbon_intensity.csv (125+ zonas),
+        más los países de data centers que no aparecen en ese CSV pero sí
+        tienen CI en carbon_intensity_datacenters.csv (TW, ZA, CN, AE, BH)."""
         df = self.calculator.ci_zones_df
         if df is None or df.empty:
             # Fallback to hardcoded defaults
@@ -118,6 +121,30 @@ class CalculatorService:
             iso = zone.split("-")[0] if "-" in zone else zone
             country_name = self._COUNTRY_NAMES.get(iso, "")
             result.append({"code": zone, "carbon_intensity": ci_int, "country_name": country_name})
+
+        # Augment with DC countries not covered by the general CI zones file
+        # (TW, ZA, CN, AE, BH have CI in carbon_intensity_datacenters.csv but not in carbon_intensity.csv)
+        dc_ci_df = self.calculator.dc_ci_df
+        if dc_ci_df is not None and not dc_ci_df.empty:
+            import pandas as _pd
+            existing_isos = set(
+                z["code"].split("-")[0] if "-" in z["code"] else z["code"]
+                for z in result
+            )
+            for raw_cc, group in dc_ci_df.groupby("country_code"):
+                if str(raw_cc).upper() == "GLOBAL":
+                    continue
+                # Normalise legacy 'UK' to standard ISO-2 'GB'
+                iso = "GB" if str(raw_cc) == "UK" else str(raw_cc)
+                if iso not in existing_isos:
+                    ci_vals = group["carbon_intensity_gCO2_kWh"].dropna()
+                    if ci_vals.empty:
+                        continue
+                    avg_ci = int(round(ci_vals.mean()))
+                    country_name = self._COUNTRY_NAMES.get(iso, iso)
+                    result.append({"code": iso, "carbon_intensity": avg_ci, "country_name": country_name})
+                    existing_isos.add(iso)
+
         return sorted(result, key=lambda x: x["code"])
 
     # ------------------------------------------------------------------

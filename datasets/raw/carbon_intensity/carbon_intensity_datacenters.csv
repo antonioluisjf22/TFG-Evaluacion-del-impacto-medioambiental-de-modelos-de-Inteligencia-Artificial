@@ -1,72 +1,72 @@
 dc_id,provider,region,country_code,electricity_maps_zone,carbon_intensity_gCO2_kWh,fossil_free_pct,renewable_pct,provider_renewable_pct,ci_source,ci_method,pue,effective_ci,timestamp
-deepgreen-uk-exmouth,Deep Green,Exmouth (UK),UK,GB,188,63.0,45.0,100,electricity_maps_api,manual_mapping,1.005,188.93999999999997,2026-02-01T11:00:00.000Z
-gcp-us-west1,Google Cloud,us-west1 (Oregon),US,US-NW-PACW,222,56.0,43.0,100,electricity_maps_api,api_native_datacenter,1.06,235.32000000000002,2026-02-01T11:00:00.000Z
-gcp-us-or1-a,Google Cloud,"us-or1 (Oregon, Facility 2)",US,US-NW-BPAT,63,92.0,100.0,100,electricity_maps_api,manual_mapping,1.06,66.78,2026-02-01T11:00:00.000Z
-gcp-us-east5,Google Cloud,us-east5 (Ohio),US,US-MIDW-MISO,491,42.0,19.0,100,electricity_maps_api,manual_mapping,1.06,520.46,2026-02-01T11:00:00.000Z
-gcp-us-oh1,Google Cloud,us-oh1 (Ohio),US,US-MIDW-MISO,491,42.0,19.0,100,electricity_maps_api,manual_mapping,1.07,525.37,2026-02-01T11:00:00.000Z
-gcp-au-sy1,Google Cloud,au-sy1 (Sydney),AU,AU-NSW,564,31.0,20.0,100,electricity_maps_api,manual_mapping,1.07,603.48,2026-02-01T11:00:00.000Z
-gcp-europe-west3,Google Cloud,europe-west3 (Denmark),DK,DK-DK1,59,100.0,100.0,100,electricity_maps_api,manual_mapping,1.07,63.13,2026-02-01T11:00:00.000Z
-gcp-us-central1,Google Cloud,us-central1 (Iowa),US,US-CENT-SWPP,404,62.0,38.0,100,electricity_maps_api,api_native_datacenter,1.07,432.28000000000003,2026-02-01T11:00:00.000Z
-gcp-us-ia1-b,Google Cloud,"us-ia1 (Iowa, Facility 2)",US,US-MIDW-MISO,491,42.0,19.0,100,electricity_maps_api,manual_mapping,1.07,525.37,2026-02-01T11:00:00.000Z
-gcp-us-east4,Google Cloud,us-east4 (Virginia),US,US-MIDA-PJM,457,47.0,4.0,100,electricity_maps_api,api_native_datacenter,1.08,493.56000000000006,2026-02-01T11:00:00.000Z
-gcp-europe-west4,Google Cloud,europe-west4 (Netherlands),NL,NL,287,54.0,42.0,100,electricity_maps_api,api_native_datacenter,1.08,309.96000000000004,2026-02-01T11:00:00.000Z
-gcp-au-mel1,Google Cloud,au-mel1 (Melbourne),AU,AU-VIC,286,67.0,47.0,100,electricity_maps_api,manual_mapping,1.08,308.88,2026-02-01T11:00:00.000Z
-gcp-us-va1-b,Google Cloud,"us-va1 (Virginia, Facility B)",US,US-MIDA-PJM,457,47.0,4.0,100,electricity_maps_api,manual_mapping,1.08,493.56000000000006,2026-02-01T11:00:00.000Z
-gcp-europe-west2,Google Cloud,europe-west2 (Ireland),IE,IE,278,45.0,40.0,100,electricity_maps_api,manual_mapping,1.08,300.24,2026-02-01T11:00:00.000Z
-gcp-europe-west1,Google Cloud,europe-west1 (Belgium),BE,BE,183,70.0,55.0,100,electricity_maps_api,api_native_datacenter,1.08,197.64000000000001,2026-02-01T11:00:00.000Z
-aws-eu-south-2,AWS,eu-south-2 (Spain),ES,ES,73,90.0,82.0,100,electricity_maps_api,api_native_datacenter,1.09,79.57000000000001,2026-02-01T11:00:00.000Z
-gcp-us-va1-a,Google Cloud,"us-va1 (Virginia, Facility A)",US,US-MIDA-PJM,457,47.0,4.0,100,electricity_maps_api,manual_mapping,1.09,498.13000000000005,2026-02-01T11:00:00.000Z
-gcp-us-nv1,Google Cloud,us-nv1 (Nevada),US,US-SW-NEVP,450,,,100,default_values,manual_mapping,1.09,490.50000000000006,2026-02-01T12:33:19.181429
-gcp-us-ne1,Google Cloud,us-ne1 (Nebraska),US,US-CENT-SWPP,404,62.0,38.0,100,electricity_maps_api,manual_mapping,1.09,440.36,2026-02-01T11:00:00.000Z
-gcp-southamerica-west1,Google Cloud,southamerica-west1 (Chile),CL,CL-SEN,148,77.0,81.0,100,electricity_maps_api,api_native_datacenter,1.09,161.32000000000002,2026-02-01T11:00:00.000Z
-gcp-us-ga1,Google Cloud,us-ga1 (Georgia),US,US-SE-SOCO,517,19.0,4.0,100,electricity_maps_api,manual_mapping,1.09,563.5300000000001,2026-02-01T11:00:00.000Z
-gcp-us-west4,Google Cloud,us-west4 (Nevada),US,US-SW-NEVP,450,,,100,default_values,manual_mapping,1.09,490.50000000000006,2026-02-01T12:33:21.221836
-gcp-global,Google Cloud,Global Average,GLOBAL,DE,446,63.0,55.0,100,electricity_maps_api,manual_mapping,1.09,486.14000000000004,2026-02-01T11:00:00.000Z
-aws-eu-north-1,AWS,eu-north-1 (Stockholm),SE,SE-SE3,21,100.0,67.0,100,electricity_maps_api,api_native_datacenter,1.1,23.1,2026-02-01T11:00:00.000Z
-gcp-us-al1,Google Cloud,us-al1 (Alabama),US,US-SE-SOCO,517,19.0,4.0,100,electricity_maps_api,manual_mapping,1.1,568.7,2026-02-01T11:00:00.000Z
-gcp-us-east1,Google Cloud,us-east1 (South Carolina),US,US-CAR-SCEG,589,1.0,4.0,100,electricity_maps_api,api_native_datacenter,1.1,647.9000000000001,2026-02-01T11:00:00.000Z
-gcp-us-tx1,Google Cloud,us-tx1 (Texas),US,US-TEX-ERCO,462,32.0,13.0,100,electricity_maps_api,manual_mapping,1.1,508.20000000000005,2026-02-01T11:00:00.000Z
-gcp-us-tn1,Google Cloud,us-tn1 (Tennessee),US,US-TEN-TVA,359,52.0,14.0,100,electricity_maps_api,manual_mapping,1.1,394.90000000000003,2026-02-01T11:00:00.000Z
-gcp-us-south1,Google Cloud,us-south1 (Texas),US,US-TEX-ERCO,462,32.0,13.0,100,electricity_maps_api,manual_mapping,1.1,508.20000000000005,2026-02-01T11:00:00.000Z
-gcp-europe-north1,Google Cloud,europe-north1 (Finland),FI,FI,94,91.0,71.0,100,electricity_maps_api,api_native_datacenter,1.1,103.4,2026-02-01T11:00:00.000Z
-aws-eu-west-1,AWS,eu-west-1 (Ireland),IE,IE,278,45.0,40.0,100,electricity_maps_api,api_native_datacenter,1.11,308.58000000000004,2026-02-01T11:00:00.000Z
-gcp-us-ok1,Google Cloud,us-ok1 (Oklahoma),US,US-CENT-SWPP,404,62.0,38.0,100,electricity_maps_api,manual_mapping,1.11,448.44000000000005,2026-02-01T11:00:00.000Z
-azure-wyoming,Microsoft Azure,wyoming (Wyoming),US,US-NW-PACE,474,55.0,40.0,100,electricity_maps_api,manual_mapping,1.12,530.88,2026-02-01T11:00:00.000Z
-aws-us-west-2,AWS,us-west-2 (Oregon),US,US-NW-PACW,222,56.0,43.0,100,electricity_maps_api,api_native_datacenter,1.12,248.64000000000001,2026-02-01T11:00:00.000Z
-gcp-us-nc1,Google Cloud,us-nc1 (North Carolina),US,US-CAR-DUK,383,41.0,2.0,100,electricity_maps_api,manual_mapping,1.13,432.78999999999996,2026-02-01T11:00:00.000Z
-azure-arizona,Microsoft Azure,arizona (Arizona),US,US-SW-AZPS,402,47.0,6.0,100,electricity_maps_api,manual_mapping,1.13,454.25999999999993,2026-02-01T11:00:00.000Z
-aws-us-east-2,AWS,us-east-2 (Ohio),US,US-MIDA-PJM,457,47.0,4.0,100,electricity_maps_api,api_native_datacenter,1.13,516.41,2026-02-01T11:00:00.000Z
-gcp-asia-east1,Google Cloud,asia-east1 (Taiwan),TW,TW,404,26.0,12.0,100,electricity_maps_api,api_native_datacenter,1.13,456.52,2026-02-01T11:00:00.000Z
-gcp-asia-southeast1,Google Cloud,asia-southeast1 (Singapore),SG,SG,437,0.0,5.0,100,electricity_maps_api,api_native_datacenter,1.13,493.80999999999995,2026-02-01T11:00:00.000Z
-azure-westeurope,Microsoft Azure,westeurope (Netherlands),NL,NL,287,54.0,42.0,100,electricity_maps_api,api_native_datacenter,1.14,327.17999999999995,2026-02-01T11:00:00.000Z
-azure-eastus,Microsoft Azure,eastus (Virginia),US,US-MIDA-PJM,457,47.0,4.0,100,electricity_maps_api,api_native_datacenter,1.14,520.9799999999999,2026-02-01T11:00:00.000Z
-aws-us-east-1,AWS,us-east-1 (N. Virginia),US,US-MIDA-PJM,457,47.0,4.0,100,electricity_maps_api,api_native_datacenter,1.15,525.55,2026-02-01T11:00:00.000Z
-aws-global,AWS,Global Average,GLOBAL,DE,446,63.0,55.0,100,electricity_maps_api,manual_mapping,1.15,512.9,2026-02-01T11:00:00.000Z
-gcp-asia-southeast1-b,Google Cloud,asia-southeast1 (Singapore 2),SG,SG,437,0.0,5.0,100,electricity_maps_api,api_native_datacenter,1.15,502.54999999999995,2026-02-01T11:00:00.000Z
-aws-ap-southeast-2,AWS,ap-southeast-2 (Sydney),AU,AU-NSW,564,31.0,20.0,100,electricity_maps_api,api_native_datacenter,1.15,648.5999999999999,2026-02-01T11:00:00.000Z
-azure-centralus,Microsoft Azure,centralus (Iowa),US,US-MIDW-MISO,491,42.0,19.0,100,electricity_maps_api,api_native_datacenter,1.16,569.56,2026-02-01T11:00:00.000Z
-azure-washington,Microsoft Azure,washington (Washington),US,US-NW-PSEI,70,91.0,71.0,100,electricity_maps_api,manual_mapping,1.16,81.19999999999999,2026-02-01T11:00:00.000Z
-azure-sweden-central,Microsoft Azure,swedencentral (Sweden),SE,SE-SE3,21,100.0,67.0,100,electricity_maps_api,api_native_datacenter,1.16,24.36,2026-02-01T11:00:00.000Z
-azure-iowa,Microsoft Azure,iowa (Iowa),US,US-MIDW-MISO,491,42.0,19.0,100,electricity_maps_api,manual_mapping,1.16,569.56,2026-02-01T11:00:00.000Z
-gcp-us-nv2,Google Cloud,"us-nv2 (Nevada, Facility 2)",US,US-SW-NEVP,450,,,100,default_values,manual_mapping,1.16,522.0,2026-02-01T12:33:36.713178
-azure-global,Microsoft Azure,Global Average,GLOBAL,DE,446,63.0,55.0,100,electricity_maps_api,manual_mapping,1.16,517.36,2026-02-01T11:00:00.000Z
-azure-westus2,Microsoft Azure,westus2 (Washington),US,US-NW-BPAT,63,92.0,100.0,100,electricity_maps_api,api_native_datacenter,1.16,73.08,2026-02-01T11:00:00.000Z
-aws-ca-west-1,AWS,ca-west-1 (Canada West),CA,CA-AB,394,25.0,10.0,100,electricity_maps_api,api_native_datacenter,1.17,460.97999999999996,2026-02-01T11:00:00.000Z
-aws-sa-east-1,AWS,sa-east-1 (Sao Paulo),BR,BR-CS,79,91.0,81.0,100,electricity_maps_api,api_native_datacenter,1.17,92.42999999999999,2026-02-01T11:00:00.000Z
-aws-us-west-1,AWS,us-west-1 (Northern California),US,US-CAL-CISO,233,55.0,39.0,100,electricity_maps_api,api_native_datacenter,1.18,274.94,2026-02-01T11:00:00.000Z
-azure-northeurope,Microsoft Azure,northeurope (Ireland),IE,IE,278,45.0,40.0,100,electricity_maps_api,api_native_datacenter,1.18,328.03999999999996,2026-02-01T11:00:00.000Z
-aws-ca-central-1,AWS,ca-central-1 (Canada Central),CA,CA-QC,33,99.0,97.0,100,electricity_maps_api,api_native_datacenter,1.19,39.269999999999996,2026-02-01T11:00:00.000Z
-azure-poland-central,Microsoft Azure,polandcentral (Poland),PL,PL,443,47.0,49.0,100,electricity_maps_api,api_native_datacenter,1.19,527.17,2026-02-01T11:00:00.000Z
-aws-af-south-1,AWS,af-south-1 (Cape Town),ZA,ZA,496,24.0,14.0,100,electricity_maps_api,api_native_datacenter,1.24,615.04,2026-02-01T11:00:00.000Z
-azure-illinois,Microsoft Azure,illinois (Illinois),US,US-MIDW-MISO,491,42.0,19.0,100,electricity_maps_api,manual_mapping,1.25,613.75,2026-02-01T11:00:00.000Z
-aws-cn-north-1,AWS,cn-north-1 (Ningxia),CN,CN,544,26.0,19.0,100,electricity_maps_api,manual_mapping,1.25,680.0,2026-02-01T11:00:00.000Z
-aws-me-central-1,AWS,me-central-1 (UAE),AE,AE,216,41.0,22.0,100,electricity_maps_api,api_native_datacenter,1.27,274.32,2026-02-01T11:00:00.000Z
-aws-ap-northeast-1,AWS,ap-northeast-1 (Tokyo),JP,JP-TK,538,21.0,7.0,100,electricity_maps_api,api_native_datacenter,1.27,683.26,2026-02-01T11:00:00.000Z
-azure-southcentralus,Microsoft Azure,southcentralus (Texas),US,US-TEX-ERCO,462,32.0,13.0,100,electricity_maps_api,api_native_datacenter,1.28,591.36,2026-02-01T11:00:00.000Z
-azure-texas,Microsoft Azure,texas (Texas),US,US-TEX-ERCO,462,32.0,13.0,100,electricity_maps_api,manual_mapping,1.28,591.36,2026-02-01T11:00:00.000Z
-azure-southeastasia,Microsoft Azure,southeastasia (Singapore),SG,SG,437,0.0,5.0,100,electricity_maps_api,api_native_datacenter,1.3,568.1,2026-02-01T11:00:00.000Z
-aws-ap-southeast-1,AWS,ap-southeast-1 (Singapore),SG,SG,437,0.0,5.0,100,electricity_maps_api,manual_mapping,1.32,576.84,2026-02-01T11:00:00.000Z
-aws-me-south-1,AWS,me-south-1 (Bahrain),BH,BH,388,4.0,1.0,100,electricity_maps_api,manual_mapping,1.33,516.0400000000001,2026-02-01T11:00:00.000Z
-aws-eu-central-1,AWS,eu-central-1 (Frankfurt),DE,DE,337,63.0,55.0,100,electricity_maps_api,api_native_datacenter,1.35,454.95000000000005,2026-02-01T11:00:00.000Z
-aws-ap-south-1,AWS,ap-south-1 (Mumbai),IN,IN-WE,529,13.0,13.0,100,electricity_maps_api,api_native_datacenter,1.42,751.18,2026-02-01T11:00:00.000Z
-aws-ap-south-2,AWS,ap-south-2 (Hyderabad),IN,IN-SO,435,29.0,23.0,100,electricity_maps_api,api_native_datacenter,1.46,635.1,2026-02-01T11:00:00.000Z
+deepgreen-uk-exmouth,Deep Green,Exmouth (UK),UK,GB,124,80.0,80.0,100,electricity_maps_api,manual_mapping,1.005,124.61999999999999,2026-03-25T19:00:00.000Z
+gcp-us-west1,Google Cloud,us-west1 (Oregon),US,US-NW-PACW,166,71.0,71.0,100,electricity_maps_api,api_native_datacenter,1.06,175.96,2026-03-25T19:00:00.000Z
+gcp-us-or1-a,Google Cloud,"us-or1 (Oregon, Facility 2)",US,US-NW-BPAT,39,96.0,69.0,100,electricity_maps_api,manual_mapping,1.06,41.34,2026-03-25T19:00:00.000Z
+gcp-us-east5,Google Cloud,us-east5 (Ohio),US,US-MIDW-MISO,377,43.0,31.0,100,electricity_maps_api,manual_mapping,1.06,399.62,2026-03-25T19:00:00.000Z
+gcp-us-oh1,Google Cloud,us-oh1 (Ohio),US,US-MIDW-MISO,377,43.0,31.0,100,electricity_maps_api,manual_mapping,1.07,403.39000000000004,2026-03-25T19:00:00.000Z
+gcp-au-sy1,Google Cloud,au-sy1 (Sydney),AU,AU-NSW,683,6.0,7.0,100,electricity_maps_api,manual_mapping,1.07,730.8100000000001,2026-03-25T19:00:00.000Z
+gcp-europe-west3,Google Cloud,europe-west3 (Denmark),DK,DE,186,82.0,90.0,100,electricity_maps_api,api_native_datacenter,1.07,199.02,2026-03-25T19:00:00.000Z
+gcp-us-central1,Google Cloud,us-central1 (Iowa),US,US-CENT-SWPP,300,51.0,50.0,100,electricity_maps_api,api_native_datacenter,1.07,321.0,2026-03-25T19:00:00.000Z
+gcp-us-ia1-b,Google Cloud,"us-ia1 (Iowa, Facility 2)",US,US-MIDW-MISO,377,43.0,31.0,100,electricity_maps_api,manual_mapping,1.07,403.39000000000004,2026-03-25T19:00:00.000Z
+gcp-us-east4,Google Cloud,us-east4 (Virginia),US,US-MIDA-PJM,310,39.0,16.0,100,electricity_maps_api,api_native_datacenter,1.08,334.8,2026-03-25T19:00:00.000Z
+gcp-europe-west4,Google Cloud,europe-west4 (Netherlands),NL,NL,198,56.0,52.0,100,electricity_maps_api,api_native_datacenter,1.08,213.84,2026-03-25T19:00:00.000Z
+gcp-au-mel1,Google Cloud,au-mel1 (Melbourne),AU,AU-VIC,521,42.0,32.0,100,electricity_maps_api,manual_mapping,1.08,562.6800000000001,2026-03-25T19:00:00.000Z
+gcp-us-va1-b,Google Cloud,"us-va1 (Virginia, Facility B)",US,US-MIDA-PJM,310,39.0,16.0,100,electricity_maps_api,manual_mapping,1.08,334.8,2026-03-25T19:00:00.000Z
+gcp-europe-west2,Google Cloud,europe-west2 (Ireland),IE,IE,265,68.0,71.0,100,electricity_maps_api,manual_mapping,1.08,286.20000000000005,2026-03-25T19:00:00.000Z
+gcp-europe-west1,Google Cloud,europe-west1 (Belgium),BE,BE,96,85.0,60.0,100,electricity_maps_api,api_native_datacenter,1.08,103.68,2026-03-25T19:00:00.000Z
+aws-eu-south-2,AWS,eu-south-2 (Spain),ES,ES,97,80.0,64.0,100,electricity_maps_api,api_native_datacenter,1.09,105.73,2026-03-25T19:00:00.000Z
+gcp-us-va1-a,Google Cloud,"us-va1 (Virginia, Facility A)",US,US-MIDA-PJM,310,39.0,16.0,100,electricity_maps_api,manual_mapping,1.09,337.90000000000003,2026-03-25T19:00:00.000Z
+gcp-us-nv1,Google Cloud,us-nv1 (Nevada),US,US-SW-NEVP,450,,,100,default_values,manual_mapping,1.09,490.50000000000006,2026-03-25T20:26:19.613004
+gcp-us-ne1,Google Cloud,us-ne1 (Nebraska),US,US-CENT-SWPP,300,51.0,50.0,100,electricity_maps_api,manual_mapping,1.09,327.0,2026-03-25T19:00:00.000Z
+gcp-southamerica-west1,Google Cloud,southamerica-west1 (Chile),CL,CL-SEN,141,80.0,90.0,100,electricity_maps_api,api_native_datacenter,1.09,153.69,2026-03-25T19:00:00.000Z
+gcp-us-ga1,Google Cloud,us-ga1 (Georgia),US,US-SE-SOCO,380,45.0,11.0,100,electricity_maps_api,manual_mapping,1.09,414.20000000000005,2026-03-25T19:00:00.000Z
+gcp-us-west4,Google Cloud,us-west4 (Nevada),US,US-SW-NEVP,450,,,100,default_values,manual_mapping,1.09,490.50000000000006,2026-03-25T20:26:23.880811
+gcp-global,Google Cloud,Global Average,GLOBAL,DE,234,82.0,90.0,100,electricity_maps_api,manual_mapping,1.09,255.06000000000003,2026-03-25T19:00:00.000Z
+aws-eu-north-1,AWS,eu-north-1 (Stockholm),SE,SE-SE3,17,100.0,76.0,100,electricity_maps_api,api_native_datacenter,1.1,18.700000000000003,2026-03-25T19:00:00.000Z
+gcp-us-al1,Google Cloud,us-al1 (Alabama),US,US-SE-SOCO,380,45.0,11.0,100,electricity_maps_api,manual_mapping,1.1,418.00000000000006,2026-03-25T19:00:00.000Z
+gcp-us-east1,Google Cloud,us-east1 (South Carolina),US,US-CAR-SCEG,450,36.0,25.0,100,electricity_maps_api,api_native_datacenter,1.1,495.00000000000006,2026-03-25T19:00:00.000Z
+gcp-us-tx1,Google Cloud,us-tx1 (Texas),US,US-TEX-ERCO,177,79.0,62.0,100,electricity_maps_api,manual_mapping,1.1,194.70000000000002,2026-03-25T19:00:00.000Z
+gcp-us-tn1,Google Cloud,us-tn1 (Tennessee),US,US-TEN-TVA,364,49.0,12.0,100,electricity_maps_api,manual_mapping,1.1,400.40000000000003,2026-03-25T19:00:00.000Z
+gcp-us-south1,Google Cloud,us-south1 (Texas),US,US-TEX-ERCO,177,79.0,62.0,100,electricity_maps_api,manual_mapping,1.1,194.70000000000002,2026-03-25T19:00:00.000Z
+gcp-europe-north1,Google Cloud,europe-north1 (Finland),FI,FI,43,98.0,81.0,100,electricity_maps_api,api_native_datacenter,1.1,47.300000000000004,2026-03-25T19:00:00.000Z
+aws-eu-west-1,AWS,eu-west-1 (Ireland),IE,IE,200,68.0,71.0,100,electricity_maps_api,api_native_datacenter,1.11,222.00000000000003,2026-03-25T19:00:00.000Z
+gcp-us-ok1,Google Cloud,us-ok1 (Oklahoma),US,US-CENT-SWPP,300,51.0,50.0,100,electricity_maps_api,manual_mapping,1.11,333.00000000000006,2026-03-25T19:00:00.000Z
+azure-wyoming,Microsoft Azure,wyoming (Wyoming),US,US-NW-PACE,203,82.0,83.0,100,electricity_maps_api,manual_mapping,1.12,227.36,2026-03-25T19:00:00.000Z
+aws-us-west-2,AWS,us-west-2 (Oregon),US,US-NW-PACW,166,71.0,71.0,100,electricity_maps_api,api_native_datacenter,1.12,185.92000000000002,2026-03-25T19:00:00.000Z
+gcp-us-nc1,Google Cloud,us-nc1 (North Carolina),US,US-CAR-DUK,259,63.0,11.0,100,electricity_maps_api,manual_mapping,1.13,292.66999999999996,2026-03-25T19:00:00.000Z
+azure-arizona,Microsoft Azure,arizona (Arizona),US,US-SW-AZPS,204,64.0,40.0,100,electricity_maps_api,manual_mapping,1.13,230.51999999999998,2026-03-25T19:00:00.000Z
+aws-us-east-2,AWS,us-east-2 (Ohio),US,US-MIDA-PJM,310,39.0,16.0,100,electricity_maps_api,api_native_datacenter,1.13,350.29999999999995,2026-03-25T19:00:00.000Z
+gcp-asia-east1,Google Cloud,asia-east1 (Taiwan),TW,TW,418,25.0,11.0,100,electricity_maps_api,api_native_datacenter,1.13,472.34,2026-03-25T19:00:00.000Z
+gcp-asia-southeast1,Google Cloud,asia-southeast1 (Singapore),SG,SG,447,0.0,3.0,100,electricity_maps_api,api_native_datacenter,1.13,505.10999999999996,2026-03-25T19:00:00.000Z
+azure-westeurope,Microsoft Azure,westeurope (Netherlands),NL,NL,198,56.0,52.0,100,electricity_maps_api,api_native_datacenter,1.14,225.71999999999997,2026-03-25T19:00:00.000Z
+azure-eastus,Microsoft Azure,eastus (Virginia),US,US-MIDA-PJM,310,39.0,16.0,100,electricity_maps_api,api_native_datacenter,1.14,353.4,2026-03-25T19:00:00.000Z
+aws-us-east-1,AWS,us-east-1 (N. Virginia),US,US-MIDA-PJM,310,39.0,16.0,100,electricity_maps_api,api_native_datacenter,1.15,356.5,2026-03-25T19:00:00.000Z
+aws-global,AWS,Global Average,GLOBAL,DE,234,82.0,90.0,100,electricity_maps_api,manual_mapping,1.15,269.09999999999997,2026-03-25T19:00:00.000Z
+gcp-asia-southeast1-b,Google Cloud,asia-southeast1 (Singapore 2),SG,SG,447,0.0,3.0,100,electricity_maps_api,api_native_datacenter,1.15,514.05,2026-03-25T19:00:00.000Z
+aws-ap-southeast-2,AWS,ap-southeast-2 (Sydney),AU,AU-NSW,683,6.0,7.0,100,electricity_maps_api,api_native_datacenter,1.15,785.4499999999999,2026-03-25T19:00:00.000Z
+azure-centralus,Microsoft Azure,centralus (Iowa),US,US-MIDW-MISO,377,43.0,31.0,100,electricity_maps_api,api_native_datacenter,1.16,437.32,2026-03-25T19:00:00.000Z
+azure-washington,Microsoft Azure,washington (Washington),US,US-NW-PSEI,52,94.0,94.0,100,electricity_maps_api,manual_mapping,1.16,60.31999999999999,2026-03-25T19:00:00.000Z
+azure-sweden-central,Microsoft Azure,swedencentral (Sweden),SE,SE-SE3,17,100.0,76.0,100,electricity_maps_api,api_native_datacenter,1.16,19.72,2026-03-25T19:00:00.000Z
+azure-iowa,Microsoft Azure,iowa (Iowa),US,US-MIDW-MISO,377,43.0,31.0,100,electricity_maps_api,manual_mapping,1.16,437.32,2026-03-25T19:00:00.000Z
+gcp-us-nv2,Google Cloud,"us-nv2 (Nevada, Facility 2)",US,US-SW-NEVP,450,,,100,default_values,manual_mapping,1.16,522.0,2026-03-25T20:27:24.885351
+azure-global,Microsoft Azure,Global Average,GLOBAL,DE,234,82.0,90.0,100,electricity_maps_api,manual_mapping,1.16,271.44,2026-03-25T19:00:00.000Z
+azure-westus2,Microsoft Azure,westus2 (Washington),US,US-NW-BPAT,39,96.0,69.0,100,electricity_maps_api,api_native_datacenter,1.16,45.239999999999995,2026-03-25T19:00:00.000Z
+aws-ca-west-1,AWS,ca-west-1 (Canada West),CA,CA-AB,349,36.0,25.0,100,electricity_maps_api,api_native_datacenter,1.17,408.33,2026-03-25T19:00:00.000Z
+aws-sa-east-1,AWS,sa-east-1 (Sao Paulo),BR,BR-CS,83,92.0,88.0,100,electricity_maps_api,api_native_datacenter,1.17,97.11,2026-03-25T19:00:00.000Z
+aws-us-west-1,AWS,us-west-1 (Northern California),US,US-CAL-CISO,58,93.0,100.0,100,electricity_maps_api,api_native_datacenter,1.18,68.44,2026-03-25T19:00:00.000Z
+azure-northeurope,Microsoft Azure,northeurope (Ireland),IE,IE,200,68.0,71.0,100,electricity_maps_api,api_native_datacenter,1.18,236.0,2026-03-25T19:00:00.000Z
+aws-ca-central-1,AWS,ca-central-1 (Canada Central),CA,CA-QC,34,99.0,82.0,100,electricity_maps_api,api_native_datacenter,1.19,40.46,2026-03-25T19:00:00.000Z
+azure-poland-central,Microsoft Azure,polandcentral (Poland),PL,PL,444,36.0,43.0,100,electricity_maps_api,api_native_datacenter,1.19,528.36,2026-03-25T19:00:00.000Z
+aws-af-south-1,AWS,af-south-1 (Cape Town),ZA,ZA,546,16.0,7.0,100,electricity_maps_api,api_native_datacenter,1.24,677.04,2026-03-25T19:00:00.000Z
+azure-illinois,Microsoft Azure,illinois (Illinois),US,US-MIDW-MISO,377,43.0,31.0,100,electricity_maps_api,manual_mapping,1.25,471.25,2026-03-25T19:00:00.000Z
+aws-cn-north-1,AWS,cn-north-1 (Ningxia),CN,CN,513,22.0,23.0,100,electricity_maps_api,manual_mapping,1.25,641.25,2026-03-25T19:00:00.000Z
+aws-me-central-1,AWS,me-central-1 (UAE),AE,AE,286,20.0,0.0,100,electricity_maps_api,api_native_datacenter,1.27,363.22,2026-03-25T19:00:00.000Z
+aws-ap-northeast-1,AWS,ap-northeast-1 (Tokyo),JP,JP-TK,537,31.0,9.0,100,electricity_maps_api,api_native_datacenter,1.27,681.99,2026-03-25T19:00:00.000Z
+azure-southcentralus,Microsoft Azure,southcentralus (Texas),US,US-TEX-ERCO,177,79.0,62.0,100,electricity_maps_api,api_native_datacenter,1.28,226.56,2026-03-25T19:00:00.000Z
+azure-texas,Microsoft Azure,texas (Texas),US,US-TEX-ERCO,177,79.0,62.0,100,electricity_maps_api,manual_mapping,1.28,226.56,2026-03-25T19:00:00.000Z
+azure-southeastasia,Microsoft Azure,southeastasia (Singapore),SG,DK-DK2,75,99.0,99.0,100,electricity_maps_api,api_native_datacenter,1.3,97.5,2026-03-25T19:00:00.000Z
+aws-ap-southeast-1,AWS,ap-southeast-1 (Singapore),SG,SG,447,0.0,3.0,100,electricity_maps_api,manual_mapping,1.32,590.0400000000001,2026-03-25T19:00:00.000Z
+aws-me-south-1,AWS,me-south-1 (Bahrain),BH,BH,390,4.0,0.0,100,electricity_maps_api,manual_mapping,1.33,518.7,2026-03-25T19:00:00.000Z
+aws-eu-central-1,AWS,eu-central-1 (Frankfurt),DE,DE,186,82.0,90.0,100,electricity_maps_api,api_native_datacenter,1.35,251.10000000000002,2026-03-25T19:00:00.000Z
+aws-ap-south-1,AWS,ap-south-1 (Mumbai),IN,IN-WE,564,7.0,8.0,100,electricity_maps_api,api_native_datacenter,1.42,800.88,2026-03-25T19:00:00.000Z
+aws-ap-south-2,AWS,ap-south-2 (Hyderabad),IN,IN-SO,498,18.0,14.0,100,electricity_maps_api,api_native_datacenter,1.46,727.0799999999999,2026-03-25T19:00:00.000Z

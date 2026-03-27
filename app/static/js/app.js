@@ -1507,7 +1507,11 @@
         const projNote = (!axesCriteria && (PS.criteria.co2 || PS.criteria.speed || PS.criteria.latency || PS.criteria.params))
             ? ' <em>Nota: los criterios activos no coinciden con los ejes del gráfico; la frontera step-after no se dibuja, pero los modelos ★ son correctamente Pareto-óptimos en las dimensiones seleccionadas.</em>'
             : '';
-        el.innerHTML = `Eje X: velocidad de inferencia (tokens/s). Eje Y: huella de CO₂ por consulta (gCO₂). El modelo ideal se sitúa abajo-derecha (rápido y limpio). Los modelos ★ son <strong>Pareto-óptimos</strong>: ningún otro modelo los supera simultáneamente en todos los criterios activos.${axesCriteria ? ' La zona sombreada en verde representa el <strong>frente de Pareto eficiente</strong>.' : ''} Arrastra sobre el gráfico para seleccionar múltiples modelos.${criteriaHtml}${projNote}${refHtml}`;
+        const noCriteria = !PS.criteria.co2 && !PS.criteria.speed && !PS.criteria.latency && !PS.criteria.params;
+        const noCriteriaNote = noCriteria
+            ? ' <em>Sin criterios activos, ningún modelo puede dominar a otro (no hay dimensiones de comparación), por lo que todos se consideran Pareto-óptimos. Activa al menos un criterio para obtener un frente significativo.</em>'
+            : '';
+        el.innerHTML = `Eje X: velocidad de inferencia (tokens/s). Eje Y: huella de CO₂ por consulta (gCO₂). El modelo ideal se sitúa abajo-derecha (rápido y limpio). Los modelos ★ son <strong>Pareto-óptimos</strong>: ningún otro modelo los supera simultáneamente en todos los criterios activos.${axesCriteria ? ' La zona sombreada en verde representa el <strong>frente de Pareto eficiente</strong>.' : ''} Arrastra sobre el gráfico para seleccionar múltiples modelos.${criteriaHtml}${projNote}${noCriteriaNote}${refHtml}`;
     }
 
     function renderParetoScatter() {
@@ -3164,7 +3168,7 @@
             // Fetch map data and world TopoJSON in parallel
             const [mapResp, topoResp] = await Promise.all([
                 fetch("/api/map-data"),
-                fetch("https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json")
+                fetch("https://cdn.jsdelivr.net/npm/world-atlas@2/countries-50m.json")
             ]);
             if (!mapResp.ok) return;
             const data = await mapResp.json();
@@ -3194,7 +3198,7 @@
                 let hoveredLayer = null;
                 const defaultStyle = (feature) => {
                     const numericId = feature.id || feature.properties?.id;
-                    const iso2 = iso3ToIso2[String(numericId)] || '';
+                    const iso2 = iso3ToIso2[String(numericId).padStart(3, '0')] || '';
                     const cData = countryCI[iso2];
                     return {
                         fillColor: cData ? ciChoroplethFill(cData.avg) : 'rgba(128,128,128,0.08)',
@@ -3208,7 +3212,7 @@
                     style: defaultStyle,
                     onEachFeature: (feature, layer) => {
                         const numericId = feature.id || feature.properties?.id;
-                        const iso2 = iso3ToIso2[String(numericId)] || '';
+                        const iso2 = iso3ToIso2[String(numericId).padStart(3, '0')] || '';
                         const cData = countryCI[iso2];
                         const name = cData?.name || feature.properties?.name || iso2;
                         const ciText = cData ? `${cData.avg} gCO₂/kWh` : 'Sin datos';

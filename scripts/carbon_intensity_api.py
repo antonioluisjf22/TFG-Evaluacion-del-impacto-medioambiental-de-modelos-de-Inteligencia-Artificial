@@ -1138,7 +1138,7 @@ def main():
     main_regions = ["ES", "FR", "DE", "GB", "IE", "NL", "BE", "IT", "PT", 
                     "NO", "SE", "DK", "FI", "PL", "AT", "CH",
                     "US-CAL", "US-NW", "US-TEX", "US-NY", "US-MIDA", "US-MIDW",
-                    "CA-", "BR-", "CL-", "AU-", "JP-", "IN-", "SG", "KR"]
+                    "CA-", "BR-", "CL-", "AU-", "JP-", "IN-", "SG", "KR", "MY"]
     
     zones_df = api.generate_all_zones_csv(regions=main_regions)
     

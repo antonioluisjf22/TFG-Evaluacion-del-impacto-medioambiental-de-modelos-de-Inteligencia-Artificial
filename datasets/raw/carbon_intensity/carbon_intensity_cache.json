@@ -1058,14 +1058,14 @@
         "zoneName": "ZW"
       }
     },
-    "timestamp": "2026-02-01T12:33:05.792779",
+    "timestamp": "2026-03-25T20:16:30.842718",
     "count": 352,
     "source": "hardcoded_fallback"
   },
   "ci_ES": {
-    "carbonIntensity": 76,
+    "carbonIntensity": 78,
     "zone": "ES",
-    "timestamp": "2026-02-18T19:16:35.388448",
+    "timestamp": "2026-03-27T16:34:53.872544",
     "source": "electricity_maps_api",
     "fossilFreePercentage": null,
     "renewablePercentage": null
@@ -1087,9 +1087,9 @@
     "renewablePercentage": null
   },
   "ci_DE": {
-    "carbonIntensity": 578,
+    "carbonIntensity": 466,
     "zone": "DE",
-    "timestamp": "2026-02-18T19:16:36.952882",
+    "timestamp": "2026-03-27T16:34:54.615742",
     "source": "electricity_maps_api",
     "fossilFreePercentage": null,
     "renewablePercentage": null
@@ -1138,6 +1138,14 @@
     "carbonIntensity": 654,
     "zone": "PL",
     "timestamp": "2026-02-18T19:16:36.110786",
+    "source": "electricity_maps_api",
+    "fossilFreePercentage": null,
+    "renewablePercentage": null
+  },
+  "ci_DK-DK1": {
+    "carbonIntensity": 52,
+    "zone": "DK-DK1",
+    "timestamp": "2026-03-25T20:02:06.755815",
     "source": "electricity_maps_api",
     "fossilFreePercentage": null,
     "renewablePercentage": null
