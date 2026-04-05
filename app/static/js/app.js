@@ -88,6 +88,9 @@
                         if (vertBarChart) vertBarChart.resize();
                     });
                 }
+                if (tabId === 'simulacion') {
+                    initSimulacionPresets();
+                }
             });
         });
     }
@@ -209,15 +212,12 @@
         const slider = document.getElementById('utilization');
         if (slider) { slider.value = 70; slider.dispatchEvent(new Event('input', {bubbles: true})); }
 
-        // Visual feedback on button
+        // Visual feedback on button — disable to prevent re-loading
         const btn = document.getElementById('btn-load-example');
         if (btn) {
             btn.classList.add('loaded');
             btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Ejemplo cargado';
-            setTimeout(() => {
-                btn.classList.remove('loaded');
-                btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Cargar ejemplo';
-            }, 2500);
+            btn.disabled = true;
         }
     }
 
@@ -538,8 +538,7 @@
         document.getElementById("label-content").style.display = "block";
         document.getElementById("comparador-placeholder").style.display = "none";
         document.getElementById("comparador-content").style.display = "block";
-        document.getElementById("simulacion-placeholder").style.display = "none";
-        document.getElementById("simulacion-content").style.display = "block";
+        // La simulación se activa explícitamente desde renderSimulation(); no tocar su estado aquí.
 
         doCompare();
     }
@@ -796,7 +795,7 @@
         ];
         selectors.push({
             id: "whatif-proc", label: "Otro procesador", param: "inference_processor",
-            icon: "chip",
+            icon: "cpu",
             options: procOptions,
             current: currentParams.inference_processor || "auto"
         });
@@ -2878,13 +2877,1020 @@
     }
 
     // ------------------------------------------------------------------
-    // Simulation (Tab 5)
+    // Simulation (Tab 5) - TODAS LAS TAREAS EN VANILLA JS
     // ------------------------------------------------------------------
+    
+    // Estado global para simulación
+    let SIM_STATE = {
+        queries_dia: 1000000,
+        co2_por_query: 0.00413,      // gCO2/query (actualizado al calcular)
+        energia_por_query: 0.00000185,  // kWh/query
+        modelo_eficiente: 'Phi-2',
+        factor_eficiente: 0.05,
+        horizonte_anos: 5,
+        crecimiento_pct: 0,
+        mostrar_todos_modelos: false,
+        overhead_depl_kg: 0,
+    };
+
+    const PRESETS_SIMULACION = [
+        { label: 'Personal',    value: 100 },
+        { label: 'Startup',     value: 10000 },
+        { label: 'Empresa',     value: 1000000 },
+        { label: 'Gran escala', value: 100000000 },
+    ];
+
+    const MODELOS_EFICIENTES_SIM = [
+        { nombre: 'Phi-2',      factor: 0.05, color: '#4ade80', bg: 'rgba(74,222,128,.12)' },
+        { nombre: 'Mistral 7B', factor: 0.07, color: '#60a5fa', bg: 'rgba(96,165,250,.12)' },
+        { nombre: 'Gemma 7B',   factor: 0.08, color: '#fbbf24', bg: 'rgba(251,191,36,.12)' },
+    ];
+
+
+    // TAREA 1: Inicializar preset slider + input
+    function initSimulacionPresets() {
+        const containerPresets = document.getElementById('preset-chips-container');
+        if (!containerPresets) return;
+
+        containerPresets.innerHTML = '';
+        PRESETS_SIMULACION.forEach(preset => {
+            const btn = document.createElement('button');
+            btn.className = 'preset-chip';
+            btn.dataset.value = preset.value;
+            btn.innerHTML = `${preset.label}<span class="preset-chip-val">${preset.value.toLocaleString('es-ES')}</span>`;
+            btn.onclick = () => updateQueriesDia(preset.value);
+            containerPresets.appendChild(btn);
+        });
+
+        const slider = document.getElementById('sim-slider');
+        const inputNumeric = document.getElementById('sim-input-numeric');
+
+        if (slider) {
+            slider.oninput = () => updateQueriesDia(Math.round(Math.pow(10, parseFloat(slider.value))));
+        }
+        if (inputNumeric) {
+            inputNumeric.oninput = () => {
+                const v = parseInt(inputNumeric.value.replace(/\D/g, '')) || 0;
+                updateQueriesDia(v);
+            };
+        }
+
+        updateSliderUI();
+    }
+
+    function updateQueriesDia(value) {
+        SIM_STATE.queries_dia = Math.max(100, Math.min(100000000, value));
+        updateSliderUI();
+        renderTarea0ImpactoAnual();
+        renderTarea2KPIs();
+        renderTarea3Equivalencias();
+        renderTarea4Grafico();
+        renderTarea5BreakEven();
+        renderTarea6Sensitivity();
+    }
+
+    function updateSliderUI() {
+        const slider = document.getElementById('sim-slider');
+        const bigNumber = document.getElementById('sim-big-number');
+        const compactCount = document.getElementById('sim-compact-count');
+        const formatted = SIM_STATE.queries_dia.toLocaleString('es-ES');
+
+        if (slider) slider.value = Math.log10(SIM_STATE.queries_dia);
+        if (bigNumber) bigNumber.textContent = formatted;
+        if (compactCount) compactCount.textContent = formatted;
+
+        document.querySelectorAll('.preset-chip').forEach(chip => {
+            chip.classList.toggle('active', parseInt(chip.dataset.value) === SIM_STATE.queries_dia);
+        });
+    }
+
+    // TAREA 2: 6 KPI Cards
+    function renderTarea2KPIs() {
+        const container = document.getElementById('tarea2-kpi-cards');
+        if (!container) return;
+
+        const co2_ano_g = SIM_STATE.queries_dia * 365 * SIM_STATE.co2_por_query;
+        const co2_ano_kg = co2_ano_g / 1000;
+        const co2_ano_t = co2_ano_kg / 1000;
+        const energia_ano_kWh = SIM_STATE.queries_dia * 365 * SIM_STATE.energia_por_query;
+        const energia_ano_MWh = energia_ano_kWh / 1000;
+        const agua_litros = SIM_STATE.queries_dia * 365 * 0.0000482;
+        const coste_euro = energia_ano_kWh * 0.12;
+
+        const _fmtCo2 = (kg) => {
+            if (kg >= 1000)    return { val: (kg/1000).toLocaleString('es-ES', {maximumFractionDigits:2}), unit: 'toneladas CO₂' };
+            if (kg >= 0.001)   return { val: kg.toLocaleString('es-ES', {maximumFractionDigits:3}), unit: 'kg CO₂' };
+            const g = kg * 1000;
+            if (g >= 0.001)    return { val: g.toLocaleString('es-ES', {maximumFractionDigits:3}), unit: 'g CO₂' };
+            return { val: (g * 1000).toLocaleString('es-ES', {maximumFractionDigits:3}), unit: 'mg CO₂' };
+        };
+        const co2Disp   = _fmtCo2(co2_ano_kg);
+        const proj5Disp = _fmtCo2(co2_ano_kg * 5);
+
+        const energyDisp = (() => {
+            if (energia_ano_MWh >= 0.01) return { val: energia_ano_MWh.toLocaleString('es-ES', {maximumFractionDigits:3}), unit: 'MWh/año' };
+            if (energia_ano_kWh >= 0.001) return { val: energia_ano_kWh.toLocaleString('es-ES', {maximumFractionDigits:3}), unit: 'kWh/año' };
+            return { val: (energia_ano_kWh * 1000).toLocaleString('es-ES', {maximumFractionDigits:3}), unit: 'Wh/año' };
+        })();
+
+        const waterDisp = (() => {
+            if (agua_litros >= 1000) return { val: (agua_litros/1000).toLocaleString('es-ES', {maximumFractionDigits:2}), unit: 'mil litros/año' };
+            if (agua_litros >= 0.01) return { val: agua_litros.toLocaleString('es-ES', {maximumFractionDigits:2}), unit: 'litros/año' };
+            return { val: (agua_litros * 1000).toLocaleString('es-ES', {maximumFractionDigits:2}), unit: 'ml/año' };
+        })();
+
+        const costDisp = (() => {
+            if (coste_euro >= 0.01) return { val: coste_euro.toLocaleString('es-ES', {maximumFractionDigits:2}), unit: '€/año' };
+            if (coste_euro >= 0.0001) return { val: (coste_euro*100).toLocaleString('es-ES', {maximumFractionDigits:4}), unit: 'céntimos/año' };
+            return { val: (coste_euro*1000).toLocaleString('es-ES', {maximumFractionDigits:4}), unit: 'm€/año' };
+        })();
+
+        const kpis = [
+            { icon: 'hash',               label: 'Queries/día',       value: SIM_STATE.queries_dia.toLocaleString('es-ES'), unit: 'queries/día' },
+            { icon: 'cloud',              label: 'CO₂ anual',         value: co2Disp.val,    unit: co2Disp.unit },
+            { icon: 'zap',                label: 'Energía anual',     value: energyDisp.val, unit: energyDisp.unit },
+            { icon: 'droplets',           label: 'Agua estimada',     value: waterDisp.val,  unit: waterDisp.unit },
+            { icon: 'circle-dollar-sign', label: 'Coste energético',  value: costDisp.val,   unit: costDisp.unit },
+            { icon: 'trending-up',        label: 'Proyección 5 años', value: proj5Disp.val,  unit: proj5Disp.unit },
+        ];
+
+        container.innerHTML = `
+            <div class="card" style="margin-bottom:24px;">
+                <div class="card-title"><i data-lucide="activity"></i> Métricas de impacto anual</div>
+                <div class="metrics-grid">
+                    ${kpis.map(k => metricBox(k.icon, k.label, null, k.unit, null, k.value)).join('')}
+                </div>
+            </div>
+        `;
+        if (window.lucide) lucide.createIcons();
+    }
+
+    // Pool de equivalencias con divisores en kg CO₂
+    const EQUIVALENCIAS_POOL = [
+        { icon: 'search',       label: 'Búsquedas en Google',     divisor: 0.0002, detailFn: n => `${fmtBigNum(n)} búsquedas en Google` },
+        { icon: 'smartphone',   label: 'Cargas de móvil',         divisor: 0.005,  detailFn: n => `${fmtBigNum(n)} cargas completas de smartphone` },
+        { icon: 'monitor-play', label: 'Horas de streaming',      divisor: 0.036,  detailFn: n => `${formatNum(n)} horas de Netflix` },
+        { icon: 'car',          label: 'Km en coche',             divisor: 0.12,   detailFn: n => `${formatNum(n)} km en coche` },
+        { icon: 'fuel',         label: 'Litros de gasolina',      divisor: 2.3,    detailFn: n => `${formatNum(n)} litros de gasolina quemada` },
+        { icon: 'tree-pine',    label: 'Árboles para compensar',  divisor: 21,     detailFn: n => `${formatNum(n)} árboles necesarios para absorber` },
+        { icon: 'plane',        label: 'Vuelos domésticos',       divisor: 150,    detailFn: n => `${formatNum(n)} vuelos nacionales` },
+        { icon: 'plane-takeoff',label: 'Vuelos transatlánticos',  divisor: 986,    detailFn: n => `${formatNum(n)} vuelos NYC–Londres` },
+        { icon: 'car',          label: 'Años conduciendo',        divisor: 4600,   detailFn: n => `${n.toFixed(2)} años con coche medio` },
+        { icon: 'home',         label: 'Años de hogar medio',     divisor: 7500,   detailFn: n => `${n.toFixed(2)} años de consumo doméstico` },
+        { icon: 'globe',        label: 'Personas europeas/año',   divisor: 8000,   detailFn: n => `Equivale a ${n.toFixed(2)} europeos durante 1 año` },
+    ];
+
+    // Selecciona las 6 equivalencias más significativas para el volumen dado
+    function pickEquivalencias(co2_kg) {
+        return EQUIVALENCIAS_POOL
+            .map(eq => ({ ...eq, ratio: co2_kg / eq.divisor }))
+            .filter(eq => eq.ratio >= 0.1)
+            .sort((a, b) => {
+                // Preferir ratios en rango "legible": 1 a 10,000
+                const idealLog = 2; // ~100
+                const scoreA = Math.abs(Math.log10(Math.max(a.ratio, 0.1)) - idealLog);
+                const scoreB = Math.abs(Math.log10(Math.max(b.ratio, 0.1)) - idealLog);
+                return scoreA - scoreB;
+            })
+            .slice(0, 6);
+    }
+
+    // TAREA 3: Grid de Equivalencias (adaptativo)
+    function renderTarea3Equivalencias() {
+        const container = document.getElementById('tarea3-equivalencias');
+        if (!container) return;
+
+        const co2_kg = (SIM_STATE.queries_dia * 365 * SIM_STATE.co2_por_query) / 1000;
+        const selected = pickEquivalencias(co2_kg);
+
+        const fmtVal = (ratio) => {
+            if (ratio >= 1000000) return fmtBigNum(ratio);
+            if (ratio >= 100) return Math.round(ratio).toLocaleString('es-ES');
+            if (ratio >= 1) return ratio.toFixed(1);
+            return ratio.toFixed(2);
+        };
+
+        container.innerHTML = `
+            <div class="card" style="margin-bottom:24px;">
+                <div class="card-title"><i data-lucide="leaf"></i> Equivalencias intuitivas (anual)</div>
+                <p style="color:var(--text-secondary);font-size:13px;margin-bottom:16px;">Comprende tu impacto en términos cotidianos.</p>
+                <div class="breakdown-grid">
+                    ${selected.map(eq => `
+                        <div class="breakdown-card equiv-card" title="${eq.detailFn(eq.ratio)}">
+                            <div class="breakdown-icon"><i data-lucide="${eq.icon}"></i></div>
+                            <div class="breakdown-label">${eq.label}</div>
+                            <div class="breakdown-value">${fmtVal(eq.ratio)}</div>
+                            <div class="equiv-detail">${eq.detailFn(eq.ratio)}</div>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        `;
+        if (window.lucide) lucide.createIcons();
+    }
+
+    // TAREA 4: Proyección comparativa + Switch Hoy (opciones 1+3 combinadas)
+    function renderTarea4Grafico() {
+        const container = document.getElementById('tarea4-grafico-comparativo');
+        if (!container) return;
+
+        const anos = SIM_STATE.horizonte_anos;
+        const growth = SIM_STATE.crecimiento_pct / 100;
+        const todosModos = SIM_STATE.mostrar_todos_modelos;
+        const fmtU = v => { if (v <= 0) return '0'; if (v >= 1000) return (v/1000).toFixed(2)+' t'; if (v >= 0.1) return v.toFixed(2)+' kg'; const g = v*1000; if (g >= 0.1) return g.toFixed(2)+' g'; const mg = g*1000; return mg >= 0.1 ? mg.toFixed(2)+' mg' : (mg*1000).toFixed(2)+' µg'; };
+        const modelEf = MODELOS_EFICIENTES_SIM.find(m => m.nombre === SIM_STATE.modelo_eficiente) || MODELOS_EFICIENTES_SIM[0];
+
+        // Build cumulative data for all models
+        let cumActual = 0;
+        const cumEfMap = Object.fromEntries(MODELOS_EFICIENTES_SIM.map(m => [m.nombre, 0]));
+        const labels = [], dataActual = [], csvRows = [];
+        const dataPerModel = Object.fromEntries(MODELOS_EFICIENTES_SIM.map(m => [m.nombre, []]));
+        for (let y = 1; y <= anos; y++) {
+            const qd = SIM_STATE.queries_dia * Math.pow(1 + growth, y - 1);
+            const co2yr = (qd * 365 * SIM_STATE.co2_por_query) / 1000;
+            cumActual += co2yr;
+            labels.push(`Año ${y}`);
+            dataActual.push(cumActual);
+            const rowEf = {};
+            MODELOS_EFICIENTES_SIM.forEach(m => {
+                cumEfMap[m.nombre] += co2yr * m.factor;
+                dataPerModel[m.nombre].push(cumEfMap[m.nombre]);
+                rowEf[m.nombre] = cumEfMap[m.nombre];
+            });
+            csvRows.push({ ano: y, actual: cumActual, ...rowEf });
+        }
+
+        const totalActual = dataActual[dataActual.length - 1];
+        const anoLabel = `${anos} año${anos > 1 ? 's' : ''}`;
+
+        // Switch-hoy: daily saving with currently selected model
+        const co2DiaDia = SIM_STATE.queries_dia * SIM_STATE.co2_por_query / 1000;
+        const co2DiaDiaEf = co2DiaDia * modelEf.factor;
+        const ahorroDiario = co2DiaDia - co2DiaDiaEf;
+        const hoy = new Date();
+        const finAno = new Date(hoy.getFullYear(), 11, 31);
+        const diasRestantes = Math.ceil((finAno - hoy) / 86400000);
+        const ahorroRestoAno = ahorroDiario * diasRestantes;
+
+        // Ranking for multi-model mode
+        const ranking = MODELOS_EFICIENTES_SIM.map(m => {
+            const totalEfM = dataPerModel[m.nombre][dataPerModel[m.nombre].length - 1];
+            return { ...m, totalEf: totalEfM, ahorro: totalActual - totalEfM, pct: ((1 - m.factor) * 100).toFixed(0) };
+        }).sort((a, b) => b.ahorro - a.ahorro);
+
+        // ── Single model panel ──────────────────────────────────────────────
+        const singlePanel = () => {
+            const totalEf = dataPerModel[modelEf.nombre][dataPerModel[modelEf.nombre].length - 1];
+            const ahorro = totalActual - totalEf;
+            const pct_ahorro = ((1 - modelEf.factor) * 100).toFixed(0);
+            return `
+                <!-- Before / After summary -->
+                <div style="display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:12px;margin-bottom:16px;">
+                    <div style="background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);border-radius:var(--radius);padding:16px;text-align:center;">
+                        <div style="color:var(--text-secondary);font-size:11px;margin-bottom:4px;">Modelo actual (${anoLabel})</div>
+                        <div style="color:#ef4444;font-family:'JetBrains Mono',monospace;font-size:24px;font-weight:700;line-height:1.2;">${fmtU(totalActual)}</div>
+                        <div style="color:var(--text-muted);font-size:11px;margin-top:2px;">CO₂</div>
+                    </div>
+                    <div style="display:flex;flex-direction:column;align-items:center;gap:6px;">
+                        <i data-lucide="arrow-right" style="color:var(--primary);width:20px;height:20px;"></i>
+                        <div style="background:${modelEf.color};color:var(--bg-base);padding:4px 12px;border-radius:var(--radius-pill);font-family:'JetBrains Mono',monospace;font-weight:700;font-size:13px;white-space:nowrap;">−${pct_ahorro}%</div>
+                    </div>
+                    <div style="background:${modelEf.bg};border:1px solid ${modelEf.color}33;border-radius:var(--radius);padding:16px;text-align:center;">
+                        <div style="color:var(--text-secondary);font-size:11px;margin-bottom:4px;">${modelEf.nombre} (${anoLabel})</div>
+                        <div style="color:${modelEf.color};font-family:'JetBrains Mono',monospace;font-size:24px;font-weight:700;line-height:1.2;">${fmtU(totalEf)}</div>
+                        <div style="color:var(--text-muted);font-size:11px;margin-top:2px;">CO₂</div>
+                    </div>
+                </div>
+
+                <!-- Switch Hoy callout -->
+                <div style="background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.25);border-radius:var(--radius);padding:14px 16px;margin-bottom:16px;display:flex;align-items:flex-start;gap:10px;">
+                    <i data-lucide="zap" style="width:18px;height:18px;color:#fbbf24;margin-top:2px;flex-shrink:0;"></i>
+                    <div>
+                        <div style="color:#fbbf24;font-size:12px;font-weight:600;margin-bottom:3px;">¿Y si cambias hoy?</div>
+                        <div style="color:var(--text-secondary);font-size:12px;line-height:1.5;">
+                            Quedan <strong style="color:var(--text-primary);">${diasRestantes} días</strong> para fin de año.
+                            Cambiando ahora a <strong style="color:${modelEf.color};">${modelEf.nombre}</strong> ahorrarías
+                            <strong style="color:#fbbf24;">${fmtU(ahorroRestoAno)}</strong> CO₂ este año
+                            <span style="color:var(--text-muted);font-size:11px;">(${fmtU(ahorroDiario)}/día)</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Area chart -->
+                <div class="chart-container" style="height:280px;margin-bottom:16px;">
+                    <canvas id="sim-comparison-chart"></canvas>
+                </div>
+
+                <!-- Footer: savings + CSV -->
+                <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
+                    <div style="background:${modelEf.bg};border:1px solid ${modelEf.color}33;border-radius:var(--radius);padding:12px 16px;display:flex;align-items:center;gap:8px;flex:1;min-width:0;">
+                        <i data-lucide="leaf" style="width:15px;height:15px;color:${modelEf.color};flex-shrink:0;"></i>
+                        <span style="color:var(--text-primary);font-size:13px;">
+                            Ahorro en ${anoLabel}: <strong style="color:${modelEf.color};">${fmtU(ahorro)}</strong> CO₂${growth > 0 ? ` <span style="color:var(--text-muted);font-size:11px;">(+${SIM_STATE.crecimiento_pct}% crec./año)</span>` : ''}
+                        </span>
+                    </div>
+                    <button id="export-proyeccion-csv" class="button button-secondary" style="padding:10px 16px;white-space:nowrap;">
+                        <i data-lucide="download"></i> CSV
+                    </button>
+                </div>
+            `;
+        };
+
+        // ── All models panel ────────────────────────────────────────────────
+        const allModelsPanel = () => {
+            const best = ranking[0];
+            return `
+                <!-- Ranking grid -->
+                <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;margin-bottom:16px;">
+                    ${ranking.map((m, i) => `
+                        <div style="background:${m.bg};border:1px solid ${m.color}44;border-radius:var(--radius);padding:12px;position:relative;overflow:hidden;">
+                            ${i === 0 ? `<div style="position:absolute;top:6px;right:6px;background:${m.color};color:var(--bg-base);font-size:9px;font-weight:700;padding:2px 6px;border-radius:var(--radius-pill);letter-spacing:.5px;">MEJOR</div>` : ''}
+                            <div style="color:var(--text-secondary);font-size:10px;margin-bottom:4px;">${m.nombre}</div>
+                            <div style="color:${m.color};font-family:'JetBrains Mono',monospace;font-size:16px;font-weight:700;">−${m.pct}%</div>
+                            <div style="color:var(--text-muted);font-size:10px;margin-top:3px;">Ahorra ${fmtU(m.ahorro)}</div>
+                        </div>
+                    `).join('')}
+                </div>
+
+                <!-- Multi-model chart -->
+                <div class="chart-container" style="height:300px;margin-bottom:16px;">
+                    <canvas id="sim-comparison-chart"></canvas>
+                </div>
+
+                <!-- Footer: best model + CSV -->
+                <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
+                    <div style="background:${best.bg};border:1px solid ${best.color}44;border-radius:var(--radius);padding:12px 16px;display:flex;align-items:center;gap:8px;flex:1;min-width:0;">
+                        <i data-lucide="trophy" style="width:15px;height:15px;color:${best.color};flex-shrink:0;"></i>
+                        <span style="color:var(--text-primary);font-size:13px;">
+                            Mejor opción: <strong style="color:${best.color};">${best.nombre}</strong> — ahorra <strong style="color:${best.color};">${fmtU(best.ahorro)}</strong> en ${anoLabel}
+                        </span>
+                    </div>
+                    <button id="export-proyeccion-csv" class="button button-secondary" style="padding:10px 16px;white-space:nowrap;">
+                        <i data-lucide="download"></i> CSV
+                    </button>
+                </div>
+            `;
+        };
+
+        container.innerHTML = `
+            <div class="card" style="margin-bottom:24px;">
+                <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:20px;">
+                    <div class="card-title" style="margin:0;"><i data-lucide="git-compare"></i> Proyección comparativa</div>
+                    <!-- Mode toggle -->
+                    <div style="display:flex;gap:4px;background:var(--bg-surface);border:1px solid var(--glass-border);border-radius:var(--radius-pill);padding:3px;">
+                        <button id="sim-mode-single" class="preset-chip ${!todosModos ? 'active' : ''}" style="padding:5px 14px;font-size:12px;border-radius:var(--radius-pill);">Un modelo</button>
+                        <button id="sim-mode-all" class="preset-chip ${todosModos ? 'active' : ''}" style="padding:5px 14px;font-size:12px;border-radius:var(--radius-pill);">Comparar todos</button>
+                    </div>
+                </div>
+
+                <!-- Controls -->
+                <div style="display:flex;flex-wrap:wrap;gap:16px;margin-bottom:20px;align-items:flex-end;">
+                    ${!todosModos ? `
+                    <div style="display:flex;flex-direction:column;gap:6px;flex:1;min-width:170px;">
+                        <label style="color:var(--text-secondary);font-size:12px;font-weight:500;">Modelo eficiente</label>
+                        <select id="sim-modelo-select" style="width:100%;">
+                            ${MODELOS_EFICIENTES_SIM.map(m => `<option value="${m.nombre}" ${m.nombre === SIM_STATE.modelo_eficiente ? 'selected' : ''}>${m.nombre} (−${((1-m.factor)*100).toFixed(0)}%)</option>`).join('')}
+                        </select>
+                    </div>` : ''}
+                    <div style="display:flex;flex-direction:column;gap:6px;">
+                        <label style="color:var(--text-secondary);font-size:12px;font-weight:500;">Horizonte temporal</label>
+                        <div style="display:flex;gap:4px;">
+                            ${[1,2,3,5,10].map(y => `<button class="preset-chip sim-year-btn ${anos === y ? 'active' : ''}" data-years="${y}" style="padding:6px 12px;font-size:12px;">${y}a</button>`).join('')}
+                        </div>
+                    </div>
+                    <div style="display:flex;flex-direction:column;gap:6px;min-width:170px;">
+                        <label style="color:var(--text-secondary);font-size:12px;font-weight:500;">Crecimiento anual de uso</label>
+                        <select id="sim-growth-select" style="width:100%;">
+                            ${[0,20,50,100,200].map(g => `<option value="${g}" ${SIM_STATE.crecimiento_pct === g ? 'selected' : ''}>+${g}%${g === 0 ? ' (sin crecimiento)' : ''}</option>`).join('')}
+                        </select>
+                    </div>
+                </div>
+
+                ${todosModos ? allModelsPanel() : singlePanel()}
+            </div>
+        `;
+
+        // ── Event handlers ──────────────────────────────────────────────────
+        document.getElementById('sim-mode-single').onclick = () => {
+            SIM_STATE.mostrar_todos_modelos = false; renderTarea4Grafico();
+        };
+        document.getElementById('sim-mode-all').onclick = () => {
+            SIM_STATE.mostrar_todos_modelos = true; renderTarea4Grafico();
+        };
+        if (!todosModos) {
+            document.getElementById('sim-modelo-select').onchange = e => {
+                const m = MODELOS_EFICIENTES_SIM.find(x => x.nombre === e.target.value);
+                if (m) { SIM_STATE.modelo_eficiente = m.nombre; SIM_STATE.factor_eficiente = m.factor; renderTarea4Grafico(); renderTarea5BreakEven(); }
+            };
+        }
+        document.querySelectorAll('.sim-year-btn').forEach(btn =>
+            btn.onclick = () => { SIM_STATE.horizonte_anos = parseInt(btn.dataset.years); renderTarea4Grafico(); }
+        );
+        document.getElementById('sim-growth-select').onchange = e => {
+            SIM_STATE.crecimiento_pct = parseInt(e.target.value); renderTarea4Grafico();
+        };
+        document.getElementById('export-proyeccion-csv').onclick = () => {
+            let header, rows;
+            if (todosModos) {
+                header = ['Año', 'CO₂ actual (kg)', ...MODELOS_EFICIENTES_SIM.map(m => `${m.nombre} (kg)`), ...MODELOS_EFICIENTES_SIM.map(m => `Ahorro ${m.nombre} (kg)`)].join(',');
+                rows = csvRows.map(d => [d.ano, d.actual.toFixed(3), ...MODELOS_EFICIENTES_SIM.map(m => d[m.nombre].toFixed(3)), ...MODELOS_EFICIENTES_SIM.map(m => (d.actual - d[m.nombre]).toFixed(3))].join(','));
+            } else {
+                header = `Año,CO₂ actual (kg),CO₂ ${modelEf.nombre} (kg),Ahorro (kg)`;
+                rows = csvRows.map(d => `${d.ano},${d.actual.toFixed(3)},${d[modelEf.nombre].toFixed(3)},${(d.actual - d[modelEf.nombre]).toFixed(3)}`);
+            }
+            const blob = new Blob([[header, ...rows].join('\n')], { type: 'text/csv;charset=utf-8;' });
+            const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+            a.download = 'proyeccion_co2.csv'; a.style.display = 'none';
+            document.body.appendChild(a); a.click(); document.body.removeChild(a);
+        };
+
+        if (window.lucide) lucide.createIcons();
+        setTimeout(() => {
+            if (todosModos) {
+                renderSimulacionGraficoChartAllModels(labels, dataActual, dataPerModel);
+            } else {
+                renderSimulacionGraficoChart(labels, dataActual, dataPerModel[modelEf.nombre], modelEf);
+            }
+        }, 0);
+    }
+
+    function renderSimulacionGraficoChart(labels, dataActual, dataEficiente, modelEf) {
+        if (simChartInstance) { simChartInstance.destroy(); simChartInstance = null; }
+        const ctx = document.getElementById('sim-comparison-chart');
+        if (!ctx) return;
+        const color = modelEf ? modelEf.color : '#4ade80';
+        const bgColor = modelEf ? modelEf.color.replace(')', ',0.15)').replace('rgb', 'rgba') : 'rgba(74,222,128,0.15)';
+        const fmtU = v => { if (v <= 0) return '0'; if (v >= 1000) return (v/1000).toFixed(2)+' t'; if (v >= 0.1) return v.toFixed(2)+' kg'; const g = v*1000; if (g >= 0.1) return g.toFixed(2)+' g'; const mg = g*1000; return mg >= 0.1 ? mg.toFixed(2)+' mg' : (mg*1000).toFixed(2)+' µg'; };
+
+        simChartInstance = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels,
+                datasets: [
+                    {
+                        label: 'Modelo actual',
+                        data: dataActual,
+                        borderColor: '#ef4444',
+                        backgroundColor: 'rgba(239,68,68,0.08)',
+                        borderWidth: 2.5,
+                        pointRadius: 5,
+                        pointBackgroundColor: '#ef4444',
+                        pointBorderColor: '#fff',
+                        pointBorderWidth: 1.5,
+                        fill: true,
+                        tension: 0.3,
+                    },
+                    {
+                        label: modelEf ? modelEf.nombre : SIM_STATE.modelo_eficiente,
+                        data: dataEficiente,
+                        borderColor: color,
+                        backgroundColor: modelEf ? modelEf.bg : 'rgba(74,222,128,0.15)',
+                        borderWidth: 2.5,
+                        pointRadius: 5,
+                        pointBackgroundColor: color,
+                        pointBorderColor: '#fff',
+                        pointBorderWidth: 1.5,
+                        fill: true,
+                        tension: 0.3,
+                    },
+                ],
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: { mode: 'index', intersect: false },
+                animation: { duration: 600 },
+                plugins: {
+                    legend: { display: true, labels: { color: '#94a3b1', font: { size: 12 }, usePointStyle: true, pointStyleWidth: 10 } },
+                    tooltip: {
+                        backgroundColor: 'rgba(10,20,15,0.92)',
+                        borderColor: 'rgba(74,222,128,0.25)',
+                        borderWidth: 1,
+                        titleColor: '#e8f0eb',
+                        bodyColor: '#94a3b1',
+                        callbacks: {
+                            label: c => ` ${c.dataset.label}: ${fmtU(c.parsed.y)} CO₂`,
+                            afterBody: items => items.length >= 2 ? [`  Ahorro acumulado: ${fmtU(items[0].parsed.y - items[1].parsed.y)}`] : [],
+                        },
+                    },
+                },
+                scales: {
+                    x: { grid: { display: false }, ticks: { color: '#94a3b1', font: { size: 12 } } },
+                    y: {
+                        grid: { color: 'rgba(255,255,255,0.05)' },
+                        ticks: { color: '#94a3b1', font: { size: 11 }, callback: v => v >= 1000 ? `${(v/1000).toFixed(1)}t` : v < 0.01 ? `${(v*1000).toFixed(0)}g` : `${v.toFixed(0)}kg` },
+                        title: { display: true, text: 'CO₂ acumulado', color: '#94a3b1', font: { size: 11 } },
+                    },
+                },
+            },
+        });
+    }
+
+    function renderSimulacionGraficoChartAllModels(labels, dataActual, dataPerModel) {
+        if (simChartInstance) { simChartInstance.destroy(); simChartInstance = null; }
+        const ctx = document.getElementById('sim-comparison-chart');
+        if (!ctx) return;
+        const fmtU = v => { if (v <= 0) return '0'; if (v >= 1000) return (v/1000).toFixed(2)+' t'; if (v >= 0.1) return v.toFixed(2)+' kg'; const g = v*1000; if (g >= 0.1) return g.toFixed(2)+' g'; const mg = g*1000; return mg >= 0.1 ? mg.toFixed(2)+' mg' : (mg*1000).toFixed(2)+' µg'; };
+
+        const modelDatasets = MODELOS_EFICIENTES_SIM.map(m => ({
+            label: m.nombre,
+            data: dataPerModel[m.nombre],
+            borderColor: m.color,
+            backgroundColor: m.bg,
+            borderWidth: 2,
+            pointRadius: 4,
+            pointBackgroundColor: m.color,
+            pointBorderColor: '#fff',
+            pointBorderWidth: 1,
+            fill: false,
+            tension: 0.3,
+        }));
+
+        simChartInstance = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels,
+                datasets: [
+                    {
+                        label: 'Modelo actual',
+                        data: dataActual,
+                        borderColor: '#ef4444',
+                        backgroundColor: 'rgba(239,68,68,0.08)',
+                        borderWidth: 2.5,
+                        pointRadius: 5,
+                        pointBackgroundColor: '#ef4444',
+                        pointBorderColor: '#fff',
+                        pointBorderWidth: 1.5,
+                        fill: false,
+                        tension: 0.3,
+                    },
+                    ...modelDatasets,
+                ],
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: { mode: 'index', intersect: false },
+                animation: { duration: 600 },
+                plugins: {
+                    legend: { display: true, labels: { color: '#94a3b1', font: { size: 11 }, usePointStyle: true, pointStyleWidth: 8 } },
+                    tooltip: {
+                        backgroundColor: 'rgba(10,20,15,0.92)',
+                        borderColor: 'rgba(74,222,128,0.25)',
+                        borderWidth: 1,
+                        titleColor: '#e8f0eb',
+                        bodyColor: '#94a3b1',
+                        callbacks: { label: c => ` ${c.dataset.label}: ${fmtU(c.parsed.y)} CO₂` },
+                    },
+                },
+                scales: {
+                    x: { grid: { display: false }, ticks: { color: '#94a3b1', font: { size: 12 } } },
+                    y: {
+                        grid: { color: 'rgba(255,255,255,0.05)' },
+                        ticks: { color: '#94a3b1', font: { size: 11 }, callback: v => v >= 1000 ? `${(v/1000).toFixed(1)}t` : v < 0.01 ? `${(v*1000).toFixed(0)}g` : `${v.toFixed(0)}kg` },
+                        title: { display: true, text: 'CO₂ acumulado', color: '#94a3b1', font: { size: 11 } },
+                    },
+                },
+            },
+        });
+    }
+
+    // TAREA 5: Break-even ambiental (opción 2)
+    function renderTarea5BreakEven() {
+        const container = document.getElementById('tarea5-breakeven');
+        if (!container) return;
+
+        const modelEf = MODELOS_EFICIENTES_SIM.find(m => m.nombre === SIM_STATE.modelo_eficiente) || MODELOS_EFICIENTES_SIM[0];
+        const fmtU = v => { if (v <= 0) return '0'; if (v >= 1000) return (v/1000).toFixed(2)+' t'; if (v >= 0.1) return v.toFixed(2)+' kg'; const g = v*1000; if (g >= 0.1) return g.toFixed(2)+' g'; const mg = g*1000; return mg >= 0.1 ? mg.toFixed(2)+' mg' : (mg*1000).toFixed(2)+' µg'; };
+
+        const co2DiaDia = SIM_STATE.queries_dia * SIM_STATE.co2_por_query / 1000;
+        const ahorroDiario = co2DiaDia * (1 - modelEf.factor);
+        const overhead = SIM_STATE.overhead_depl_kg;
+        const breakEvenDays = overhead > 0 && ahorroDiario > 0 ? Math.ceil(overhead / ahorroDiario) : 0;
+        const breakEvenMeses = breakEvenDays > 0 ? (breakEvenDays / 30.4).toFixed(1) : 0;
+
+        const contenidoResultado = overhead === 0
+            ? `<div style="background:var(--primary-dim);border:1px solid var(--primary-border);border-radius:var(--radius);padding:14px 16px;display:flex;align-items:center;gap:10px;">
+                <i data-lucide="check-circle" style="width:18px;height:18px;color:var(--primary);flex-shrink:0;"></i>
+                <span style="color:var(--text-primary);font-size:13px;">Impacto inmediato — sin overhead de despliegue, el ahorro empieza desde el primer día.</span>
+               </div>`
+            : `<div style="background:${modelEf.bg};border:1px solid ${modelEf.color}44;border-radius:var(--radius);padding:14px 16px;">
+                <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:4px;">
+                    <span style="color:var(--text-secondary);font-size:12px;">Punto de equilibrio:</span>
+                    <span style="color:${modelEf.color};font-family:'JetBrains Mono',monospace;font-size:20px;font-weight:700;">${breakEvenDays} días</span>
+                    <span style="color:var(--text-muted);font-size:11px;">(~${breakEvenMeses} meses)</span>
+                </div>
+                <div style="color:var(--text-muted);font-size:11px;">Tras ${breakEvenDays} días compensas los ${fmtU(overhead)} CO₂ del despliegue y empiezas a ahorrar neto.</div>
+               </div>`;
+
+        // Build break-even chart data (2× break-even point, no cap so crossing is always visible)
+        const chartDays = overhead > 0 ? Math.max(breakEvenDays * 2, 30) : 180;
+        const step = Math.max(1, Math.floor(chartDays / 30));
+        const _fmtDay = d => {
+            if (d === 0) return 'Hoy';
+            if (chartDays > 730) {
+                const yrs = d / 365;
+                return yrs >= 1 ? `Año ${yrs.toFixed(1).replace('.0','')}` : `Mes ${Math.round(d/30.4)}`;
+            }
+            return `Día ${d}`;
+        };
+        const beLabels = [], beSinCambio = [], beConModelo = [];
+        for (let d = 0; d <= chartDays; d += step) {
+            beLabels.push(_fmtDay(d));
+            beSinCambio.push(co2DiaDia * d);
+            beConModelo.push(overhead + co2DiaDia * modelEf.factor * d);
+        }
+        // Find crossover index for annotation
+        let crossIdx = -1;
+        if (overhead > 0) {
+            for (let i = 0; i < beSinCambio.length; i++) {
+                if (beConModelo[i] <= beSinCambio[i]) { crossIdx = i; break; }
+            }
+        }
+        const pointRadii = beLabels.map((_, i) => i === crossIdx ? 8 : 3);
+        const pointBg = beLabels.map((_, i) => i === crossIdx ? '#fbbf24' : modelEf.color);
+
+        container.innerHTML = `
+            <div class="card" style="margin-bottom:24px;">
+                <div class="card-title"><i data-lucide="calendar-check"></i> Break-even ambiental</div>
+
+                <!-- Explicación colapsable -->
+                <details style="margin-bottom:16px;background:rgba(255,255,255,.03);border:1px solid var(--glass-border);border-radius:var(--radius);">
+                    <summary style="cursor:pointer;padding:10px 14px;color:var(--text-secondary);font-size:12px;list-style:none;display:flex;align-items:center;gap:8px;user-select:none;">
+                        <i data-lucide="info" style="width:14px;height:14px;flex-shrink:0;"></i>
+                        <span>¿En qué consiste esta sección?</span>
+                        <i data-lucide="chevron-down" style="width:13px;height:13px;margin-left:auto;"></i>
+                    </summary>
+                    <div style="padding:12px 14px 14px;border-top:1px solid var(--glass-border);display:flex;flex-direction:column;gap:10px;">
+                        <p style="color:var(--text-secondary);font-size:12px;line-height:1.7;margin:0;">
+                            Cambiar a un modelo más eficiente no es gratis desde el punto de vista ambiental.
+                            Hay un <strong style="color:var(--text-primary);">coste de despliegue</strong>: el CO₂ que se emite al entrenar,
+                            transferir o poner en marcha el nuevo modelo. Este coste puede ser pequeño (migración interna)
+                            o mayor (reentrenamiento completo).
+                        </p>
+                        <p style="color:var(--text-secondary);font-size:12px;line-height:1.7;margin:0;">
+                            Una vez en producción, el modelo eficiente emite <em>menos</em> CO₂ por consulta que el actual.
+                            Esa diferencia diaria va devolviendo la deuda inicial, poco a poco.
+                            El <strong style="color:var(--text-primary);">punto de equilibrio</strong> es el día en que la deuda queda saldada:
+                            a partir de ahí cada consulta genera un ahorro neto real.
+                        </p>
+                        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px;margin-top:2px;">
+                            <div style="background:rgba(239,68,68,.07);border:1px solid rgba(239,68,68,.2);border-radius:8px;padding:10px 12px;">
+                                <div style="color:#f87171;font-size:11px;font-weight:600;margin-bottom:3px;">Línea roja — Sin cambio</div>
+                                <div style="color:var(--text-muted);font-size:11px;line-height:1.5;">CO₂ acumulado si sigues con el modelo actual. Crece a ritmo constante.</div>
+                            </div>
+                            <div style="background:${modelEf.bg};border:1px solid ${modelEf.color}44;border-radius:8px;padding:10px 12px;">
+                                <div style="color:${modelEf.color};font-size:11px;font-weight:600;margin-bottom:3px;">Línea de color — Con ${modelEf.nombre}</div>
+                                <div style="color:var(--text-muted);font-size:11px;line-height:1.5;">Empieza más arriba (el overhead), pero crece más despacio. Cuando cruza la roja, empiezas a ganar.</div>
+                            </div>
+                            <div style="background:rgba(251,191,36,.07);border:1px solid rgba(251,191,36,.25);border-radius:8px;padding:10px 12px;">
+                                <div style="color:#fbbf24;font-size:11px;font-weight:600;margin-bottom:3px;">Punto amarillo</div>
+                                <div style="color:var(--text-muted);font-size:11px;line-height:1.5;">El cruce entre ambas líneas: el día exacto en que el modelo eficiente ha compensado su coste de despliegue.</div>
+                            </div>
+                        </div>
+                        <p style="color:var(--text-muted);font-size:11px;line-height:1.6;margin:0;">
+                            Si seleccionas <em>"Sin overhead"</em>, significa que el despliegue no tiene coste ambiental asociado
+                            (p. ej., un modelo ya disponible vía API) y el ahorro es inmediato desde el primer día.
+                        </p>
+                    </div>
+                </details>
+
+                <!-- Overhead selector -->
+                <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px;">
+                    <label style="color:var(--text-secondary);font-size:12px;font-weight:500;">Overhead de despliegue (CO₂ estimado)</label>
+                    <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                        ${[
+                            { label: 'Sin overhead', val: 0 },
+                            { label: '0.5 kg CO₂', val: 0.5 },
+                            { label: '5 kg CO₂', val: 5 },
+                            { label: '50 kg CO₂', val: 50 },
+                        ].map(o => `<button class="preset-chip sim-be-btn ${overhead === o.val ? 'active' : ''}" data-val="${o.val}" style="padding:6px 14px;font-size:12px;">${o.label}</button>`).join('')}
+                    </div>
+                </div>
+
+                ${contenidoResultado}
+
+                ${overhead > 0 ? `
+                <div style="margin-top:16px;">
+                    <div style="color:var(--text-muted);font-size:11px;margin-bottom:8px;">Evolución CO₂ acumulado</div>
+                    <div style="height:200px;position:relative;">
+                        <canvas id="sim-breakeven-chart"></canvas>
+                    </div>
+                </div>` : ''}
+            </div>
+        `;
+
+        document.querySelectorAll('.sim-be-btn').forEach(btn =>
+            btn.onclick = () => { SIM_STATE.overhead_depl_kg = parseFloat(btn.dataset.val); renderTarea5BreakEven(); }
+        );
+
+        if (window.lucide) lucide.createIcons();
+
+        if (overhead > 0) {
+            setTimeout(() => {
+                if (simBreakEvenChartInstance) { simBreakEvenChartInstance.destroy(); simBreakEvenChartInstance = null; }
+                const bectx = document.getElementById('sim-breakeven-chart');
+                if (!bectx) return;
+                const fmtUb = v => { if (v <= 0) return '0'; if (v >= 1000) return (v/1000).toFixed(2)+' t'; if (v >= 0.1) return v.toFixed(2)+' kg'; const g = v*1000; if (g >= 0.1) return g.toFixed(2)+' g'; const mg = g*1000; return mg >= 0.1 ? mg.toFixed(2)+' mg' : (mg*1000).toFixed(2)+' µg'; };
+                simBreakEvenChartInstance = new Chart(bectx, {
+                    type: 'line',
+                    data: {
+                        labels: beLabels,
+                        datasets: [
+                            {
+                                label: 'Sin cambio',
+                                data: beSinCambio,
+                                borderColor: '#ef4444',
+                                backgroundColor: 'rgba(239,68,68,0.06)',
+                                borderWidth: 2,
+                                pointRadius: 2,
+                                fill: true,
+                                tension: 0.2,
+                            },
+                            {
+                                label: `Con ${modelEf.nombre}`,
+                                data: beConModelo,
+                                borderColor: modelEf.color,
+                                backgroundColor: modelEf.bg,
+                                borderWidth: 2,
+                                pointRadius: pointRadii,
+                                pointBackgroundColor: pointBg,
+                                pointBorderColor: '#fff',
+                                pointBorderWidth: 1.5,
+                                fill: true,
+                                tension: 0.2,
+                            },
+                        ],
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        interaction: { mode: 'index', intersect: false },
+                        animation: { duration: 500 },
+                        plugins: {
+                            legend: { display: true, labels: { color: '#94a3b1', font: { size: 11 }, usePointStyle: true } },
+                            tooltip: { backgroundColor: 'rgba(10,20,15,0.92)', borderColor: 'rgba(74,222,128,0.25)', borderWidth: 1, titleColor: '#e8f0eb', bodyColor: '#94a3b1', callbacks: { label: c => ` ${c.dataset.label}: ${fmtUb(c.parsed.y)} CO₂` } },
+                        },
+                        scales: {
+                            x: { grid: { display: false }, ticks: { color: '#94a3b1', font: { size: 10 }, maxTicksLimit: 8 } },
+                            y: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#94a3b1', font: { size: 10 }, callback: v => fmtUb(v) }, title: { display: true, text: 'CO₂ acumulado', color: '#94a3b1', font: { size: 10 } } },
+                        },
+                    },
+                });
+            }, 0);
+        }
+    }
+
+    // TAREA 6: Análisis de sensibilidad — ¿qué importa más? (opción 4)
+    function renderTarea6Sensitivity() {
+        const container = document.getElementById('tarea6-sensitivity');
+        if (!container) return;
+
+        const fmtU = v => { if (v <= 0) return '0'; if (v >= 1000) return (v/1000).toFixed(2)+' t'; if (v >= 0.1) return v.toFixed(2)+' kg'; const g = v*1000; if (g >= 0.1) return g.toFixed(2)+' g'; const mg = g*1000; return mg >= 0.1 ? mg.toFixed(2)+' mg' : (mg*1000).toFixed(2)+' µg'; };
+        const co2AnualActual = (SIM_STATE.queries_dia * 365 * SIM_STATE.co2_por_query) / 1000;
+        const bestFactor = Math.min(...MODELOS_EFICIENTES_SIM.map(m => m.factor));
+
+        const strategies = [
+            ...MODELOS_EFICIENTES_SIM.map(m => ({
+                label: `Modelo: ${m.nombre}`,
+                pct: (1 - m.factor) * 100,
+                ahorro: co2AnualActual * (1 - m.factor),
+                color: m.color + 'bb',
+            })),
+            { label: 'Reducir queries −50%', pct: 50, ahorro: co2AnualActual * 0.5, color: '#fb923cbb' },
+            { label: 'Datacenter 100% renovable', pct: 35, ahorro: co2AnualActual * 0.35, color: '#34d399bb' },
+            { label: 'Reducir utilización −20%', pct: 15, ahorro: co2AnualActual * 0.15, color: '#cbd5e1bb' },
+            { label: 'Mejor modelo + renovable', pct: (1 - bestFactor * 0.65) * 100, ahorro: co2AnualActual * (1 - bestFactor * 0.65), color: '#fbbf24bb' },
+        ].sort((a, b) => b.pct - a.pct);
+
+        const chartHeight = 80 + strategies.length * 38;
+
+        container.innerHTML = `
+            <div class="card" style="margin-bottom:24px;">
+                <div class="card-title"><i data-lucide="sliders-horizontal"></i> ¿Qué palanca tiene más impacto?</div>
+                <div style="color:var(--text-secondary);font-size:12px;margin-bottom:16px;">Reducción de CO₂ anual estimada por acción independiente, sobre tu configuración actual.</div>
+                <div style="height:${chartHeight}px;position:relative;">
+                    <canvas id="sim-sensitivity-chart"></canvas>
+                </div>
+            </div>
+        `;
+
+        if (window.lucide) lucide.createIcons();
+
+        setTimeout(() => {
+            if (simSensitivityChartInstance) { simSensitivityChartInstance.destroy(); simSensitivityChartInstance = null; }
+            const sctx = document.getElementById('sim-sensitivity-chart');
+            if (!sctx) return;
+            simSensitivityChartInstance = new Chart(sctx, {
+                type: 'bar',
+                data: {
+                    labels: strategies.map(s => s.label),
+                    datasets: [{
+                        label: 'Reducción CO₂ (%)',
+                        data: strategies.map(s => s.pct),
+                        backgroundColor: strategies.map(s => s.color),
+                        borderRadius: 6,
+                        borderSkipped: false,
+                    }],
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: { duration: 700 },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: 'rgba(10,20,15,0.92)',
+                            borderColor: 'rgba(74,222,128,0.25)',
+                            borderWidth: 1,
+                            titleColor: '#e8f0eb',
+                            bodyColor: '#94a3b1',
+                            callbacks: {
+                                label: c => {
+                                    const s = strategies[c.dataIndex];
+                                    return ` −${s.pct.toFixed(1)}% · ahorra ${fmtU(s.ahorro)} CO₂/año`;
+                                },
+                            },
+                        },
+                    },
+                    scales: {
+                        x: {
+                            grid: { color: 'rgba(255,255,255,0.05)' },
+                            ticks: { color: '#94a3b1', font: { size: 11 }, callback: v => `${v}%` },
+                            max: 100,
+                        },
+                        y: {
+                            grid: { display: false },
+                            ticks: { color: '#94a3b1', font: { size: 11 }, autoSkip: false },
+                        },
+                    },
+                },
+            });
+        }, 0);
+    }
+
+    // TAREA 5 (legacy dead code — kept for ref, container removed from HTML)
+    function renderTarea5Tabla() {
+        const container = document.getElementById('tarea5-tabla-multianual');
+        if (!container) return;
+
+        const factor_ef = SIM_STATE.factor_eficiente;
+        const datos_tabla = [];
+        for (let y = 1; y <= 5; y++) {
+            const queries_totales = SIM_STATE.queries_dia * 365 * y;
+            const co2_actual_kg   = (queries_totales * SIM_STATE.co2_por_query) / 1000;
+            const co2_ef_kg       = (queries_totales * SIM_STATE.co2_por_query * factor_ef) / 1000;
+            const ahorro_pct      = ((1 - factor_ef) * 100).toFixed(1);
+            datos_tabla.push({ ano: y, queries_totales, co2_actual_kg, co2_ef_kg, ahorro_pct });
+        }
+
+        const fmtTabla = v => v < 0.01 ? (v*1000).toFixed(1) : v < 1 ? v.toFixed(3) : Math.round(v).toLocaleString('es-ES');
+
+        container.innerHTML = `
+            <div class="card" style="margin-bottom:24px;">
+                <div class="card-title"><i data-lucide="table-2"></i> Proyección detallada (5 años)</div>
+
+                <!-- Line chart -->
+                <div class="chart-container" style="height:220px;margin-bottom:20px;">
+                    <canvas id="sim-tabla-chart"></canvas>
+                </div>
+
+                <div style="display:flex;justify-content:flex-end;margin-bottom:12px;">
+                    <button id="toggle-tabla-sim" class="button button-secondary" style="font-size:12px;padding:6px 14px;">
+                        <i data-lucide="chevron-down"></i> Ver tabla
+                    </button>
+                </div>
+                <div id="tabla-sim-content" style="display:none;">
+                    <div style="overflow-x:auto;border-radius:var(--radius-sm);border:1px solid var(--glass-border);margin-bottom:14px;">
+                        <table style="width:100%;border-collapse:collapse;font-size:13px;font-family:'JetBrains Mono',monospace;">
+                            <thead>
+                                <tr style="background:var(--bg-surface);border-bottom:2px solid var(--border-strong);">
+                                    <th style="color:var(--primary);font-weight:700;padding:12px 16px;text-align:left;">Año</th>
+                                    <th style="color:var(--primary);font-weight:700;padding:12px 16px;text-align:right;">Queries totales</th>
+                                    <th style="color:var(--accent-red);font-weight:700;padding:12px 16px;text-align:right;">CO₂ actual</th>
+                                    <th style="color:var(--primary);font-weight:700;padding:12px 16px;text-align:right;">CO₂ ${SIM_STATE.modelo_eficiente}</th>
+                                    <th style="color:var(--accent-teal);font-weight:700;padding:12px 16px;text-align:right;">Ahorro</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${datos_tabla.map((f, i) => `
+                                    <tr style="background:${i % 2 === 0 ? 'var(--bg-surface)' : 'var(--bg-card)'};border-bottom:1px solid var(--glass-border);">
+                                        <td style="color:var(--primary);padding:11px 16px;font-weight:600;">Año ${f.ano}</td>
+                                        <td style="color:var(--text-secondary);padding:11px 16px;text-align:right;">${f.queries_totales.toLocaleString('es-ES')}</td>
+                                        <td style="color:var(--accent-red);padding:11px 16px;text-align:right;font-weight:600;">${fmtTabla(f.co2_actual_kg)} kg</td>
+                                        <td style="color:var(--primary);padding:11px 16px;text-align:right;font-weight:600;">${fmtTabla(f.co2_ef_kg)} kg</td>
+                                        <td style="color:var(--accent-teal);padding:11px 16px;text-align:right;font-weight:700;">${f.ahorro_pct}%</td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                    <button id="export-csv-sim" class="button button-secondary" style="width:100%;justify-content:center;">
+                        <i data-lucide="download"></i> Descargar CSV
+                    </button>
+                </div>
+            </div>
+        `;
+
+        if (window.lucide) lucide.createIcons();
+
+        // Render line chart
+        setTimeout(() => {
+            if (simTablaChartInstance) { simTablaChartInstance.destroy(); simTablaChartInstance = null; }
+            const ctx = document.getElementById('sim-tabla-chart');
+            if (!ctx) return;
+
+            const fmtU = v => v >= 1000 ? (v/1000).toFixed(2) + ' t' : v < 0.01 ? (v*1000).toFixed(1) + ' g' : v.toFixed(1) + ' kg';
+
+            simTablaChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: datos_tabla.map(d => `Año ${d.ano}`),
+                    datasets: [
+                        {
+                            label: 'Modelo actual',
+                            data: datos_tabla.map(d => d.co2_actual_kg),
+                            borderColor: '#ef4444',
+                            backgroundColor: 'rgba(239,68,68,0.06)',
+                            borderWidth: 2,
+                            pointRadius: 4,
+                            pointBackgroundColor: '#ef4444',
+                            fill: true,
+                            tension: 0.3,
+                        },
+                        {
+                            label: SIM_STATE.modelo_eficiente,
+                            data: datos_tabla.map(d => d.co2_ef_kg),
+                            borderColor: '#4ade80',
+                            backgroundColor: 'rgba(74,222,128,0.06)',
+                            borderWidth: 2,
+                            pointRadius: 4,
+                            pointBackgroundColor: '#4ade80',
+                            fill: true,
+                            tension: 0.3,
+                        },
+                    ],
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: { mode: 'index', intersect: false },
+                    plugins: {
+                        legend: { display: true, labels: { color: '#94a3b1', font: { size: 11 }, usePointStyle: true } },
+                        tooltip: {
+                            backgroundColor: 'rgba(10,20,15,0.92)',
+                            borderColor: 'rgba(74,222,128,0.25)',
+                            borderWidth: 1,
+                            titleColor: '#e8f0eb',
+                            bodyColor: '#94a3b1',
+                            callbacks: { label: c => ` ${c.dataset.label}: ${fmtU(c.parsed.y)} CO₂` },
+                        },
+                    },
+                    scales: {
+                        x: { grid: { display: false }, ticks: { color: '#94a3b1', font: { size: 11 } } },
+                        y: {
+                            grid: { color: 'rgba(255,255,255,0.05)' },
+                            ticks: {
+                                color: '#94a3b1', font: { size: 10 },
+                                callback: v => v >= 1000 ? `${(v/1000).toFixed(1)}t` : v < 0.01 ? `${(v*1000).toFixed(0)}g` : `${v.toFixed(0)}kg`,
+                            },
+                        },
+                    },
+                },
+            });
+        }, 0);
+
+        let tablaAbierta = false;
+        document.getElementById('toggle-tabla-sim').onclick = () => {
+            tablaAbierta = !tablaAbierta;
+            document.getElementById('tabla-sim-content').style.display = tablaAbierta ? 'block' : 'none';
+            document.getElementById('toggle-tabla-sim').innerHTML = tablaAbierta
+                ? '<i data-lucide="chevron-up"></i> Ocultar tabla'
+                : '<i data-lucide="chevron-down"></i> Ver tabla';
+            if (window.lucide) lucide.createIcons();
+        };
+
+        document.getElementById('export-csv-sim').onclick = () => {
+            const header = 'Año,Queries totales,CO₂ actual (kg),CO₂ eficiente (kg),Ahorro (%)';
+            const rows = datos_tabla.map(d => `${d.ano},${d.queries_totales},${d.co2_actual_kg.toFixed(2)},${d.co2_ef_kg.toFixed(2)},${d.ahorro_pct}`);
+            const blob = new Blob([[header, ...rows].join('\n')], { type: 'text/csv;charset=utf-8;' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = 'proyeccion_simulacion.csv';
+            a.style.display = 'none';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        };
+    }
+
+    // Inicializar simulación cuando se carga
     async function doSimulate() {
         if (!LAST_PARAMS) { showError("Calcula emisiones primero."); return; }
 
-        const rawVal = document.getElementById("queries_per_day")?.value || "1000000";
-        const qpd = parseInt(rawVal.replace(/\./g, '').replace(/[^\d]/g, '')) || 1000000;
+        // Usar el valor seleccionado por el usuario en presets/slider
+        const qpd = SIM_STATE.queries_dia;
         const params = { ...LAST_PARAMS, queries_per_day: qpd, days_per_year: 365 };
 
         try {
@@ -2902,97 +3908,138 @@
     }
 
     function renderSimulation(data, qpd) {
-        const div = document.getElementById("simulation-results");
-        const impact = data.production_impact || {};
-        const emissions = impact.emissions || {};
-        const energy = impact.energy || {};
-        const equivs = impact.equivalencies || {};
+        // Actualizar estado con datos de la API
+        if (data.production_impact && data.production_impact.emissions) {
+            const emitPerQuery = data.production_impact.emissions.g_co2_per_query || 0.00413;
+            const energyPerQuery = data.production_impact.energy?.kwh_per_query || 0.00000185;
+            SIM_STATE.co2_por_query = emitPerQuery / 1000;
+            SIM_STATE.energia_por_query = energyPerQuery;
+        }
+        SIM_STATE.queries_dia = qpd;
 
-        div.innerHTML = `
-            <div class="sim-metrics" id="sim-metrics">
-                ${metricBox("hash", "Queries/día", null, "", null, qpd.toLocaleString("es-ES"))}
-                ${metricBox("leaf", "CO₂ anual", null, "kg CO₂", "sim-co2", "0")}
-                ${metricBox("zap", "Energía anual", null, "MWh", "sim-energy", "0")}
-                ${metricBox("dollar-sign", "Coste energético", null, "/año", "sim-cost", "0")}
-            </div>
-            <div class="chart-container">
-                <div class="card-title"><i data-lucide="trending-up"></i> Proyección CO₂ mensual</div>
-                <div class="chart-wrapper"><canvas id="projection-chart"></canvas></div>
-            </div>
-            <div class="card">
-                <div class="card-title"><i data-lucide="globe"></i> Equivalencias a escala</div>
-                <div class="breakdown-grid">
-                    ${equivCard("car", "Años conduciendo", equivs.car_years_driving)}
-                    ${equivCard("home", "Años de hogar", equivs.household_years)}
-                    ${equivCard("plane", "Vuelos transatlánticos", equivs.transatlantic_flights)}
-                    ${equivCard("tree-pine", "Árboles necesarios", equivs.trees_needed)}
+        // Transición: ocultar panel de lanzamiento, mostrar barra compacta + resultados
+        document.getElementById('sim-launch-panel').style.display = 'none';
+        document.getElementById('sim-compact-bar').style.display = 'block';
+        document.getElementById('simulacion-content').style.display = 'block';
+        updateSliderUI();
+
+        // Botón "Ajustar": vuelve al panel de lanzamiento
+        const btnAjustar = document.getElementById('btn-ajustar-sim');
+        if (btnAjustar) {
+            btnAjustar.onclick = () => {
+                document.getElementById('sim-launch-panel').style.display = 'block';
+                document.getElementById('sim-compact-bar').style.display = 'none';
+                document.getElementById('simulacion-content').style.display = 'none';
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            };
+        }
+        if (window.lucide) lucide.createIcons();
+
+        renderTarea0ImpactoAnual();
+        renderTarea2KPIs();
+        renderTarea3Equivalencias();
+        renderTarea4Grafico();
+        renderTarea5BreakEven();
+        renderTarea6Sensitivity();
+    }
+
+    // Variables globales para los gráficos de simulación
+    let simImpactoChartInstance = null;
+    let simChartInstance = null;
+    let simBreakEvenChartInstance = null;
+    let simSensitivityChartInstance = null;
+
+    // Pool de referencias cotidianas con su CO₂ en kg
+    const REFERENCIAS_CO2 = [
+        { label: '1 búsqueda Google',        value: 0.0002,  color: ['rgba(96,165,250,.65)','#60a5fa'] },
+        { label: '1 carga de móvil',         value: 0.005,   color: ['rgba(251,191,36,.65)','#fbbf24'] },
+        { label: '1 hora de streaming',      value: 0.036,   color: ['rgba(167,139,250,.65)','#a78bfa'] },
+        { label: '1 km en coche',            value: 0.12,    color: ['rgba(251,146,60,.65)','#fb923c'] },
+        { label: '1 litro de gasolina',      value: 2.3,     color: ['rgba(251,146,60,.65)','#fb923c'] },
+        { label: '1 árbol absorbe/año',      value: 21,      color: ['rgba(52,211,153,.65)','#34d399'] },
+        { label: '1 vuelo doméstico',        value: 150,     color: ['rgba(251,191,36,.65)','#fbbf24'] },
+        { label: '1 vuelo transatlántico',   value: 986,     color: ['rgba(251,191,36,.65)','#fbbf24'] },
+        { label: 'Límite París per cápita',  value: 2300,    color: ['rgba(248,113,113,.65)','#f87171'] },
+        { label: '1 coche medio/año',        value: 4600,    color: ['rgba(251,146,60,.65)','#fb923c'] },
+        { label: '1 hogar medio/año',        value: 7500,    color: ['rgba(167,139,250,.65)','#a78bfa'] },
+        { label: 'Europeo medio/año',        value: 8000,    color: ['rgba(167,139,250,.65)','#a78bfa'] },
+    ];
+
+    // Selecciona las N referencias más adecuadas para un valor de CO₂
+    function pickReferencias(co2_kg, n = 2) {
+        return REFERENCIAS_CO2
+            .map(r => ({ ...r, ratio: co2_kg / r.value }))
+            .filter(r => r.ratio >= 0.005 && r.ratio <= 500)
+            .sort((a, b) => Math.abs(Math.log10(a.ratio)) - Math.abs(Math.log10(b.ratio)))
+            .slice(0, n);
+    }
+
+    // TAREA 0: Gráfico de impacto anual vs referencias cotidianas (adaptativo)
+    function renderTarea0ImpactoAnual() {
+        const container = document.getElementById('tarea0-grafico-anual');
+        if (!container) return;
+
+        const co2_ano_kg = (SIM_STATE.queries_dia * 365 * SIM_STATE.co2_por_query) / 1000;
+        const refs = pickReferencias(co2_ano_kg, 2);
+
+        const labels = ['Tu modelo (anual)', ...refs.map(r => r.label)];
+        const data = [co2_ano_kg, ...refs.map(r => r.value)];
+        const bgColors = ['rgba(74,222,128,.65)', ...refs.map(r => r.color[0])];
+        const borderColors = ['#4ade80', ...refs.map(r => r.color[1])];
+
+        container.innerHTML = `
+            <div class="card" style="margin-bottom:24px;">
+                <div class="card-title"><i data-lucide="bar-chart-horizontal"></i> Tu modelo frente a referencias del mundo real</div>
+                <p style="color:var(--text-secondary);font-size:13px;margin-bottom:20px;">CO₂ anual generado por tu modelo de IA comparado con actividades cotidianas.</p>
+                <div class="chart-container" style="height:${100 + refs.length * 70}px;">
+                    <canvas id="sim-impacto-chart"></canvas>
                 </div>
             </div>
         `;
-
         if (window.lucide) lucide.createIcons();
 
-        // Animate counters
         setTimeout(() => {
-            animateValue(document.getElementById("sim-co2"), emissions.kg_co2_annual || 0, 0, 2);
-            animateValue(document.getElementById("sim-energy"), energy.mwh_annual || 0, 1, 2);
-            animateValue(document.getElementById("sim-cost"), energy.cost_usd_annual || 0, 0, 2);
-        }, 100);
+            if (simImpactoChartInstance) { simImpactoChartInstance.destroy(); simImpactoChartInstance = null; }
+            const ctx = document.getElementById('sim-impacto-chart');
+            if (!ctx) return;
 
-        // Projection area chart
-        renderProjectionChart(emissions.kg_co2_annual || 0);
+            const fmtKg = v => { if (v <= 0) return '0'; if (v >= 1000) return (v/1000).toFixed(2)+' t'; if (v >= 0.1) return v.toFixed(2)+' kg'; const g = v*1000; if (g >= 0.1) return g.toFixed(2)+' g'; const mg = g*1000; return mg >= 0.1 ? mg.toFixed(2)+' mg' : (mg*1000).toFixed(2)+' µg'; };
+            const tickFmt = v => { if (v <= 0) return '0'; if (v >= 1000) return (v/1000).toFixed(1)+'t'; if (v >= 0.1) return v.toFixed(1)+'kg'; const g = v*1000; if (g >= 0.1) return g.toFixed(1)+'g'; const mg = g*1000; return mg >= 0.1 ? mg.toFixed(0)+'mg' : (mg*1000).toFixed(0)+'µg'; };
+
+            simImpactoChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels,
+                    datasets: [{ data, backgroundColor: bgColors, borderColor: borderColors, borderWidth: 2, borderRadius: 5 }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: 'rgba(10,20,15,.92)',
+                            borderColor: 'rgba(74,222,128,.25)',
+                            borderWidth: 1,
+                            titleColor: '#e8f0eb',
+                            bodyColor: '#94a3b1',
+                            callbacks: { label: c => ` ${fmtKg(c.parsed.x)} CO₂/año` }
+                        },
+                    },
+                    scales: {
+                        x: {
+                            grid: { color: 'rgba(255,255,255,.05)' },
+                            ticks: { color: '#94a3b1', font:{size:11}, callback: tickFmt, maxTicksLimit: 7 },
+                            title: { display: true, text: 'CO₂ / año', color: '#94a3b1', font:{size:11} },
+                        },
+                        y: { grid: { display: false }, ticks: { color: '#e8f0eb', font:{size:12}, autoSkip: false } },
+                    },
+                },
+            });
+        }, 0);
     }
 
-    function renderProjectionChart(annualKg) {
-        if (projChart) projChart.destroy();
-        const ctx = document.getElementById("projection-chart")?.getContext("2d");
-        if (!ctx) return;
-
-        const months = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
-        const monthlyKg = annualKg / 12;
-        const cumulative = months.map((_, i) => +((i + 1) * monthlyKg).toFixed(1));
-
-        projChart = new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: months,
-                datasets: [{
-                    label: 'CO₂ acumulado (kg)',
-                    data: cumulative,
-                    fill: true,
-                    backgroundColor: 'rgba(74,222,128,0.08)',
-                    borderColor: '#4ade80',
-                    borderWidth: 2,
-                    pointBackgroundColor: '#4ade80',
-                    pointRadius: 4,
-                    pointHoverRadius: 6,
-                    tension: 0.3,
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                animation: { duration: 1200 },
-                plugins: { legend: { display: false } },
-                scales: {
-                    x: { grid: { display: false }, ticks: { color: '#94a3b1' } },
-                    y: {
-                        grid: { color: 'rgba(255,255,255,0.04)' },
-                        ticks: { color: '#5a7a64' },
-                        title: { display: true, text: 'kg CO₂', color: '#5a7a64' }
-                    }
-                }
-            }
-        });
-    }
-
-    function equivCard(icon, label, value) {
-        return `<div class="breakdown-card">
-            <div class="breakdown-icon"><i data-lucide="${icon}"></i></div>
-            <div class="breakdown-label">${label}</div>
-            <div class="breakdown-value">${value != null ? formatNum(value) : "N/D"}</div>
-        </div>`;
-    }
 
     // ------------------------------------------------------------------
     // Energy Label (Tab 6)

@@ -367,25 +367,67 @@
 <!-- TAB 5: SIMULACIÓN                                             -->
 <!-- ============================================================ -->
 <div id="tab-simulacion" class="tab-content">
-    <div id="simulacion-placeholder" class="hero">
-        <h2>Simulación a escala</h2>
-        <p>Calcula emisiones primero y después simula el impacto anual a escala de producción.</p>
-    </div>
-    <div id="simulacion-content" style="display: none;">
-        <div class="card">
-            <div class="card-title"><i data-lucide="activity"></i> Proyección anual</div>
-            <div class="form-grid" style="max-width: 500px;">
-                <div class="input-group">
-                    <label for="queries_per_day"><i data-lucide="hash" style="width:14px;height:14px;stroke:var(--primary)"></i> Queries por día</label>
-                    <input type="text" id="queries_per_day" value="1.000.000" inputmode="numeric">
+
+    <!-- ── Estado A: Panel de lanzamiento (pre-simulación) ── -->
+    <div id="sim-launch-panel">
+        <div class="card" style="text-align:center;padding:48px 32px 44px;">
+            <div class="card-title" style="justify-content:center;margin-bottom:14px;">
+                <i data-lucide="activity"></i> ¿Cuánto CO₂ genera tu IA?
+            </div>
+            <p style="color:var(--text-secondary);font-size:14px;max-width:520px;margin:0 auto 36px;line-height:1.7;">
+                Introduce las consultas diarias que recibirá tu modelo.<br>
+                Verás al instante su huella de carbono anual y cómo se compara con límites reales.
+            </p>
+
+            <!-- Número grande dinámico -->
+            <div class="sim-big-display">
+                <div class="sim-big-number" id="sim-big-number">1.000.000</div>
+                <div class="sim-big-unit">queries / día</div>
+            </div>
+
+            <!-- Preset chips -->
+            <div id="preset-chips-container" style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-bottom:24px;"></div>
+
+            <!-- Slider logarítmico -->
+            <div style="max-width:520px;margin:0 auto 36px;">
+                <div style="display:flex;align-items:center;gap:12px;">
+                    <span style="font-size:11px;color:var(--text-muted);min-width:34px;">100</span>
+                    <input type="range" id="sim-slider" class="utilization-slider" min="2" max="8" step="0.1" value="6" style="flex:1;">
+                    <span style="font-size:11px;color:var(--text-muted);min-width:34px;">100M</span>
                 </div>
             </div>
-            <button class="button button-primary" id="btn-simulate">
-                <i data-lucide="activity"></i> Simular
+
+            <!-- Botón simular -->
+            <button class="button button-primary button-lg shimmer" id="btn-simulate">
+                <i data-lucide="play"></i> Simular impacto anual
             </button>
         </div>
+    </div>
+
+    <!-- ── Estado B: Barra compacta de ajuste (post-simulación) ── -->
+    <div id="sim-compact-bar" class="card" style="display:none;margin-bottom:24px;padding:14px 20px;">
+        <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+            <i data-lucide="settings-2" style="color:var(--primary);width:16px;height:16px;flex-shrink:0;"></i>
+            <span style="font-family:'JetBrains Mono',monospace;color:var(--primary);font-size:15px;font-weight:700;" id="sim-compact-count">—</span>
+            <span style="color:var(--text-muted);font-size:11px;text-transform:uppercase;letter-spacing:.06em;">queries / día</span>
+            <div style="flex:1;"></div>
+            <button class="button button-secondary" id="btn-ajustar-sim" style="padding:6px 14px;font-size:12px;">
+                <i data-lucide="sliders-horizontal"></i> Ajustar
+            </button>
+        </div>
+    </div>
+
+    <!-- ── Área de resultados (post-simulación) ── -->
+    <div id="simulacion-content" style="display:none;">
+        <div id="tarea0-grafico-anual"></div>
+        <div id="tarea2-kpi-cards"></div>
+        <div id="tarea3-equivalencias"></div>
+        <div id="tarea4-grafico-comparativo"></div>
+        <div id="tarea5-breakeven"></div>
+        <div id="tarea6-sensitivity"></div>
         <div id="simulation-results"></div>
     </div>
+
 </div>
 
 <!-- ============================================================ -->
