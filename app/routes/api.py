@@ -67,6 +67,17 @@ def calculate():
     if missing:
         return jsonify({"error": f"Campos obligatorios faltantes: {missing}"}), 400
 
+    # Validar que los IDs __custom__ vengan acompañados de su dict
+    _CUSTOM_COMPANION = {
+        "model_id": "custom_model",
+        "data_center_id": "custom_dc",
+        "device_id": "custom_device",
+        "network_id": "custom_network",
+    }
+    for id_field, dict_field in _CUSTOM_COMPANION.items():
+        if data.get(id_field) == "__custom__" and not data.get(dict_field):
+            return jsonify({"error": f"'{id_field}' es '__custom__' pero falta '{dict_field}'"}), 400
+
     # Convertir tipos numéricos que pueden llegar como string desde el front
     params = _sanitize_params(data)
 
@@ -109,6 +120,16 @@ def compare():
     missing = [f for f in required if f not in data]
     if missing:
         return jsonify({"error": f"Campos obligatorios faltantes: {missing}"}), 400
+
+    # Validar custom companions para compare
+    _COMPARE_COMPANIONS = {
+        "data_center_id": "custom_dc",
+        "device_id": "custom_device",
+        "network_id": "custom_network",
+    }
+    for id_field, dict_field in _COMPARE_COMPANIONS.items():
+        if data.get(id_field) == "__custom__" and not data.get(dict_field):
+            return jsonify({"error": f"'{id_field}' es '__custom__' pero falta '{dict_field}'"}), 400
 
     params = _sanitize_params(data)
     calc, reports = _get_services()
@@ -299,6 +320,37 @@ def _sanitize_params(data: dict) -> dict:
     # Utilización: float
     if "utilization" in params and params["utilization"] is not None:
         params["utilization"] = float(params["utilization"])
+
+    # Sanitizar dicts custom (valores numéricos llegan como string desde el front)
+    _CUSTOM_FLOAT_KEYS = {
+        "custom_model": [
+            "num_parameters", "energy_wh_per_1k_tokens",
+            "latency_ms_per_token", "tokens_per_second",
+            "context_window", "max_output_tokens",
+        ],
+        "custom_dc": [
+            "pue", "provider_renewable_pct",
+        ],
+        "custom_device": [
+            "cpu_tdp_watts", "inference_cpu_watts",
+            "gpu_tdp_watts", "inference_gpu_watts",
+            "npu_tdp_watts", "inference_npu_watts",
+            "system_idle_watts",
+        ],
+        "custom_network": [
+            "energy_kWh_per_MB", "energy_kWh_per_GB",
+        ],
+    }
+    for dict_key, float_keys in _CUSTOM_FLOAT_KEYS.items():
+        cd = params.get(dict_key)
+        if cd and isinstance(cd, dict):
+            for fk in float_keys:
+                if fk in cd and cd[fk] is not None:
+                    try:
+                        cd[fk] = float(cd[fk])
+                    except (ValueError, TypeError):
+                        pass
+
     return params
 
 

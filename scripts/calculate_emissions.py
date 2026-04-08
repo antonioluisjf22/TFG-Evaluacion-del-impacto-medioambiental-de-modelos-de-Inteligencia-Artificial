@@ -134,6 +134,205 @@ GPU_EFFICIENCY = 0.35  # ~35% de eficiencia típica en inferencia
 WATTS_PER_TFLOP = 1.28  # NVIDIA A100: 400W / 312 TFLOPS (coherente con extract_models_v2.py)
 
 
+# ------------------------------------------------------------------
+# Helpers: relleno de valores por defecto para entidades personalizadas
+# ------------------------------------------------------------------
+
+def _fill_custom_model_defaults(d: dict) -> tuple[dict, list[str]]:
+    """Estima campos faltantes de un modelo personalizado con lógica bidireccional.
+
+    Prioridad para derivar num_parameters:
+      1. num_parameters explícito
+      2. energy_wh_per_1k_tokens (inversa: params_B = energy / 0.00002)
+      3. latency_ms_per_token   (inversa: params_B = latency / 0.25)
+      4. Fallback: 7B
+
+    Returns: (dict_rellenado, lista_campos_estimados)
+    """
+    d = dict(d)
+    estimated = []
+
+    def _to_float(v):
+        try:
+            return float(v) if v not in (None, '', 0) else None
+        except (TypeError, ValueError):
+            return None
+
+    params_raw = _to_float(d.get('num_parameters'))
+    energy_raw = _to_float(d.get('energy_wh_per_1k_tokens'))
+    latency_raw = _to_float(d.get('latency_ms_per_token'))
+
+    # --- Contar campos presentes ---
+    present = sum(x is not None for x in [params_raw, energy_raw, latency_raw])
+
+    if present == 3:
+        # Todos presentes: el usuario sabe exactamente, no tocar nada
+        params_b = params_raw / 1e9
+    elif params_raw is not None:
+        # Tenemos parámetros → derivar el resto a partir de ellos
+        params_b = params_raw / 1e9
+    elif energy_raw is not None:
+        # Derivar params_b desde energía (fórmula inversa)
+        params_b = energy_raw / 0.000020
+        d['num_parameters'] = params_b * 1e9
+        estimated.append(f'Nº parámetros del modelo (estimado desde energía: {params_b:.1f}B)')
+    elif latency_raw is not None:
+        # Derivar params_b desde latencia (fórmula inversa)
+        params_b = max(0.1, latency_raw / 0.25)
+        d['num_parameters'] = params_b * 1e9
+        estimated.append(f'Nº parámetros del modelo (estimado desde latencia: {params_b:.1f}B)')
+    else:
+        # Ningún campo: asumir 7B
+        params_b = 7.0
+        d['num_parameters'] = 7e9
+        estimated.append('Nº parámetros del modelo (estimado: 7B)')
+
+    if not d.get('energy_wh_per_1k_tokens'):
+        d['energy_wh_per_1k_tokens'] = round(params_b * 0.000020, 6)
+        estimated.append(f'Energía por 1k tokens (estimado: {d["energy_wh_per_1k_tokens"]} Wh)')
+
+    if not d.get('latency_ms_per_token'):
+        d['latency_ms_per_token'] = max(5.0, round(params_b * 0.25, 1))
+        estimated.append(f'Latencia por token (estimado: {d["latency_ms_per_token"]} ms)')
+
+    if not d.get('model_name'):
+        d['model_name'] = 'Modelo personalizado'
+    return d, estimated
+
+
+def _fill_custom_dc_defaults(d: dict) -> tuple[dict, list[str]]:
+    """Rellena campos faltantes de un data center personalizado con lógica inteligente.
+
+    Principio de consistencia: si el usuario especifica country_code, está pidiendo
+    datos reales → NO estimamos PUE (sería mezclar especificidad con genérico).
+    Solo se estima PUE cuando tampoco se especificó país (modo totalmente genérico).
+
+    Casos:
+      - Sin país, sin PUE → estimar 'ES' + 1.58 (totalmente genérico)
+      - Con país, sin PUE → obtener CI del país, NO estimar PUE (semi-específico)
+      - Con país, con PUE → mantener ambos (totalmente específico)
+
+    Returns: (dict_rellenado, lista_campos_estimados)
+    """
+    d = dict(d)
+    estimated = []
+
+    user_gave_country = bool(d.get('country_code'))
+
+    # --- Paso 1: Región/nombre obligatorio ---
+    if not d.get('region') and not d.get('dc_name'):
+        d['region'] = 'DC personalizado'
+
+    # --- Paso 2: country_code y carbon_intensity ---
+    if user_gave_country:
+        # Usuario especificó país → derivar CI automáticamente
+        ci = DEFAULT_CARBON_INTENSITY.get(d['country_code'],
+              DEFAULT_CARBON_INTENSITY.get('GLOBAL', 450))
+        d.setdefault('carbon_intensity', ci)
+    else:
+        # Usuario no especificó país → asumir ES (marcar como estimado)
+        d['country_code'] = 'ES'
+        ci = DEFAULT_CARBON_INTENSITY.get('ES', 145)
+        d.setdefault('carbon_intensity', ci)
+        estimated.append('País del DC (estimado: ES)')
+
+    # --- Paso 3: PUE ---
+    # REGLA CLAVE: Solo estimar PUE cuando el usuario tampoco especificó país.
+    # Si especificó país pero no PUE → dejar None (forzar consistencia).
+    # El PUE varía enormemente dentro del mismo país (ej: Francia: 1.08–2.0),
+    # estimar 1.58 global junto a un país concreto sería incoherente.
+    try:
+        pue = float(d.get('pue') or 0)
+    except (TypeError, ValueError):
+        pue = 0.0
+
+    if pue >= 1.0:
+        pass  # Usuario lo especificó, mantener
+    elif not user_gave_country:
+        # Modo totalmente genérico: estimar PUE también
+        d['pue'] = 1.58
+        estimated.append('PUE del DC (estimado: 1.58 — media global IEA 2023)')
+    else:
+        # Usuario dio país pero no PUE → no estimar, dejar None
+        d['pue'] = None
+
+    return d, estimated
+
+
+def _fill_custom_device_defaults(d: dict) -> tuple[dict, list[str]]:
+    """Rellena campos faltantes de un dispositivo personalizado con lógica por procesador.
+
+    Detecta el procesador primario según qué valores especificó el usuario y aplica
+    defaults SOLO para ese procesador. Los demás se ponen a 0 (explícito, no estimado).
+
+    Returns: (dict_rellenado, lista_campos_estimados)
+    """
+    d = dict(d)
+    estimated = []
+
+    # --- Paso 1: Detectar qué procesadores tienen valores especificados ---
+    cpu_specified = any(d.get(k) for k in ['cpu_tdp_watts', 'inference_cpu_watts'])
+    gpu_specified = any(d.get(k) for k in ['gpu_tdp_watts', 'inference_gpu_watts'])
+    npu_specified = any(d.get(k) for k in ['npu_tdp_watts', 'inference_npu_watts'])
+    target_specified = d.get('primary_inference_target')
+
+    # --- Paso 2: Determinar procesador primario ---
+    if target_specified:
+        primary = target_specified.lower()
+    elif gpu_specified and not cpu_specified and not npu_specified:
+        primary = 'gpu'
+    elif npu_specified and not cpu_specified and not gpu_specified:
+        primary = 'npu'
+    elif cpu_specified:
+        primary = 'cpu'
+    else:
+        # Nada especificado → asumir CPU
+        primary = 'cpu'
+        estimated.append('Procesador de inferencia (estimado: CPU)')
+
+    d['primary_inference_target'] = primary
+
+    # --- Paso 3: Valores por defecto por tipo de procesador ---
+    defaults_map = {
+        'cpu': {
+            'cpu_tdp_watts':       (45.0, 'CPU TDP (estimado: 45 W)'),
+            'inference_cpu_watts': (35.0, 'CPU inferencia (estimado: 35 W)'),
+        },
+        'gpu': {
+            'gpu_tdp_watts':       (150.0, 'GPU TDP (estimado: 150 W)'),
+            'inference_gpu_watts': (100.0, 'GPU inferencia (estimado: 100 W)'),
+        },
+        'npu': {
+            'npu_tdp_watts':       (15.0, 'NPU TDP (estimado: 15 W)'),
+            'inference_npu_watts': (10.0, 'NPU inferencia (estimado: 10 W)'),
+        },
+    }
+
+    # Aplicar defaults SOLO para el procesador primario
+    for key, (default_val, label) in defaults_map[primary].items():
+        if d.get(key) is None:
+            d[key] = default_val
+            estimated.append(label)
+
+    # Poner a 0 los otros procesadores (explícito, no se lista como estimado)
+    for proc, fields in defaults_map.items():
+        if proc != primary:
+            for key in fields:
+                if d.get(key) is None:
+                    d[key] = 0.0
+
+    # --- Paso 4: system_idle_watts (estimado según procesador) ---
+    if not d.get('system_idle_watts'):
+        idle_by_proc = {'cpu': 5.0, 'gpu': 10.0, 'npu': 3.0}
+        idle = idle_by_proc.get(primary, 5.0)
+        d['system_idle_watts'] = idle
+        estimated.append(f'Consumo idle del sistema (estimado: {idle} W)')
+
+    if not d.get('device_name'):
+        d['device_name'] = 'Dispositivo personalizado'
+    return d, estimated
+
+
 @dataclass
 class EmissionResult:
     """Resultado del cálculo de emisiones"""
@@ -165,6 +364,9 @@ class EmissionResult:
     # Información de procesador (nuevo v2.4)
     processor_used: str = "cpu"                # "cpu", "gpu", o "npu"
     processor_watts: float = 0.0               # Watts consumidos por el procesador
+
+    # Campos estimados automáticamente (v2.8 — custom values)
+    estimated_fields: list = None              # Lista de campos rellenados con valores genéricos
 
     # Valores intermedios de cálculo (v2.5 — para desglose de fórmulas en frontend)
     step_p_idle_w: float = 0.0
@@ -245,6 +447,8 @@ class EmissionResult:
                 }
             }
         }
+        if self.estimated_fields:
+            result["estimated_fields"] = self.estimated_fields
         return result
     
     def __str__(self) -> str:
@@ -695,7 +899,11 @@ class CarbonCalculator:
         request_type: str = None,  # NUEVO: Tipo de petición
         data_transferred_mb: float = None,  # Ahora se calcula automáticamente en función de tokens
         inference_processor: str = "auto",
-        utilization: float = 0.7
+        utilization: float = 0.7,
+        custom_model: dict = None,
+        custom_dc: dict = None,
+        custom_device: dict = None,
+        custom_network: dict = None,
     ) -> EmissionResult:
         """
         Calcula las emisiones totales de una consulta de IA.
@@ -728,10 +936,32 @@ class CarbonCalculator:
         """
         
         # Obtener datos de cada componente
-        model = self.get_model(model_id)
-        dc = self.get_data_center(data_center_id)
-        device = self.get_device(device_id)
-        network = self.get_network(network_id)
+        # Soporte para valores personalizados: si el ID es "__custom__" y se
+        # pasa un dict custom_*, se usa ese dict en lugar de buscar en el CSV.
+        _estimated_fields = []  # Campos estimados (solo para entidades custom)
+
+        if model_id == "__custom__" and custom_model is not None:
+            model, _est = _fill_custom_model_defaults(custom_model)
+            _estimated_fields.extend(_est)
+        else:
+            model = self.get_model(model_id)
+
+        if data_center_id == "__custom__" and custom_dc is not None:
+            dc, _est = _fill_custom_dc_defaults(custom_dc)
+            _estimated_fields.extend(_est)
+        else:
+            dc = self.get_data_center(data_center_id)
+
+        if device_id == "__custom__" and custom_device is not None:
+            device, _est = _fill_custom_device_defaults(custom_device)
+            _estimated_fields.extend(_est)
+        else:
+            device = self.get_device(device_id)
+
+        if network_id == "__custom__" and custom_network is not None:
+            network = custom_network
+        else:
+            network = self.get_network(network_id)
         
         # ===== LÓGICA DE TOKENS Y TIEMPO v2.0 =====
         # Ahora usamos los datos del modelo para calcular automáticamente
@@ -823,7 +1053,10 @@ class CarbonCalculator:
         ci_local = self.get_carbon_intensity(user_country)  # gCO2/kWh
         
         # Para el DC, usar la zona específica de Electricity Maps (más preciso)
-        if dc is not None:
+        if data_center_id == "__custom__" and custom_dc is not None:
+            # DC personalizado: usar CI del país indicado
+            ci_dc = self.get_carbon_intensity(custom_dc.get('country_code', user_country))
+        elif dc is not None:
             ci_dc = self.get_carbon_intensity_for_dc(data_center_id, dc['country_code'])
         else:
             ci_dc = ci_local
@@ -865,18 +1098,28 @@ class CarbonCalculator:
                 processor = inference_processor.lower()
                 
                 # Validar que el procesador sea válido para este dispositivo
-                try:
-                    valid_processors = self.get_valid_processors_for_device(device_id)
-                    if processor not in valid_processors:
-                        available = ", ".join(valid_processors)
-                        raise ValueError(
-                            f"Procesador '{processor}' no válido para dispositivo '{device_id}'. "
-                            f"Opciones disponibles: {available}"
-                        )
-                except ValueError as e:
-                    print(f"[ERROR] {str(e)}")
-                    # Fallback a CPU como procesador seguro si hay error de validación
-                    processor = "cpu"
+                if device_id == "__custom__":
+                    # Para dispositivos custom, validar contra los campos TDP del dict
+                    valid = ["cpu"]
+                    if device.get('gpu_tdp_watts', 0) > 0:
+                        valid.append("gpu")
+                    if device.get('npu_tdp_watts', 0) > 0:
+                        valid.append("npu")
+                    if processor not in valid:
+                        processor = "cpu"
+                else:
+                    try:
+                        valid_processors = self.get_valid_processors_for_device(device_id)
+                        if processor not in valid_processors:
+                            available = ", ".join(valid_processors)
+                            raise ValueError(
+                                f"Procesador '{processor}' no válido para dispositivo '{device_id}'. "
+                                f"Opciones disponibles: {available}"
+                            )
+                    except ValueError as e:
+                        print(f"[ERROR] {str(e)}")
+                        # Fallback a CPU como procesador seguro si hay error de validación
+                        processor = "cpu"
             
             # Obtener P_idle (consumo en reposo del sistema)
             p_idle = device.get('system_idle_watts', 5.0)
@@ -972,6 +1215,14 @@ class CarbonCalculator:
 
         if dc is not None:
             pue = dc['pue']
+            # Caso semi-específico: usuario dio país pero no PUE → fill lo dejó en None.
+            # Necesitamos un número para calcular; usamos 1.58 global y lo avisamos.
+            if pue is None:
+                pue = 1.58
+                _estimated_fields.append(
+                    'PUE del DC (país especificado sin PUE — se usó 1.58 global como fallback; '
+                    'especifica el PUE para mayor precisión)'
+                )
         else:
             pue = 1.15  # Promedio global
         
@@ -1012,7 +1263,14 @@ class CarbonCalculator:
         energy_total_wh = energy_device_wh + energy_network_wh + energy_datacenter_wh
         
         # Obtener información de renovables del DC
-        dc_renewable_info = self.get_dc_renewable_info(data_center_id)
+        if data_center_id == "__custom__" and custom_dc is not None:
+            dc_renewable_info = {
+                'renewable_grid_pct': None,
+                'provider_renewable_pct': custom_dc.get('provider_renewable_pct'),
+                'carbon_intensity': ci_dc
+            }
+        else:
+            dc_renewable_info = self.get_dc_renewable_info(data_center_id)
         
         return EmissionResult(
             co2_device_g=co2_device_g,
@@ -1023,10 +1281,10 @@ class CarbonCalculator:
             energy_network_wh=energy_network_wh,
             energy_datacenter_wh=energy_datacenter_wh,
             energy_total_wh=energy_total_wh,
-            model_name=model['model_name'] if model is not None else model_id,
-            device_name=device['device_name'] if device is not None else device_id,
-            network_type=network['network_type'] if network is not None else network_id,
-            data_center_name=dc['region'] if dc is not None else data_center_id,
+            model_name=model.get('model_name', model_id) if model is not None else model_id,
+            device_name=device.get('device_name', device_id) if device is not None else device_id,
+            network_type=network.get('network_type', network_id) if network is not None else network_id,
+            data_center_name=dc.get('region', dc.get('dc_name', data_center_id)) if dc is not None else data_center_id,
             inference_time_sec=inference_time_sec,
             tokens_processed=tokens_processed,
             dc_renewable_grid_pct=dc_renewable_info['renewable_grid_pct'],
@@ -1044,6 +1302,7 @@ class CarbonCalculator:
             step_energy_compute_wh=energy_compute_wh,
             step_pue=pue,
             step_model_wh_per_1k=_step_model_wh_per_1k,
+            estimated_fields=_estimated_fields if _estimated_fields else None,
         )
     
     def list_available(self) -> Dict[str, list]:

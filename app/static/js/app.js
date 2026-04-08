@@ -14,6 +14,9 @@
     let LAST_PARAMS = null;
     let pieChart = null, barChart = null, projChart = null;
 
+    // Custom panel state — tracks which custom panels are active
+    const CUSTOM_ACTIVE = { model: false, dc: false, device: false };
+
     // CountUp helper — lazy because script is deferred
     function getCountUp() {
         return window.countUp ? window.countUp.CountUp : null;
@@ -54,6 +57,7 @@
     document.addEventListener("DOMContentLoaded", () => {
         initTabs();
         initForm();
+        initCustomPanels();
         loadOptions();
         initMap();
         if (window.lucide) lucide.createIcons();
@@ -172,6 +176,74 @@
     }
 
     // ------------------------------------------------------------------
+    // Custom value panels
+    // ------------------------------------------------------------------
+    function initCustomPanels() {
+        // Mapping: panelId → { stateKey, selectId }
+        const PANELS = {
+            "custom-model-panel":  { stateKey: "model",  selectId: "model_id" },
+            "custom-dc-panel":     { stateKey: "dc",     selectId: "data_center_id" },
+            "custom-device-panel": { stateKey: "device", selectId: "device_id" },
+        };
+
+        // Toggle buttons: open panel → disable select, set __custom__
+        document.querySelectorAll(".btn-custom-toggle").forEach(btn => {
+            btn.addEventListener("click", () => {
+                const panelId = btn.dataset.target;
+                const cfg = PANELS[panelId];
+                if (!cfg) return;
+                const panel = document.getElementById(panelId);
+                const sel = document.getElementById(cfg.selectId);
+                if (!panel || !sel) return;
+
+                CUSTOM_ACTIVE[cfg.stateKey] = true;
+                panel.style.display = "block";
+                sel.disabled = true;
+                sel.value = "";  // clear dataset selection
+                btn.style.display = "none";
+                if (window.lucide) lucide.createIcons();
+            });
+        });
+
+        // Cancel buttons: close panel → re-enable select
+        document.querySelectorAll(".btn-custom-cancel").forEach(btn => {
+            btn.addEventListener("click", () => {
+                const panelId = btn.dataset.target;
+                const cfg = PANELS[panelId];
+                if (!cfg) return;
+
+                closeCustomPanel(panelId, cfg);
+            });
+        });
+    }
+
+    function closeCustomPanel(panelId, cfg) {
+        if (!cfg) {
+            const PANELS = {
+                "custom-model-panel":  { stateKey: "model",  selectId: "model_id" },
+                "custom-dc-panel":     { stateKey: "dc",     selectId: "data_center_id" },
+                "custom-device-panel": { stateKey: "device", selectId: "device_id" },
+            };
+            cfg = PANELS[panelId];
+        }
+        if (!cfg) return;
+        const panel = document.getElementById(panelId);
+        const sel = document.getElementById(cfg.selectId);
+        const toggleBtn = document.querySelector(`.btn-custom-toggle[data-target="${panelId}"]`);
+
+        CUSTOM_ACTIVE[cfg.stateKey] = false;
+        if (panel) panel.style.display = "none";
+        if (sel) { sel.disabled = false; }
+        if (toggleBtn) toggleBtn.style.display = "";
+    }
+
+    function closeAllCustomPanels() {
+        ["custom-model-panel", "custom-dc-panel", "custom-device-panel"].forEach(id => {
+            closeCustomPanel(id);
+        });
+    }
+
+    // ------------------------------------------------------------------
     // Load example data
     // ------------------------------------------------------------------
     function loadExample() {
@@ -179,6 +251,9 @@
             showError("Espera a que carguen los catálogos antes de cargar el ejemplo.");
             return;
         }
+
+        // Close any open custom panels first
+        closeAllCustomPanels();
 
         // Pick example values
         const exModel = OPTIONS.models.find(m => /claude.*3.*5.*sonnet/i.test(m.model_name || m.model_id))
@@ -355,6 +430,25 @@
         div.style.display = "block";
     }
 
+    function renderEstimatedBanner(fields) {
+        const banner = document.getElementById("estimated-fields-banner");
+        if (!banner) return;
+        if (!fields || !fields.length) {
+            banner.style.display = "none";
+            return;
+        }
+        const items = fields.map(f => `<li>${f}</li>`).join("");
+        banner.innerHTML = `
+            <div class="estimated-banner-header">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                <strong>Datos incompletos</strong> — Este cálculo incluye valores genéricos estimados que pueden diferir significativamente de la realidad.
+            </div>
+            <ul class="estimated-banner-list">${items}</ul>
+            <p class="estimated-banner-tip">Para mayor precisión, rellena estos campos en el panel personalizado del formulario.</p>
+        `;
+        banner.style.display = "block";
+    }
+
     function fillSelect(selectId, items, labelFn, valueFn, optional) {
         const sel = document.getElementById(selectId);
         if (!sel) return;
@@ -451,10 +545,11 @@
 
     function getFormParams() {
         const get = id => { const el = document.getElementById(id); return el ? el.value : ""; };
+        const getNum = id => { const v = get(id); return v !== "" ? parseFloat(v) : null; };
         const params = {
-            model_id: get("model_id"),
-            data_center_id: get("data_center_id"),
-            device_id: get("device_id"),
+            model_id: CUSTOM_ACTIVE.model ? "__custom__" : get("model_id"),
+            data_center_id: CUSTOM_ACTIVE.dc ? "__custom__" : get("data_center_id"),
+            device_id: CUSTOM_ACTIVE.device ? "__custom__" : get("device_id"),
             network_id: get("network_id"),
             inference_processor: get("inference_processor") || "auto",
             utilization: parseFloat(get("utilization")) / 100,
@@ -463,6 +558,51 @@
         if (rt) params.request_type = rt;
         const country = get("user_country");
         if (country) params.user_country = country;
+
+        // Attach custom dicts when active.
+        // IMPORTANTE: solo enviar campos con valor real; el backend se encarga
+        // de estimar los restantes de forma inteligente (autocompletado bidireccional).
+        const filterNulls = obj => Object.fromEntries(
+            Object.entries(obj).filter(([, v]) => v !== null && v !== undefined && v !== "")
+        );
+
+        if (CUSTOM_ACTIVE.model) {
+            const raw = {
+                model_name: get("custom_model_name") || null,
+                num_parameters: getNum("custom_model_num_parameters"),
+                energy_wh_per_1k_tokens: getNum("custom_model_energy_wh_per_1k_tokens"),
+                latency_ms_per_token: getNum("custom_model_latency_ms_per_token"),
+            };
+            // Convertir parámetros de B → número raw antes de filtrar
+            if (raw.num_parameters != null) {
+                raw.num_parameters = raw.num_parameters * 1e9;
+            }
+            params.custom_model = filterNulls(raw);
+        }
+        if (CUSTOM_ACTIVE.dc) {
+            const raw = {
+                dc_name: get("custom_dc_region") || null,
+                region: get("custom_dc_region") || null,
+                country_code: get("custom_dc_country_code") || null,
+                pue: getNum("custom_dc_pue"),
+                provider_renewable_pct: getNum("custom_dc_provider_renewable_pct"),
+            };
+            params.custom_dc = filterNulls(raw);
+        }
+        if (CUSTOM_ACTIVE.device) {
+            const raw = {
+                device_name: get("custom_device_name") || null,
+                primary_inference_target: get("custom_device_primary_inference_target") || null,
+                system_idle_watts: getNum("custom_device_system_idle_watts"),
+                cpu_tdp_watts: getNum("custom_device_cpu_tdp_watts"),
+                inference_cpu_watts: getNum("custom_device_inference_cpu_watts"),
+                gpu_tdp_watts: getNum("custom_device_gpu_tdp_watts"),
+                inference_gpu_watts: getNum("custom_device_inference_gpu_watts"),
+                npu_tdp_watts: getNum("custom_device_npu_tdp_watts"),
+                inference_npu_watts: getNum("custom_device_inference_npu_watts"),
+            };
+            params.custom_device = filterNulls(raw);
+        }
         return params;
     }
 
@@ -472,6 +612,9 @@
     function renderResults(data) {
         document.getElementById("results-placeholder").style.display = "none";
         document.getElementById("results-content").style.display = "block";
+
+        // Mostrar banner si hay campos estimados
+        renderEstimatedBanner(data.estimated_fields || null);
 
         const em = data.emissions_gCO2 || {};
         const en = data.energy_Wh || {};

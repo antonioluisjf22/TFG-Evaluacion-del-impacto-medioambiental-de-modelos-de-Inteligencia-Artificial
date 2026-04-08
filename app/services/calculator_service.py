@@ -159,7 +159,8 @@ class CalculatorService:
             model_id, data_center_id, device_id, network_id,
             user_country, request_type,
             tokens_input, tokens_output,
-            inference_processor, utilization
+            inference_processor, utilization,
+            custom_model, custom_dc, custom_device, custom_network
         """
         return self.calculator.calculate_emissions(
             model_id=params["model_id"],
@@ -172,6 +173,10 @@ class CalculatorService:
             tokens_output=params.get("tokens_output"),
             inference_processor=params.get("inference_processor", "auto"),
             utilization=params.get("utilization", 0.7),
+            custom_model=params.get("custom_model"),
+            custom_dc=params.get("custom_dc"),
+            custom_device=params.get("custom_device"),
+            custom_network=params.get("custom_network"),
         )
 
     def compare_models(self, params: dict) -> list[EmissionResult]:
@@ -180,6 +185,8 @@ class CalculatorService:
         de parámetros fijos.  Devuelve lista de EmissionResult.
 
         params: mismos que calculate() pero sin model_id.
+        custom_dc/custom_device/custom_network se propagan;
+        custom_model se ignora (se itera sobre los del dataset).
         """
         models = self.calculator.models_df
         if models is None:
@@ -189,6 +196,7 @@ class CalculatorService:
         for model_id in models["model_id"]:
             try:
                 p = {**params, "model_id": model_id}
+                p.pop("custom_model", None)  # no custom model en comparación
                 results.append(self.calculate(p))
             except Exception:
                 continue

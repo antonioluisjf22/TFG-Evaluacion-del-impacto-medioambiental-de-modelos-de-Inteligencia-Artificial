@@ -92,6 +92,32 @@
                         <select id="model_id" name="model_id" required>
                             <option value="">— Selecciona un modelo —</option>
                         </select>
+                        <button type="button" class="btn-custom-toggle" data-target="custom-model-panel">
+                            <i data-lucide="edit-3"></i> Introducir valores personalizados
+                        </button>
+                        <div id="custom-model-panel" class="custom-input-panel" style="display:none;">
+                            <div class="custom-panel-header">
+                                <span class="custom-mode-badge">Modo personalizado</span>
+                                <button type="button" class="btn-custom-cancel" data-target="custom-model-panel">✕ Cancelar</button>
+                            </div>
+                            <p class="custom-panel-hint">Solo el nombre es obligatorio. El resto se estima automáticamente si se deja vacío.</p>
+                            <div class="form-row">
+                                <label>Nombre del modelo</label>
+                                <input type="text" id="custom_model_name" placeholder="Ej: Mi Modelo LLM" />
+                            </div>
+                            <div class="form-row">
+                                <label>Nº parámetros (B)</label>
+                                <input type="number" id="custom_model_num_parameters" placeholder="Ej: 70 (= 70B)" step="any" min="0" />
+                            </div>
+                            <div class="form-row">
+                                <label>Energía por 1k tokens (Wh)</label>
+                                <input type="number" id="custom_model_energy_wh_per_1k_tokens" placeholder="Ej: 0.012" step="any" min="0" />
+                            </div>
+                            <div class="form-row">
+                                <label>Latencia por token (ms)</label>
+                                <input type="number" id="custom_model_latency_ms_per_token" placeholder="Ej: 20" step="any" min="0" />
+                            </div>
+                        </div>
                         <div id="model-info" class="device-info" style="display:none;"></div>
                     </div>
                     <div class="input-group">
@@ -112,6 +138,32 @@
                         <select id="data_center_id" name="data_center_id" required>
                             <option value="">— Selecciona data center —</option>
                         </select>
+                        <button type="button" class="btn-custom-toggle" data-target="custom-dc-panel">
+                            <i data-lucide="edit-3"></i> Introducir valores personalizados
+                        </button>
+                        <div id="custom-dc-panel" class="custom-input-panel" style="display:none;">
+                            <div class="custom-panel-header">
+                                <span class="custom-mode-badge">Modo personalizado</span>
+                                <button type="button" class="btn-custom-cancel" data-target="custom-dc-panel">✕ Cancelar</button>
+                            </div>
+                            <p class="custom-panel-hint">Solo el nombre es obligatorio. País: ES y PUE: 1.58 por defecto si se deja vacío.</p>
+                            <div class="form-row">
+                                <label>Nombre / Región</label>
+                                <input type="text" id="custom_dc_region" placeholder="Ej: Mi DC Madrid" />
+                            </div>
+                            <div class="form-row">
+                                <label>País (ISO alpha-2)</label>
+                                <input type="text" id="custom_dc_country_code" placeholder="Ej: ES" maxlength="5" />
+                            </div>
+                            <div class="form-row">
+                                <label>PUE</label>
+                                <input type="number" id="custom_dc_pue" placeholder="Ej: 1.15" step="0.01" min="1.0" value="1.15" />
+                            </div>
+                            <div class="form-row">
+                                <label>% Renovable del proveedor</label>
+                                <input type="number" id="custom_dc_provider_renewable_pct" placeholder="Ej: 80" step="any" min="0" max="100" />
+                            </div>
+                        </div>
                         <div id="dc-info" class="device-info" style="display:none;"></div>
                     </div>
                 </div>
@@ -135,6 +187,56 @@
                         <select id="device_id" name="device_id" required>
                             <option value="">— Selecciona dispositivo —</option>
                         </select>
+                        <button type="button" class="btn-custom-toggle" data-target="custom-device-panel">
+                            <i data-lucide="edit-3"></i> Introducir valores personalizados
+                        </button>
+                        <div id="custom-device-panel" class="custom-input-panel" style="display:none;">
+                            <div class="custom-panel-header">
+                                <span class="custom-mode-badge">Modo personalizado</span>
+                                <button type="button" class="btn-custom-cancel" data-target="custom-device-panel">✕ Cancelar</button>
+                            </div>
+                            <p class="custom-panel-hint">Solo el nombre es obligatorio. Los consumos se estiman con valores típicos de portátil si se dejan vacíos.</p>
+                            <div class="form-row">
+                                <label>Nombre del dispositivo</label>
+                                <input type="text" id="custom_device_name" placeholder="Ej: Mi portátil gaming" />
+                            </div>
+                            <div class="form-row">
+                                <label>Procesador de inferencia principal</label>
+                                <select id="custom_device_primary_inference_target">
+                                    <option value="cpu">CPU</option>
+                                    <option value="gpu">GPU</option>
+                                    <option value="npu">NPU</option>
+                                </select>
+                            </div>
+                            <div class="form-row">
+                                <label>Consumo idle del sistema (W)</label>
+                                <input type="number" id="custom_device_system_idle_watts" placeholder="Ej: 5" step="any" min="0" />
+                            </div>
+                            <div class="form-row">
+                                <label>CPU TDP (W)</label>
+                                <input type="number" id="custom_device_cpu_tdp_watts" placeholder="Ej: 45" step="any" min="0" />
+                            </div>
+                            <div class="form-row">
+                                <label>CPU inferencia (W)</label>
+                                <input type="number" id="custom_device_inference_cpu_watts" placeholder="Ej: 35" step="any" min="0" />
+                            </div>
+                            <div class="form-row">
+                                <label>GPU TDP (W) <small>(0 si no tiene)</small></label>
+                                <input type="number" id="custom_device_gpu_tdp_watts" placeholder="Ej: 150" step="any" min="0" value="0" />
+                            </div>
+                            <div class="form-row">
+                                <label>GPU inferencia (W)</label>
+                                <input type="number" id="custom_device_inference_gpu_watts" placeholder="Ej: 100" step="any" min="0" value="0" />
+                            </div>
+                            <div class="form-row">
+                                <label>NPU TDP (W) <small>(0 si no tiene)</small></label>
+                                <input type="number" id="custom_device_npu_tdp_watts" placeholder="Ej: 15" step="any" min="0" value="0" />
+                            </div>
+                            <div class="form-row">
+                                <label>NPU inferencia (W)</label>
+                                <input type="number" id="custom_device_inference_npu_watts" placeholder="Ej: 10" step="any" min="0" value="0" />
+                            </div>
+                        </div>
                         <div id="device-info" class="device-info" style="display:none;"></div>
                     </div>
                     <div class="input-group">
@@ -218,6 +320,7 @@
         <p>Configura los parámetros en la pestaña <strong>Formulario</strong> y pulsa <em>Calcular emisiones</em>.</p>
     </div>
     <div id="results-content" style="display: none;">
+        <div id="estimated-fields-banner" class="estimated-banner" style="display:none;"></div>
         <div class="metrics-grid" id="results-metrics"></div>
 
         <div class="card">
