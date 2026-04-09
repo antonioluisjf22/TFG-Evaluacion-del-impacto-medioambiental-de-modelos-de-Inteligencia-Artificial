@@ -203,6 +203,7 @@
                             <div class="form-row">
                                 <label>Procesador de inferencia principal</label>
                                 <select id="custom_device_primary_inference_target">
+                                    <option value="">— Selecciona procesador —</option>
                                     <option value="cpu">CPU</option>
                                     <option value="gpu">GPU</option>
                                     <option value="npu">NPU</option>
@@ -251,6 +252,7 @@
                             <option value="gpu">GPU</option>
                             <option value="npu">NPU</option>
                         </select>
+                        <div id="proc-custom-hint" class="proc-custom-hint" style="display:none;"></div>
                         <div id="proc-info" class="device-info" style="display:none;"></div>
                     </div>
                     <div class="input-group">

@@ -202,6 +202,15 @@
                 sel.value = "";  // clear dataset selection
                 btn.style.display = "none";
                 if (window.lucide) lucide.createIcons();
+                // Si es el panel de dispositivo: resetear el Paso 5 a "auto"
+                // para que quede sincronizado con el primary_inference_target
+                // que el usuario defina en el panel custom. El usuario puede
+                // cambiarlo conscientemente después.
+                if (cfg.stateKey === "device") {
+                    const procSel = document.getElementById("inference_processor");
+                    if (procSel) { procSel.value = "auto"; procSel.style.display = "none"; }
+                    updateCustomDeviceProcInfo();
+                }
             });
         });
 
@@ -235,6 +244,17 @@
         if (panel) panel.style.display = "none";
         if (sel) { sel.disabled = false; }
         if (toggleBtn) toggleBtn.style.display = "";
+        // Si era el panel de dispositivo, restaurar opciones del Paso 5 y limpiar proc-info
+        if (cfg && cfg.stateKey === "device") {
+            _resetProcSelectOptions();
+            // Mostrar de nuevo el select del Paso 5
+            const procSelect = document.getElementById("inference_processor");
+            if (procSelect) procSelect.style.display = "";
+            showInfo("device-info", null);
+            showInfo("proc-info", null);
+            const hintEl = document.getElementById("proc-custom-hint");
+            if (hintEl) { hintEl.style.display = "none"; hintEl.innerHTML = ""; }
+        }
     }
 
     function closeAllCustomPanels() {
@@ -363,9 +383,48 @@
             updateDeviceInfo(e.target.value);
         });
 
+        // Paso 5 listener unificado: cubre modo normal y modo custom
         document.getElementById("inference_processor")?.addEventListener("change", () => {
-            const devId = document.getElementById("device_id")?.value;
-            updateDeviceInfo(devId);
+            if (CUSTOM_ACTIVE.device) {
+                // Paso 5 → Paso 4: sincronizar primary_inference_target con lo seleccionado
+                const procSel = document.getElementById("inference_processor")?.value || "auto";
+                if (procSel !== "auto" && procSel !== "") {
+                    const primarySel = document.getElementById("custom_device_primary_inference_target");
+                    if (primarySel) primarySel.value = procSel;
+                }
+                updateCustomDeviceProcInfo();
+            } else {
+                const devId = document.getElementById("device_id")?.value;
+                updateDeviceInfo(devId);
+            }
+        });
+
+        // Listeners para actualizar proc-info en tiempo real cuando se editan
+        // los campos del dispositivo personalizado (Paso 4 → repercute en Paso 5)
+        const CUSTOM_DEVICE_PROC_FIELDS = [
+            "custom_device_primary_inference_target",
+            "custom_device_gpu_tdp_watts",
+            "custom_device_npu_tdp_watts",
+            "custom_device_inference_cpu_watts",
+            "custom_device_inference_gpu_watts",
+            "custom_device_inference_npu_watts",
+        ];
+        CUSTOM_DEVICE_PROC_FIELDS.forEach(id => {
+            const el = document.getElementById(id);
+            if (!el) return;
+            const handler = () => {
+                if (!CUSTOM_ACTIVE.device) return;
+                // Paso 4 → Paso 5: si cambia el procesador primario, resetear Paso 5 a
+                // "auto" para que ambos queden sincronizados. El usuario puede luego
+                // escoger un procesador específico en Paso 5 conscientemente.
+                if (id === "custom_device_primary_inference_target") {
+                    const procSel = document.getElementById("inference_processor");
+                    if (procSel) procSel.value = "auto";
+                }
+                updateCustomDeviceProcInfo();
+            };
+            el.addEventListener("change", handler);
+            el.addEventListener("input",  handler);
         });
 
         fillSelect("network_id", OPTIONS.networks || [], item =>
@@ -382,6 +441,11 @@
     }
 
     function updateDeviceInfo(devId) {
+        // If custom device panel is active, delegate to custom logic
+        if (CUSTOM_ACTIVE.device) {
+            updateCustomDeviceProcInfo();
+            return;
+        }
         const dev = (OPTIONS.devices || []).find(x => x.device_id === devId);
         if (!dev) { showInfo("device-info", null); showInfo("proc-info", null); return; }
         const procSel = document.getElementById("inference_processor")?.value || "auto";
@@ -395,11 +459,94 @@
         const wattsMap = { cpu: dev.inference_cpu_watts, gpu: dev.inference_gpu_watts, npu: dev.inference_npu_watts };
         const watts = wattsMap[target];
         const isAuto = procSel === "auto";
+        // Restore all options (in case they were disabled by a previous custom session)
+        _resetProcSelectOptions();
         showInfo("proc-info", [
             isAuto
                 ? `Auto → <strong>${target.toUpperCase()}</strong> (${fmtVal(watts) || "?"}W, óptimo para este dispositivo)`
                 : `Usando <strong>${target.toUpperCase()}</strong>: ${fmtVal(watts) || "?"}W`,
         ]);
+    }
+
+    /** Actualiza proc-info y deshabilita/habilita opciones del Paso 5
+     *  en función de los datos introducidos en el panel personalizado (Paso 4). */
+    function updateCustomDeviceProcInfo() {
+        const getN = id => { const v = document.getElementById(id)?.value; return v !== "" && v != null ? parseFloat(v) : 0; };
+        const getS = id => document.getElementById(id)?.value || "";
+
+        // primaryRaw = "" si aún no ha seleccionado nada; primary = valor para cálculos
+        const primaryRaw = document.getElementById("custom_device_primary_inference_target")?.value || "";
+        const primary = primaryRaw || "cpu";
+        const gpuTdp  = getN("custom_device_gpu_tdp_watts");
+        const npuTdp  = getN("custom_device_npu_tdp_watts");
+        const cpuInf  = getN("custom_device_inference_cpu_watts");
+        const gpuInf  = getN("custom_device_inference_gpu_watts");
+        const npuInf  = getN("custom_device_inference_npu_watts");
+
+        // Procesadores disponibles: CPU siempre, GPU/NPU si TDP > 0 O si son el primario
+        // (si son el primario el backend estimará el TDP)
+        const available = ["cpu"];
+        if (gpuTdp > 0 || primary === "gpu") available.push("gpu");
+        if (npuTdp > 0 || primary === "npu") available.push("npu");
+
+        // Actualizar opciones del select Paso 5: deshabilitar las no disponibles
+        const procSelect = document.getElementById("inference_processor");
+        if (procSelect) {
+            procSelect.querySelectorAll("option").forEach(opt => {
+                if (opt.value === "" || opt.value === "auto" || opt.value === "cpu") {
+                    opt.disabled = false;
+                } else {
+                    opt.disabled = !available.includes(opt.value);
+                    if (opt.disabled && procSelect.value === opt.value) {
+                        // Si la opción actualmente seleccionada queda deshabilitada → resetear a auto
+                        procSelect.value = "auto";
+                    }
+                }
+            });
+        }
+
+        const procSel = procSelect?.value || "auto";
+        const effective = procSel === "auto" ? primary : procSel;
+        const wattsMap = { cpu: cpuInf, gpu: gpuInf, npu: npuInf };
+        const watts = wattsMap[effective] || null;
+
+        // Aviso contextual en Paso 5 (el select ya esta oculto desde que se abrio el panel)
+        const hintEl = document.getElementById("proc-custom-hint");
+        if (hintEl) {
+            if (!primaryRaw) {
+                // Paso 4 aún no tiene procesador seleccionado
+                hintEl.innerHTML = `<span class="proc-hint-pending">↑ Selecciona el procesador principal en el Paso 4.</span>`;
+                hintEl.style.display = "block";
+            } else {
+                // Paso 4 ya tiene procesador – el select queda oculto
+                hintEl.innerHTML = `<span class="proc-hint-ok">✓ Procesador definido en el Paso 4: <strong>${primary.toUpperCase()}</strong>. El modo «Auto» lo respetará.</span>`;
+                hintEl.style.display = "block";
+            }
+        }
+
+        if (procSel === "auto") {
+            showInfo("proc-info", primary
+                ? [`Auto → <strong>${effective.toUpperCase()}</strong> (${watts ? fmtVal(watts) + "W" : "?W"}, procesador principal del dispositivo personalizado)`]
+                : null
+            );
+        } else if (!available.includes(effective)) {
+            showInfo("proc-info", [
+                `<span style="color:var(--secondary)">⚠ ${effective.toUpperCase()} no disponible: TDP = 0 W. Introduce los watios de ${effective.toUpperCase()} o selecciona otro procesador.</span>`,
+            ]);
+        } else {
+            showInfo("proc-info", [
+                `Usando <strong>${effective.toUpperCase()}</strong>: ${watts ? fmtVal(watts) + "W" : "?W"}`,
+            ]);
+        }
+    }
+
+    /** Restaura todas las opciones del select de procesador (las que pudieran haber
+     *  quedado deshabilitadas al volver del modo personalizado). */
+    function _resetProcSelectOptions() {
+        const procSelect = document.getElementById("inference_processor");
+        if (procSelect) {
+            procSelect.querySelectorAll("option").forEach(opt => { opt.disabled = false; });
+        }
     }
 
     // CO₂ estimator — inline in results tab (called after calculation)
@@ -518,6 +665,27 @@
         const btn = document.getElementById("btn-calculate");
         btn.disabled = true;
         btn.innerHTML = '<svg class="spin" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10" stroke-dasharray="32" stroke-dashoffset="12"/></svg> Calculando…';
+
+        // Validación cruzada Paso 4 (dispositivo custom) ↔ Paso 5 (procesador)
+        if (CUSTOM_ACTIVE.device) {
+            const procSel = document.getElementById("inference_processor")?.value || "auto";
+            if (procSel !== "auto" && procSel !== "cpu") {
+                const gpuTdp = parseFloat(document.getElementById("custom_device_gpu_tdp_watts")?.value) || 0;
+                const npuTdp = parseFloat(document.getElementById("custom_device_npu_tdp_watts")?.value) || 0;
+                if (procSel === "gpu" && gpuTdp <= 0) {
+                    showError("GPU no disponible en el dispositivo personalizado: el campo «GPU TDP (W)» está a 0. Introduce los watios de GPU o cambia el procesador del Paso 5.");
+                    btn.disabled = false;
+                    btn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 8 16 12 12 16"/><line x1="8" y1="12" x2="16" y2="12"/></svg> Calcular emisiones';
+                    return;
+                }
+                if (procSel === "npu" && npuTdp <= 0) {
+                    showError("NPU no disponible en el dispositivo personalizado: el campo «NPU TDP (W)» está a 0. Introduce los watios de NPU o cambia el procesador del Paso 5.");
+                    btn.disabled = false;
+                    btn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 8 16 12 12 16"/><line x1="8" y1="12" x2="16" y2="12"/></svg> Calcular emisiones';
+                    return;
+                }
+            }
+        }
 
         const params = getFormParams();
         LAST_PARAMS = params;
