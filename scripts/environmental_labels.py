@@ -50,61 +50,61 @@ class LabelThreshold:
 # UMBRALES DE PERCENTILES - OPCIÓN B (Escala europea A+++ a F)
 # ============================================================================
 
-# Basados en análisis de 426,000 combinaciones (2026-02-22)
+# Basados en análisis de 426,000 combinaciones (2026-03-11, v3.0 — 10 LLMs)
 # Percentiles: P2, P10, P20, P30, P50, P70, P90, P97
 
 THRESHOLDS_GENERAL: Dict[str, LabelThreshold] = {
     "A+++": LabelThreshold(
-        max_co2_g=0.000105,
+        max_co2_g=0.000892,
         percentile_upper=2,
         description="Excepcional",
         color_hex="#1B5E20",
         emoji="🌟"
     ),
     "A++": LabelThreshold(
-        max_co2_g=0.000303,
+        max_co2_g=0.002885,
         percentile_upper=10,
         description="Excelente",
         color_hex="#2D5016",
         emoji="🟢"
     ),
     "A+": LabelThreshold(
-        max_co2_g=0.001036,
+        max_co2_g=0.005406,
         percentile_upper=20,
         description="Muy bueno",
         color_hex="#388E3C",
         emoji="🟢"
     ),
     "A": LabelThreshold(
-        max_co2_g=0.001969,
+        max_co2_g=0.008973,
         percentile_upper=30,
         description="Bueno",
         color_hex="#4CAF50",
         emoji="🟢"
     ),
     "B": LabelThreshold(
-        max_co2_g=0.006326,
+        max_co2_g=0.022489,
         percentile_upper=50,
         description="Aceptable",
         color_hex="#8BC34A",
         emoji="🟡"
     ),
     "C": LabelThreshold(
-        max_co2_g=0.023881,
+        max_co2_g=0.053997,
         percentile_upper=70,
         description="Mejorable",
         color_hex="#FFC107",
         emoji="🟡"
     ),
     "D": LabelThreshold(
-        max_co2_g=0.102343,
+        max_co2_g=0.171746,
         percentile_upper=90,
         description="Ineficiente",
         color_hex="#FF9800",
         emoji="🟠"
     ),
     "E": LabelThreshold(
-        max_co2_g=0.251990,
+        max_co2_g=0.338943,
         percentile_upper=97,
         description="Muy ineficiente",
         color_hex="#F44336",
@@ -122,51 +122,51 @@ THRESHOLDS_GENERAL: Dict[str, LabelThreshold] = {
 # Umbrales específicos por tipo de petición
 THRESHOLDS_BY_REQUEST_TYPE: Dict[str, Dict[str, float]] = {
     "chat_simple": {
-        "A": 0.002,
-        "B": 0.008,
-        "C": 0.020,
-        "D": 0.050,
-        "E": 0.150,
+        "A": 0.002644,
+        "B": 0.005745,
+        "C": 0.014404,
+        "D": 0.032027,
+        "E": 0.074815,
         "F": float('inf')
     },
     "chat_extended": {
-        "A": 0.005,
-        "B": 0.020,
-        "C": 0.050,
-        "D": 0.120,
-        "E": 0.300,
+        "A": 0.006151,
+        "B": 0.013443,
+        "C": 0.036122,
+        "D": 0.080049,
+        "E": 0.186203,
         "F": float('inf')
     },
     "generation_short": {
-        "A": 0.001,
-        "B": 0.003,
-        "C": 0.008,
-        "D": 0.020,
-        "E": 0.060,
+        "A": 0.000949,
+        "B": 0.002191,
+        "C": 0.004617,
+        "D": 0.009910,
+        "E": 0.022617,
         "F": float('inf')
     },
     "generation_long": {
-        "A": 0.020,
-        "B": 0.050,
-        "C": 0.120,
-        "D": 0.300,
-        "E": 0.500,
+        "A": 0.011643,
+        "B": 0.036139,
+        "C": 0.093666,
+        "D": 0.195884,
+        "E": 0.541664,
         "F": float('inf')
     },
     "code_generation": {
-        "A": 0.005,
-        "B": 0.015,
-        "C": 0.040,
-        "D": 0.100,
-        "E": 0.250,
+        "A": 0.003560,
+        "B": 0.007794,
+        "C": 0.019995,
+        "D": 0.044687,
+        "E": 0.104665,
         "F": float('inf')
     },
     "summarization": {
-        "A": 0.005,
-        "B": 0.020,
-        "C": 0.050,
-        "D": 0.120,
-        "E": 0.300,
+        "A": 0.006187,
+        "B": 0.013027,
+        "C": 0.037831,
+        "D": 0.078939,
+        "E": 0.191833,
         "F": float('inf')
     },
     "translation": {
@@ -182,29 +182,29 @@ THRESHOLDS_BY_REQUEST_TYPE: Dict[str, Dict[str, float]] = {
 # Estadísticas de referencia del análisis
 REFERENCE_STATISTICS = {
     "sample_size": 426000,
-    "analysis_date": "2026-02-22",
+    "analysis_date": "2026-03-11",
     "percentiles": {
-        "p0_min": 0.000076,
-        "p5": 0.000164,
-        "p10": 0.000303,
-        "p20": 0.001036,
-        "p30": 0.001969,
-        "p40": 0.003674,
-        "p50_median": 0.006326,
-        "p60": 0.013090,
-        "p70": 0.023881,
-        "p80": 0.042188,
-        "p90": 0.102343,
-        "p95": 0.198659,
-        "p99": 0.579410,
-        "p100_max": 1.072966
+        "p0_min": 0.000123,
+        "p5": 0.001612,
+        "p10": 0.002885,
+        "p20": 0.005406,
+        "p30": 0.008973,
+        "p40": 0.013736,
+        "p50_median": 0.022489,
+        "p60": 0.034972,
+        "p70": 0.053997,
+        "p80": 0.091746,
+        "p90": 0.171746,
+        "p95": 0.241276,
+        "p99": 0.619003,
+        "p100_max": 1.472249
     },
-    "mean": 0.039427,
-    "std_dev": 0.094173,
+    "mean": 0.063908,
+    "std_dev": 0.113066,
     "component_contribution": {
-        "device_pct": 23.1,
-        "network_pct": 34.1,
-        "datacenter_pct": 42.8
+        "device_pct": 10.8,
+        "network_pct": 10.8,
+        "datacenter_pct": 78.4
     }
 }
 
@@ -459,14 +459,14 @@ if __name__ == "__main__":
     
     # Ejemplos de uso - valores que prueban cada clase
     test_values = [
-        0.00005,   # A+++ (< P2)
-        0.0002,    # A++  (P2-P10)
-        0.0005,    # A+   (P10-P20)
-        0.0015,    # A    (P20-P30)
-        0.004,     # B    (P30-P50)
-        0.015,     # C    (P50-P70)
-        0.08,      # D    (P70-P90)
-        0.2,       # E    (P90-P97)
+        0.0005,    # A+++ (< P2)
+        0.002,     # A++  (P2-P10)
+        0.004,     # A+   (P10-P20)
+        0.007,     # A    (P20-P30)
+        0.015,     # B    (P30-P50)
+        0.040,     # C    (P50-P70)
+        0.12,      # D    (P70-P90)
+        0.25,      # E    (P90-P97)
         0.5        # F    (P97+)
     ]
     
