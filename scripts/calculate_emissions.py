@@ -1106,7 +1106,12 @@ class CarbonCalculator:
                     if device.get('npu_tdp_watts', 0) > 0:
                         valid.append("npu")
                     if processor not in valid:
-                        processor = "cpu"
+                        available_str = ", ".join(v.upper() for v in valid)
+                        raise ValueError(
+                            f"Procesador '{processor.upper()}' no disponible en el dispositivo personalizado. "
+                            f"Procesadores disponibles: {available_str}. "
+                            f"Configura los watios del procesador en el panel personalizado o selecciona 'auto'."
+                        )
                 else:
                     try:
                         valid_processors = self.get_valid_processors_for_device(device_id)
