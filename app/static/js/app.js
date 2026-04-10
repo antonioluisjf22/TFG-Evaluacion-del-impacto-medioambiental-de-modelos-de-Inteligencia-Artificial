@@ -4539,8 +4539,8 @@
                     </p>
                     <p class="elabel-info-text">
                         Al igual que la UE calibra sus umbrales de eficiencia a partir de cómo se distribuyen realmente
-                        los productos en el mercado (usando percentiles), analizamos <strong>426.000 combinaciones</strong> de 
-                        escenarios reales: 10 modelos LLM × 71 centros de datos × 20 dispositivos × 5 redes × 7 tipos de consulta.
+                        los productos en el mercado (usando percentiles), analizamos <strong>639.000 combinaciones</strong> de 
+                        escenarios reales: 15 modelos LLM × 71 centros de datos × 20 dispositivos × 5 redes × 6 tipos de consulta.
                         Esto nos permite saber dónde se ubica tu consulta dentro del universo completo de posibilidades.
                     </p>
                 </div>

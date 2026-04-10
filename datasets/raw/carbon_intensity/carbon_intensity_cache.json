@@ -1065,7 +1065,7 @@
   "ci_ES": {
     "carbonIntensity": 100,
     "zone": "ES",
-    "timestamp": "2026-04-10T18:21:56.506083",
+    "timestamp": "2026-04-10T19:42:19.775245",
     "source": "electricity_maps_api",
     "fossilFreePercentage": null,
     "renewablePercentage": null
@@ -1087,9 +1087,9 @@
     "renewablePercentage": null
   },
   "ci_DE": {
-    "carbonIntensity": 500,
+    "carbonIntensity": 537,
     "zone": "DE",
-    "timestamp": "2026-04-10T18:21:57.272519",
+    "timestamp": "2026-04-10T19:42:20.542113",
     "source": "electricity_maps_api",
     "fossilFreePercentage": null,
     "renewablePercentage": null

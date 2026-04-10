@@ -6,7 +6,7 @@ Sistema de Etiquetas Medioambientales para Modelos de IA
 Este módulo define los umbrales y funciones para asignar etiquetas de
 eficiencia medioambiental basadas en las emisiones de CO2 por query.
 
-Los umbrales fueron calculados a partir de un análisis de 426,000 combinaciones
+Los umbrales fueron calculados a partir de un análisis de 639,000 combinaciones
 de modelos, data centers, dispositivos, redes y tipos de petición.
 
 Sistema de etiquetado: Opción B - Escala europea A+++ a F (9 clases)
@@ -50,61 +50,61 @@ class LabelThreshold:
 # UMBRALES DE PERCENTILES - OPCIÓN B (Escala europea A+++ a F)
 # ============================================================================
 
-# Basados en análisis de 426,000 combinaciones (2026-03-11, v3.0 — 10 LLMs)
+# Basados en análisis de 639,000 combinaciones (v4.0 — 15 LLMs)
 # Percentiles: P2, P10, P20, P30, P50, P70, P90, P97
 
 THRESHOLDS_GENERAL: Dict[str, LabelThreshold] = {
     "A+++": LabelThreshold(
-        max_co2_g=0.000892,
+        max_co2_g=0.000711,
         percentile_upper=2,
         description="Excepcional",
         color_hex="#1B5E20",
         emoji="🌟"
     ),
     "A++": LabelThreshold(
-        max_co2_g=0.002885,
+        max_co2_g=0.002052,
         percentile_upper=10,
         description="Excelente",
         color_hex="#2D5016",
         emoji="🟢"
     ),
     "A+": LabelThreshold(
-        max_co2_g=0.005406,
+        max_co2_g=0.003877,
         percentile_upper=20,
         description="Muy bueno",
         color_hex="#388E3C",
         emoji="🟢"
     ),
     "A": LabelThreshold(
-        max_co2_g=0.008973,
+        max_co2_g=0.006066,
         percentile_upper=30,
         description="Bueno",
         color_hex="#4CAF50",
         emoji="🟢"
     ),
     "B": LabelThreshold(
-        max_co2_g=0.022489,
+        max_co2_g=0.013359,
         percentile_upper=50,
         description="Aceptable",
         color_hex="#8BC34A",
         emoji="🟡"
     ),
     "C": LabelThreshold(
-        max_co2_g=0.053997,
+        max_co2_g=0.032327,
         percentile_upper=70,
         description="Mejorable",
         color_hex="#FFC107",
         emoji="🟡"
     ),
     "D": LabelThreshold(
-        max_co2_g=0.171746,
+        max_co2_g=0.108598,
         percentile_upper=90,
         description="Ineficiente",
         color_hex="#FF9800",
         emoji="🟠"
     ),
     "E": LabelThreshold(
-        max_co2_g=0.338943,
+        max_co2_g=0.241226,
         percentile_upper=97,
         description="Muy ineficiente",
         color_hex="#F44336",
@@ -122,89 +122,83 @@ THRESHOLDS_GENERAL: Dict[str, LabelThreshold] = {
 # Umbrales específicos por tipo de petición
 THRESHOLDS_BY_REQUEST_TYPE: Dict[str, Dict[str, float]] = {
     "chat_simple": {
-        "A": 0.002644,
-        "B": 0.005745,
-        "C": 0.014404,
-        "D": 0.032027,
-        "E": 0.074815,
+        "A": 0.004228,
+        "B": 0.007965,
+        "C": 0.017661,
+        "D": 0.050416,
+        "E": 0.083804,
         "F": float('inf')
     },
     "chat_extended": {
-        "A": 0.006151,
-        "B": 0.013443,
-        "C": 0.036122,
-        "D": 0.080049,
-        "E": 0.186203,
+        "A": 0.009837,
+        "B": 0.019189,
+        "C": 0.044431,
+        "D": 0.124572,
+        "E": 0.204833,
         "F": float('inf')
     },
     "generation_short": {
-        "A": 0.000949,
-        "B": 0.002191,
-        "C": 0.004617,
-        "D": 0.009910,
-        "E": 0.022617,
+        "A": 0.001622,
+        "B": 0.002725,
+        "C": 0.005511,
+        "D": 0.015426,
+        "E": 0.025522,
         "F": float('inf')
     },
     "generation_long": {
-        "A": 0.011643,
-        "B": 0.036139,
-        "C": 0.093666,
-        "D": 0.195884,
-        "E": 0.541664,
+        "A": 0.026857,
+        "B": 0.050241,
+        "C": 0.118836,
+        "D": 0.336546,
+        "E": 0.624827,
         "F": float('inf')
     },
     "code_generation": {
-        "A": 0.003560,
-        "B": 0.007794,
-        "C": 0.019995,
-        "D": 0.044687,
-        "E": 0.104665,
+        "A": 0.005722,
+        "B": 0.010970,
+        "C": 0.024650,
+        "D": 0.070460,
+        "E": 0.117227,
         "F": float('inf')
     },
     "summarization": {
-        "A": 0.006187,
-        "B": 0.013027,
-        "C": 0.037831,
-        "D": 0.078939,
-        "E": 0.191833,
-        "F": float('inf')
-    },
-    "translation": {
-        "A": 0.004,
-        "B": 0.015,
-        "C": 0.040,
-        "D": 0.100,
-        "E": 0.250,
+        "A": 0.009755,
+        "B": 0.019031,
+        "C": 0.044419,
+        "D": 0.122715,
+        "E": 0.197554,
         "F": float('inf')
     }
 }
 
 # Estadísticas de referencia del análisis
 REFERENCE_STATISTICS = {
-    "sample_size": 426000,
-    "analysis_date": "2026-03-11",
+    "sample_size": 639000,
+    "analysis_version": "v4.0 — 15 LLMs",
     "percentiles": {
-        "p0_min": 0.000123,
-        "p5": 0.001612,
-        "p10": 0.002885,
-        "p20": 0.005406,
-        "p30": 0.008973,
-        "p40": 0.013736,
-        "p50_median": 0.022489,
-        "p60": 0.034972,
-        "p70": 0.053997,
-        "p80": 0.091746,
-        "p90": 0.171746,
-        "p95": 0.241276,
-        "p99": 0.619003,
-        "p100_max": 1.472249
+        "p0_min": 0.000118,
+        "p2": 0.000711,
+        "p5": 0.001239,
+        "p10": 0.002052,
+        "p20": 0.003877,
+        "p30": 0.006066,
+        "p40": 0.009016,
+        "p50_median": 0.013359,
+        "p60": 0.020521,
+        "p70": 0.032327,
+        "p80": 0.054113,
+        "p90": 0.108598,
+        "p95": 0.179234,
+        "p97": 0.241226,
+        "p99": 0.471856,
+        "p100_max": 1.518459
     },
-    "mean": 0.063908,
-    "std_dev": 0.113066,
+    "mean": 0.043043,
+    "std_dev": 0.087758,
     "component_contribution": {
         "device_pct": 10.8,
-        "network_pct": 10.8,
-        "datacenter_pct": 78.4
+        "network_pct": 14.3,
+        "datacenter_pct": 74.9
     }
 }
 
