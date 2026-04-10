@@ -852,6 +852,7 @@
         // La simulación se activa explícitamente desde renderSimulation(); no tocar su estado aquí.
 
         doCompare();
+        updateMapPopups();
     }
 
     function metricBox(icon, label, numValue, unit, countId, textValue) {
@@ -1302,6 +1303,18 @@
                 animation: { animateRotate: true, duration: 1200 },
                 plugins: {
                     legend: { position: 'bottom', labels: { padding: 16 } },
+                    tooltip: {
+                        callbacks: {
+                            label: (ctx) => {
+                                const val = ctx.parsed;
+                                if (val == null) return '';
+                                // Find the minimum number of decimal places to show a non-zero value
+                                let decimals = 4;
+                                while (decimals < 10 && parseFloat(val.toFixed(decimals)) === 0) decimals++;
+                                return ` ${ctx.label}: ${val.toFixed(decimals)} gCO₂`;
+                            }
+                        }
+                    }
                 }
             }
         });
@@ -1490,6 +1503,35 @@
     // ------------------------------------------------------------------
     // Comparator (Tab 4) — Multi-criteria Pareto Analysis
     // ------------------------------------------------------------------
+
+    // Lookup table de MMLU scores (fuente: papers publicados / Open LLM Leaderboard)
+    // Escala 0.0–1.0. null = sin dato conocido (se usará fallback por parámetros)
+    const MODEL_QUALITY_SCORES = {
+        'GPT-4':            0.864,
+        'PaLM 2':           0.780,
+        'OPT 175B':         0.260,
+        'Claude 2':         0.785,
+        'Llama 2 (70B)':    0.685,
+        'Falcon 40B':       0.551,
+        'MPT 30B':          0.460,
+        'Gemma 7B':         0.643,
+        'Mistral 7B':       0.628,
+        'Phi-2':            0.570,
+        'Claude 3 Haiku':   0.752,
+        'Llama 3 70B':      0.820,
+        'Mixtral 8x7B':     0.706,
+        'Phi-3 Mini':       0.688,
+        'Gemma 2 9B':       0.715,
+    };
+
+    function getQualityScore(modelName, numParameters) {
+        if (MODEL_QUALITY_SCORES[modelName] != null) return MODEL_QUALITY_SCORES[modelName];
+        // Fallback estimado por tamaño de modelo cuando no hay dato conocido
+        if (!numParameters) return null;
+        const paramsB = numParameters / 1e9;
+        return Math.min(0.90, 0.25 + 0.35 * Math.log10(Math.max(paramsB, 0.1)) / Math.log10(1700));
+    }
+
     let scatterChart = null, vertBarChart = null, radarChart = null;
 
     // Centralized energy class theme
@@ -1506,11 +1548,11 @@
 
     // Pareto state (shared across scatter, tabs, matrix)
     const PS = {
-        criteria: { co2: true, speed: true, latency: false, params: false },
+        criteria: { co2: true, speed: true, latency: false, params: false, quality: false },
         scaleLog: true,
         referenceModel: null,
         selectedModels: [],
-        topsisWeights: { co2: 0.40, speed: 0.35, latency: 0.25 },
+        topsisWeights: { co2: 0.35, speed: 0.30, latency: 0.20, quality: 0.15 },
         highlightPair: null,
         table: [],
         paretoModels: [],
@@ -1522,6 +1564,10 @@
     async function doCompare() {
         if (!LAST_PARAMS) return;
         const params = { ...LAST_PARAMS };
+        // Mantener custom_model si estaba presente (modelo personalizado)
+        if (params.model_id !== '__custom__') {
+            delete params.custom_model;
+        }
         delete params.model_id;
         try {
             const resp = await fetch("/api/compare", {
@@ -1600,6 +1646,11 @@
                     if (op > rp) dominated_all = false;
                     if (op < rp) better_one = true;
                 }
+                if (c.quality) {
+                    const oq = other.benchmark_score || 0, rq = r.benchmark_score || 0;
+                    if (oq < rq) dominated_all = false;
+                    if (oq > rq) better_one = true;
+                }
                 return dominated_all && better_one;
             });
             if (!dominated) pareto.push(r.model);
@@ -1613,7 +1664,8 @@
             { key: 'co2_gCO2', w: weights.co2, benefit: false },
             { key: 'tokens_per_second', w: weights.speed, benefit: true },
             { key: 'latency_ms_per_token', w: weights.latency, benefit: false },
-        ];
+            { key: 'benchmark_score', w: weights.quality || 0, benefit: true },
+        ].filter(c => c.w > 0);
         const n = models.length, m = criteria.length;
         // Decision matrix
         const matrix = models.map(mdl => criteria.map(c => mdl[c.key] || 0));
@@ -1665,6 +1717,11 @@
             if (ap > bp) dominated_all = false;
             if (ap < bp) better_one = true;
         }
+        if (c.quality) {
+            const aq = a.benchmark_score || 0, bq = b.benchmark_score || 0;
+            if (aq < bq) dominated_all = false;
+            if (aq > bq) better_one = true;
+        }
         return dominated_all && better_one;
     }
 
@@ -1675,10 +1732,25 @@
         const table = data.comparative_table || [];
         if (table.length === 0) return;
 
+        // Enriquecer cada fila con benchmark_score (calidad MMLU)
+        table.forEach(row => {
+            row.benchmark_score = getQualityScore(row.model, row.num_parameters);
+        });
+
         PS.currentModel = LAST_PARAMS?.model_id || '';
         PS.table = table;
         PS.paretoModels = findParetoOptimal(table);
-        if (PS.selectedModels.length === 0) PS.selectedModels = table.slice(0, 3).map(r => r.model);
+        // Resetear selección si los modelos previos ya no están en la tabla
+        const tableNames = new Set(table.map(r => r.model));
+        const validSelected = PS.selectedModels.filter(m => tableNames.has(m));
+        PS.selectedModels = validSelected.length > 0 ? validSelected : table.slice(0, 3).map(r => r.model);
+
+        // Actualizar modelos eficientes para la simulación
+        MODELOS_EFICIENTES_SIM = buildModelosEficientes();
+        if (MODELOS_EFICIENTES_SIM.length > 0) {
+            SIM_STATE.modelo_eficiente = MODELOS_EFICIENTES_SIM[0].nombre;
+            SIM_STATE.factor_eficiente = MODELOS_EFICIENTES_SIM[0].factor;
+        }
 
         const sorted = [...table].sort((a, b) => a.co2_gCO2 - b.co2_gCO2);
         const maxCo2 = Math.max(...sorted.map(r => r.co2_gCO2));
@@ -1746,6 +1818,7 @@
                 <label class="pcfg-toggle"><input type="checkbox" id="pcrit-speed" ${PS.criteria.speed ? 'checked' : ''}><span class="pcfg-check"></span> Velocidad</label>
                 <label class="pcfg-toggle"><input type="checkbox" id="pcrit-latency" ${PS.criteria.latency ? 'checked' : ''}><span class="pcfg-check"></span> Latencia</label>
                 <label class="pcfg-toggle"><input type="checkbox" id="pcrit-params" ${PS.criteria.params ? 'checked' : ''}><span class="pcfg-check"></span> Tamaño modelo</label>
+                <label class="pcfg-toggle"><input type="checkbox" id="pcrit-quality" ${PS.criteria.quality ? 'checked' : ''}><span class="pcfg-check"></span> Calidad</label>
             </div>
             <div class="pcfg-group">
                 <span class="pcfg-label">ESCALA</span>
@@ -1763,7 +1836,7 @@
         `;
 
         // Criteria toggles
-        ['co2', 'speed', 'latency', 'params'].forEach(k => {
+        ['co2', 'speed', 'latency', 'params', 'quality'].forEach(k => {
             document.getElementById(`pcrit-${k}`)?.addEventListener('change', e => {
                 PS.criteria[k] = e.target.checked;
                 PS.paretoModels = findParetoOptimal(PS.table);
@@ -1805,6 +1878,7 @@
         if (PS.criteria.speed) names.push('Velocidad');
         if (PS.criteria.latency) names.push('Latencia');
         if (PS.criteria.params) names.push('Tamaño modelo');
+        if (PS.criteria.quality) names.push('Calidad (MMLU)');
         const n = names.length;
         const criteriaHtml = n > 0
             ? ` <span class="desc-dynamic"><strong>Criterios activos:</strong> ${names.join(', ')}. Un modelo ★ debe ser mejor en ${n === 1 ? 'ese criterio' : `esos ${n} criterios`} simultáneamente que cualquier otro. El tamaño del frente depende de los trade-offs reales del conjunto de datos.</span>`
@@ -1817,7 +1891,7 @@
         const projNote = (!axesCriteria && (PS.criteria.co2 || PS.criteria.speed || PS.criteria.latency || PS.criteria.params))
             ? ' <em>Nota: los criterios activos no coinciden con los ejes del gráfico; la frontera step-after no se dibuja, pero los modelos ★ son correctamente Pareto-óptimos en las dimensiones seleccionadas.</em>'
             : '';
-        const noCriteria = !PS.criteria.co2 && !PS.criteria.speed && !PS.criteria.latency && !PS.criteria.params;
+        const noCriteria = !PS.criteria.co2 && !PS.criteria.speed && !PS.criteria.latency && !PS.criteria.params && !PS.criteria.quality;
         const noCriteriaNote = noCriteria
             ? ' <em>Sin criterios activos, ningún modelo puede dominar a otro (no hay dimensiones de comparación), por lo que todos se consideran Pareto-óptimos. Activa al menos un criterio para obtener un frente significativo.</em>'
             : '';
@@ -1845,10 +1919,12 @@
                 label: r.environmental_label?.label || '?',
                 isPareto: paretoModels.includes(r.model),
                 isCurrent: r.model === currentModelName,
+                isCustom: !!r.is_custom,
                 tps: r.tokens_per_second,
                 latency: r.latency_ms_per_token,
                 co2: r.co2_gCO2,
                 envLabel: r.environmental_label,
+                benchmark_score: r.benchmark_score,
             }));
 
         // Compute TOPSIS scores for point sizing
@@ -1857,23 +1933,25 @@
         table.forEach((r, i) => { scoreMap[r.model] = topsisScores[i]; });
 
         const bgColors = points.map(p => {
+            if (p.isCustom) return '#00e5ff';
             if (p.isCurrent) return '#00e5ff';
             if (p.isPareto) return '#ffd600';
             const ec = ENERGY_CLASSES[p.label] || ENERGY_CLASSES['A'];
             return ec ? ec.color : '#00e676';
         });
         const borderColors = points.map(p => {
+            if (p.isCustom) return '#00e5ff';
             if (p.isCurrent) return '#00e5ff';
             if (p.isPareto) return '#ffd600';
             return 'transparent';
         });
         const pointRadii = points.map(p => {
-            const base = p.isCurrent ? 11 : (p.isPareto ? 10 : 6);
+            const base = p.isCustom ? 12 : (p.isCurrent ? 11 : (p.isPareto ? 10 : 6));
             const tScore = scoreMap[p.model] || 0;
             return base + tScore * 3;
         });
-        const borderWidths = points.map(p => p.isCurrent ? 3 : (p.isPareto ? 2.5 : 0));
-        const pointStyles = points.map(p => p.isPareto ? 'star' : 'circle');
+        const borderWidths = points.map(p => p.isCustom ? 3.5 : (p.isCurrent ? 3 : (p.isPareto ? 2.5 : 0)));
+        const pointStyles = points.map(p => p.isCustom ? 'rectRot' : (p.isPareto ? 'star' : 'circle'));
         const alphas = points.map(p => p.isPareto || p.isCurrent ? 1.0 : 0.6);
 
         // ── Pareto front plugin (only draws when both CO₂ & Speed are active) ──
@@ -2005,11 +2083,15 @@
                 meta.data.forEach((el, i) => {
                     const p = chart.data.datasets[0].data[i];
                     c.save();
-                    c.fillStyle = p.isCurrent ? '#00e5ff' : (p.isPareto ? '#ffd600' : 'rgba(200,214,207,0.7)');
-                    c.font = p.isCurrent ? '700 10px Inter' : '500 9px Inter';
+                    c.fillStyle = p.isCustom ? '#00e5ff' : (p.isCurrent ? '#00e5ff' : (p.isPareto ? '#ffd600' : 'rgba(200,214,207,0.7)'));
+                    c.font = (p.isCurrent || p.isCustom) ? '700 10px Inter' : '500 9px Inter';
                     c.textAlign = 'center';
-                    c.fillText(p.model, el.x, el.y - (p.isPareto ? 13 : 8));
-                    if (p.isPareto && !p.isCurrent) {
+                    c.fillText(p.model, el.x, el.y - (p.isPareto || p.isCustom ? 13 : 8));
+                    if (p.isCustom) {
+                        c.fillStyle = '#00e5ff';
+                        c.font = '700 12px Inter';
+                        c.fillText('◆', el.x, el.y - 21);
+                    } else if (p.isPareto && !p.isCurrent) {
                         c.fillStyle = '#00e676';
                         c.font = '700 12px Inter';
                         c.fillText('★', el.x, el.y - 21);
@@ -2054,13 +2136,15 @@
             const raw = dp.raw;
             const ec = ENERGY_CLASSES[raw.label] || {};
             el.innerHTML = `
-                <div class="pt-name">${raw.model}</div>
-                <div class="pt-org">${raw.org}</div>
+                <div class="pt-name">${raw.model}${raw.isCustom ? ' ◆' : ''}</div>
+                <div class="pt-org">${raw.org || (raw.isCustom ? 'Modelo personalizado' : '')}</div>
                 <div class="pt-row"><span>CO₂/query</span><span class="pt-val" style="color:#00e676">${sciNotation(raw.co2)} gCO₂</span></div>
                 <div class="pt-row"><span>Velocidad</span><span class="pt-val">${raw.tps} tok/s</span></div>
                 ${raw.latency ? `<div class="pt-row"><span>Latencia</span><span class="pt-val">${raw.latency.toFixed(1)} ms/tok</span></div>` : ''}
+                ${raw.benchmark_score != null ? `<div class="pt-row"><span>${MODEL_QUALITY_SCORES[raw.model] != null ? 'MMLU' : 'MMLU estimado'}</span><span class="pt-val" style="color:#ffd600">${(raw.benchmark_score * 100).toFixed(1)}%</span></div>` : ''}
                 <div class="pt-row"><span>Clase</span><span class="pt-badge" style="color:${ec.color || '#999'}">${raw.label}</span></div>
                 ${raw.isPareto ? '<div class="pt-pareto">★ Pareto-óptimo</div>' : ''}
+                ${raw.isCustom ? '<div class="pt-pareto" style="color:#00e5ff">◆ Tu modelo</div>' : ''}
                 <div class="pt-minibar"><div class="pt-minibar-fill" style="width:${Math.min(100, (raw.co2 / Math.max(...points.map(p => p.co2))) * 100)}%"></div></div>
             `;
             el.style.display = 'block';
@@ -2324,6 +2408,10 @@
                     <label>Latencia <span class="topsis-w" id="tw-latency">${Math.round(weights.latency * 100)}%</span></label>
                     <input type="range" min="0" max="100" value="${Math.round(weights.latency * 100)}" class="topsis-range" data-tw="latency">
                 </div>
+                <div class="topsis-slider-group">
+                    <label>Calidad <span class="topsis-w" id="tw-quality">${Math.round((weights.quality || 0) * 100)}%</span></label>
+                    <input type="range" min="0" max="100" value="${Math.round((weights.quality || 0) * 100)}" class="topsis-range" data-tw="quality">
+                </div>
             </div>
             <div class="topsis-crown">
                 🥇 Óptimo bajo tus preferencias: <strong>${best?.model || '—'}</strong> (score: ${best?.score.toFixed(3) || '—'})
@@ -2349,9 +2437,9 @@
                 const key = slider.dataset.tw;
                 const raw = {};
                 el.querySelectorAll('.topsis-range').forEach(s => { raw[s.dataset.tw] = parseInt(s.value); });
-                const total = (raw.co2 || 0) + (raw.speed || 0) + (raw.latency || 0);
+                const total = (raw.co2 || 0) + (raw.speed || 0) + (raw.latency || 0) + (raw.quality || 0);
                 if (total === 0) return;
-                PS.topsisWeights = { co2: raw.co2 / total, speed: raw.speed / total, latency: raw.latency / total };
+                PS.topsisWeights = { co2: raw.co2 / total, speed: raw.speed / total, latency: raw.latency / total, quality: raw.quality / total };
                 // Update weight labels
                 Object.keys(raw).forEach(k => {
                     const wEl = document.getElementById(`tw-${k}`);
@@ -2444,6 +2532,7 @@
                         maxLat > 0 ? (1 - (r.latency_ms_per_token || 0) / maxLat) : 0, // Latency efficiency
                         maxEnergy > 0 ? (1 - (r.energy_Wh || 0) / maxEnergy) : 0, // Energy efficiency
                         maxParams > 0 ? (1 - (r.num_parameters || 0) / maxParams) : 0, // Param efficiency (inverted)
+                        r.benchmark_score || 0,  // Quality (MMLU, already 0-1)
                     ],
                     backgroundColor: color + '20',
                     borderColor: color,
@@ -2456,7 +2545,7 @@
             radarChart = new Chart(ctx, {
                 type: 'radar',
                 data: {
-                    labels: ['CO₂ Eficiencia', 'Velocidad', 'Latencia Efic.', 'Energía Efic.', 'Eficiencia Params'],
+                    labels: ['CO₂ Eficiencia', 'Velocidad', 'Latencia Efic.', 'Energía Efic.', 'Eficiencia Params', 'Calidad (MMLU)'],
                     datasets: datasets,
                 },
                 options: {
@@ -2771,7 +2860,7 @@
         const ctx = document.getElementById('vertical-bar-chart')?.getContext('2d');
         if (!ctx) return;
 
-        const currentModelName = (OPTIONS.models || []).find(m => m.model_id === currentModel)?.model_name || '';
+        const currentModelName = resolveCurrentModelName(currentModel);
 
         // Build colors — highlight selected model with distinct border
         const bgColors = sorted.map(r => {
@@ -2802,6 +2891,7 @@
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
+                layout: { padding: { top: 35 } },
                 animation: { duration: 1200, easing: 'easeOutCubic' },
                 plugins: {
                     legend: { display: false },
@@ -2855,8 +2945,8 @@
                         c.textAlign = 'center';
                         // Label above bar + ACTUAL tag for selected model
                         if (isCurrent) {
-                            c.fillText('ACTUAL', bar.x, bar.y - 20);
-                            c.fillText(lbl, bar.x, bar.y - 8);
+                            c.fillText('ACTUAL', bar.x, bar.y - 28);
+                            c.fillText(lbl, bar.x, bar.y - 14);
                         } else {
                             c.fillText(lbl, bar.x, bar.y - 8);
                         }
@@ -3211,11 +3301,41 @@
         { label: 'Gran escala', value: 100000000 },
     ];
 
-    const MODELOS_EFICIENTES_SIM = [
-        { nombre: 'Phi-2',      factor: 0.05, color: '#4ade80', bg: 'rgba(74,222,128,.12)' },
-        { nombre: 'Mistral 7B', factor: 0.07, color: '#60a5fa', bg: 'rgba(96,165,250,.12)' },
-        { nombre: 'Gemma 7B',   factor: 0.08, color: '#fbbf24', bg: 'rgba(251,191,36,.12)' },
-    ];
+    const MODELOS_EFICIENTES_SIM_COLORS = ['#4ade80', '#60a5fa', '#fbbf24', '#f472b6', '#a78bfa'];
+    const MODELOS_EFICIENTES_SIM_BGS = ['rgba(74,222,128,.12)', 'rgba(96,165,250,.12)', 'rgba(251,191,36,.12)', 'rgba(244,114,182,.12)', 'rgba(167,139,250,.12)'];
+
+    function buildModelosEficientes() {
+        // Construir dinámicamente a partir de la tabla de comparación
+        if (PS.table.length > 0 && PS.currentModel) {
+            const currentModelName = (OPTIONS.models || []).find(m => m.model_id === PS.currentModel)?.model_name || '';
+            const currentRow = PS.table.find(r => r.model === currentModelName);
+            if (currentRow && currentRow.co2_gCO2 > 0) {
+                const others = PS.table
+                    .filter(r => r.model !== currentModelName && r.co2_gCO2 > 0 && !r.is_custom)
+                    .map(r => ({ nombre: r.model, factor: r.co2_gCO2 / currentRow.co2_gCO2 }))
+                    .filter(m => m.factor < 1)
+                    .sort((a, b) => a.factor - b.factor)
+                    .slice(0, 3);
+                if (others.length > 0) {
+                    return others.map((m, i) => ({
+                        nombre: m.nombre,
+                        factor: Math.round(m.factor * 100) / 100,
+                        color: MODELOS_EFICIENTES_SIM_COLORS[i % MODELOS_EFICIENTES_SIM_COLORS.length],
+                        bg: MODELOS_EFICIENTES_SIM_BGS[i % MODELOS_EFICIENTES_SIM_BGS.length],
+                    }));
+                }
+            }
+        }
+        // Fallback estático
+        return [
+            { nombre: 'Phi-2',      factor: 0.05, color: '#4ade80', bg: 'rgba(74,222,128,.12)' },
+            { nombre: 'Mistral 7B', factor: 0.07, color: '#60a5fa', bg: 'rgba(96,165,250,.12)' },
+            { nombre: 'Gemma 7B',   factor: 0.08, color: '#fbbf24', bg: 'rgba(251,191,36,.12)' },
+        ];
+    }
+
+    // Referencia mutable que se actualiza al recalcular
+    let MODELOS_EFICIENTES_SIM = buildModelosEficientes();
 
 
     // TAREA 1: Inicializar preset slider + input
@@ -3492,7 +3612,7 @@
                     <canvas id="sim-comparison-chart"></canvas>
                 </div>
 
-                <!-- Footer: savings + CSV -->
+                <!-- Footer: savings -->
                 <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
                     <div style="background:${modelEf.bg};border:1px solid ${modelEf.color}33;border-radius:var(--radius);padding:12px 16px;display:flex;align-items:center;gap:8px;flex:1;min-width:0;">
                         <i data-lucide="leaf" style="width:15px;height:15px;color:${modelEf.color};flex-shrink:0;"></i>
@@ -3500,9 +3620,6 @@
                             Ahorro en ${anoLabel}: <strong style="color:${modelEf.color};">${fmtU(ahorro)}</strong> CO₂${growth > 0 ? ` <span style="color:var(--text-muted);font-size:11px;">(+${SIM_STATE.crecimiento_pct}% crec./año)</span>` : ''}
                         </span>
                     </div>
-                    <button id="export-proyeccion-csv" class="button button-secondary" style="padding:10px 16px;white-space:nowrap;">
-                        <i data-lucide="download"></i> CSV
-                    </button>
                 </div>
             `;
         };
@@ -3528,7 +3645,7 @@
                     <canvas id="sim-comparison-chart"></canvas>
                 </div>
 
-                <!-- Footer: best model + CSV -->
+                <!-- Footer: best model -->
                 <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
                     <div style="background:${best.bg};border:1px solid ${best.color}44;border-radius:var(--radius);padding:12px 16px;display:flex;align-items:center;gap:8px;flex:1;min-width:0;">
                         <i data-lucide="trophy" style="width:15px;height:15px;color:${best.color};flex-shrink:0;"></i>
@@ -3536,9 +3653,6 @@
                             Mejor opción: <strong style="color:${best.color};">${best.nombre}</strong> — ahorra <strong style="color:${best.color};">${fmtU(best.ahorro)}</strong> en ${anoLabel}
                         </span>
                     </div>
-                    <button id="export-proyeccion-csv" class="button button-secondary" style="padding:10px 16px;white-space:nowrap;">
-                        <i data-lucide="download"></i> CSV
-                    </button>
                 </div>
             `;
         };
@@ -3600,6 +3714,7 @@
         document.getElementById('sim-growth-select').onchange = e => {
             SIM_STATE.crecimiento_pct = parseInt(e.target.value); renderTarea4Grafico();
         };
+        /*
         document.getElementById('export-proyeccion-csv').onclick = () => {
             let header, rows;
             if (todosModos) {
@@ -3614,6 +3729,7 @@
             a.download = 'proyeccion_co2.csv'; a.style.display = 'none';
             document.body.appendChild(a); a.click(); document.body.removeChild(a);
         };
+        */
 
         if (window.lucide) lucide.createIcons();
         setTimeout(() => {
@@ -4097,9 +4213,6 @@
                             </tbody>
                         </table>
                     </div>
-                    <button id="export-csv-sim" class="button button-secondary" style="width:100%;justify-content:center;">
-                        <i data-lucide="download"></i> Descargar CSV
-                    </button>
                 </div>
             </div>
         `;
@@ -4182,6 +4295,7 @@
             if (window.lucide) lucide.createIcons();
         };
 
+        /*
         document.getElementById('export-csv-sim').onclick = () => {
             const header = 'Año,Queries totales,CO₂ actual (kg),CO₂ eficiente (kg),Ahorro (%)';
             const rows = datos_tabla.map(d => `${d.ano},${d.queries_totales},${d.co2_actual_kg.toFixed(2)},${d.co2_ef_kg.toFixed(2)},${d.ahorro_pct}`);
@@ -4194,6 +4308,7 @@
             a.click();
             document.body.removeChild(a);
         };
+        */
     }
 
     // Inicializar simulación cuando se carga
@@ -4365,6 +4480,17 @@
         const scale = scaleOrder.filter(l => scaleObj[l]).map(l => scaleObj[l]);
         const color = label.color_hex || '#4ade80';
 
+        // Determine which scale items are "green", "yellow", "red"
+        const greenLabels = ['A+++','A++','A+','A'];
+        const yellowLabels = ['B','C'];
+
+        // CO2 breakdown from current result
+        const em = LAST_RESULT?.emissions_gCO2 || {};
+        const total = em.total || 0;
+        const dcPct = total > 0 ? ((em.datacenter || 0) / total * 100).toFixed(1) : '—';
+        const netPct = total > 0 ? ((em.network || 0) / total * 100).toFixed(1) : '—';
+        const devPct = total > 0 ? ((em.device || 0) / total * 100).toFixed(1) : '—';
+
         widget.innerHTML = `
             <div class="energy-label">
                 <div class="energy-label-header">
@@ -4400,6 +4526,96 @@
                     </div>
                 </div>
             </div>
+
+                <div class="elabel-info-card">
+                    <div class="elabel-info-title">
+                        <i data-lucide="info" style="width:18px;height:18px;display:inline;vertical-align:middle;margin-right:8px;color:var(--primary)"></i>
+                        ¿Cómo funciona este sistema de etiquetado?
+                    </div>
+                    <p class="elabel-info-text">
+                        Este sistema se inspira en el <strong>etiquetado energético europeo</strong> regulado por la
+                        <strong>Directiva 2017/1369/UE</strong>, que desde 2021 ayuda a los consumidores a identificar
+                        la eficiencia energética de electrodomésticos de un vistazo.
+                    </p>
+                    <p class="elabel-info-text">
+                        Al igual que la UE calibra sus umbrales de eficiencia a partir de cómo se distribuyen realmente
+                        los productos en el mercado (usando percentiles), analizamos <strong>426.000 combinaciones</strong> de 
+                        escenarios reales: 10 modelos LLM × 71 centros de datos × 20 dispositivos × 5 redes × 7 tipos de consulta.
+                        Esto nos permite saber dónde se ubica tu consulta dentro del universo completo de posibilidades.
+                    </p>
+                </div>
+
+                <div class="elabel-info-card">
+                    <div class="elabel-info-title">
+                        <i data-lucide="pie-chart" style="width:18px;height:18px;display:inline;vertical-align:middle;margin-right:8px;color:var(--primary)"></i>
+                        Componentes de emisión
+                    </div>
+                    <p class="elabel-info-text" style="margin-bottom:12px;">
+                        Las emisiones de tu consulta provienen de tres fuentes principales. El <strong>centro de datos</strong>
+                        domina el impacto (típicamente el 70–95%), seguido por la <strong>red</strong> de transmisión 
+                        y el <strong>dispositivo</strong> del usuario.
+                    </p>
+                    <div class="elabel-factors-grid">
+                        <div class="elabel-factor">
+                            <div class="elabel-factor-icon" style="background:rgba(56,189,248,0.12);color:#38bdf8;">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"/><rect x="2" y="14" width="20" height="8" rx="2" ry="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>
+                            </div>
+                            <div class="elabel-factor-label">Centro de datos</div>
+                            <div class="elabel-factor-sub">Intensidad del carbono + eficiencia</div>
+                        </div>
+                        <div class="elabel-factor">
+                            <div class="elabel-factor-icon" style="background:rgba(251,191,36,0.12);color:#fbbf24;">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>
+                            </div>
+                            <div class="elabel-factor-label">Red</div>
+                            <div class="elabel-factor-sub">WiFi, 4G, 5G, Fibra…</div>
+                        </div>
+                        <div class="elabel-factor">
+                            <div class="elabel-factor-icon" style="background:rgba(168,85,247,0.12);color:#a855f7;">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
+                            </div>
+                            <div class="elabel-factor-label">Dispositivo</div>
+                            <div class="elabel-factor-sub">CPU, GPU, NPU…</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="elabel-info-card">
+                    <div class="elabel-info-title">
+                        <i data-lucide="lightbulb" style="width:18px;height:18px;display:inline;vertical-align:middle;margin-right:8px;color:#fbbf24"></i>
+                        ¿Por qué 9 clases y no 7?
+                    </div>
+                    <p class="elabel-info-text">
+                        La UE simplificó su etiqueta de A+++–D a A–G en 2021 porque los electrodomésticos se volvieron 
+                        cada vez más eficientes y casi todos llegaban a A++. Con los modelos de IA ocurre lo contrario:
+                        el rango de emisiones es <strong>extraordinariamente amplio</strong>.
+                    </p>
+                    <p class="elabel-info-text">
+                        Un consulta puede consumir desde microgramos de CO₂
+                        hasta gramos enteros. Esa variación 
+                        requiere más detalle, por eso usamos <strong>9 clases</strong> (A+++ hasta F) 
+                        con umbrales calibrados según distribuciones reales.
+                    </p>
+                    <div class="elabel-why-visual">
+                        ${scaleOrder.map(l => {
+                            const s = scaleObj[l];
+                            if (!s) return '';
+                            const isG = greenLabels.includes(l);
+                            const isY = yellowLabels.includes(l);
+                            const barColor = isG ? '#4ade80' : isY ? '#fbbf24' : '#ef4444';
+                            // Width proportional to percentile range
+                            const pRanges = {'A+++':2,'A++':8,'A+':10,'A':10,'B':20,'C':20,'D':20,'E':7,'F':3};
+                            const w = pRanges[l] || 10;
+                            return `<div class="elabel-why-bar" style="flex:${w};background:${barColor};" title="${l}: ${s.description || ''}">${l}</div>`;
+                        }).join('')}
+                    </div>
+                    <div style="display:flex;justify-content:space-between;font-size:13px;color:#4a7c59;margin-top:6px;padding:0 2px;font-weight:700;letter-spacing:0.3px;">
+                        <span>P0 (menor CO₂)</span>
+                        <span>P50 (mediana)</span>
+                        <span>P100 (mayor CO₂)</span>
+                    </div>
+                </div>
+            </div>
         `;
 
         if (window.lucide) lucide.createIcons();
@@ -4409,6 +4625,17 @@
     // Map (Tab 7) — Choropleth + Data Centers
     // ------------------------------------------------------------------
     let map = null;
+    let mapMarkers = [];  // refs to DC markers for popup updates
+    let mapDCData = [];   // DC data for popup regeneration
+
+    // Resolve current model display name (works for both CSV and custom models)
+    function resolveCurrentModelName(modelId) {
+        const id = modelId || LAST_PARAMS?.model_id || '';
+        if (id === '__custom__') {
+            return LAST_PARAMS?.custom_model?.model_name || 'Modelo personalizado';
+        }
+        return (OPTIONS.models || []).find(m => m.model_id === id)?.model_name || '';
+    }
 
     const providerColors = {
         'AWS': '#f97316', 'Google Cloud': '#4ade80', 'GCP': '#4ade80',
@@ -4553,6 +4780,35 @@
                 const topoData = await topoResp.json();
                 const countries = topojson.feature(topoData, topoData.objects.countries);
 
+                // Fix antimeridian-crossing polygons (Russia, Fiji, etc.)
+                // These produce horizontal lines because coords jump from ~180 to ~-180
+                function fixAntimeridianRing(ring) {
+                    let crossesAM = false;
+                    for (let i = 1; i < ring.length; i++) {
+                        if (Math.abs(ring[i][0] - ring[i-1][0]) > 180) { crossesAM = true; break; }
+                    }
+                    if (!crossesAM) return [ring];
+                    // Split into west (<0) and east (>0) sub-rings
+                    const shifted = ring.map(([lon, lat]) => [lon < 0 ? lon + 360 : lon, lat]);
+                    return [shifted];
+                }
+                function fixFeatureGeometry(feature) {
+                    const g = feature.geometry;
+                    if (!g) return feature;
+                    if (g.type === 'Polygon') {
+                        const fixed = g.coordinates.flatMap(fixAntimeridianRing);
+                        return { ...feature, geometry: { ...g, coordinates: fixed } };
+                    }
+                    if (g.type === 'MultiPolygon') {
+                        const fixed = g.coordinates.map(polygon =>
+                            polygon.flatMap(fixAntimeridianRing)
+                        );
+                        return { ...feature, geometry: { ...g, coordinates: fixed } };
+                    }
+                    return feature;
+                }
+                countries.features = countries.features.map(fixFeatureGeometry);
+
                 let hoveredLayer = null;
                 const defaultStyle = (feature) => {
                     const numericId = feature.id || feature.properties?.id;
@@ -4664,16 +4920,18 @@
                             ${co2Estimate
                                 ? `<div class="popup-co2-label">Estimación CO₂/query en este DC:</div>
                                    <div class="popup-co2-value">${co2Estimate} gCO₂</div>
-                                   <div class="popup-co2-sub">${LAST_PARAMS?.model_id || ''} | ${LAST_PARAMS?.request_type || 'Petición'}</div>`
+                                   <div class="popup-co2-sub">${resolveCurrentModelName()} | ${LAST_PARAMS?.request_type || 'Petición'}</div>`
                                 : `<div class="popup-co2-label" style="color:#64748b;font-style:italic;">Realiza un cálculo primero para ver la estimación de CO₂/query</div>`
                             }
                         </div>
                     </div>
                 `;
 
-                L.marker([dc.latitude, dc.longitude], { icon, zIndexOffset: 500 })
+                const marker = L.marker([dc.latitude, dc.longitude], { icon, zIndexOffset: 500 })
                     .addTo(map)
                     .bindPopup(popupHtml, { maxWidth: 320 });
+                mapMarkers.push(marker);
+                mapDCData.push(dc);
             });
 
             // Bottom panels
@@ -4682,6 +4940,61 @@
         } catch (err) {
             console.error("Error cargando datos del mapa:", err);
         }
+    }
+
+    // Refresh popup CO₂ estimates when a new calculation is done
+    function updateMapPopups() {
+        if (!map || mapMarkers.length === 0) return;
+        const modelName = resolveCurrentModelName();
+        const reqType = LAST_PARAMS?.request_type || 'Petición';
+        mapMarkers.forEach((marker, i) => {
+            const dc = mapDCData[i];
+            if (!dc) return;
+            const ci = dc.carbon_intensity;
+            const co2Estimate = ci != null && LAST_RESULT
+                ? ((LAST_RESULT.emissions_gCO2?.total || 0) * (ci / 400) * (dc.pue || 1.15) / 1.15).toFixed(4)
+                : null;
+            const renewPct = dc.renewable_pct ?? dc.provider_renewable_pct;
+            const provColor = getProviderColor(dc.provider);
+            const isGreenwash = detectGreenwash(dc);
+            const gwBadge = isGreenwash
+                ? `<div style="margin-top:6px"><span class="popup-badge popup-badge-amber popup-badge-pulse"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> Posible greenwashing</span></div>`
+                : '';
+            const popupHtml = `
+                <div class="popup-header">
+                    <span class="popup-provider-dot" style="background:${provColor}"></span>
+                    <div>
+                        <div class="popup-name">${dc.provider || ''}</div>
+                        <div class="popup-region">${dc.region || ''} (${dc.country_code || ''})</div>
+                    </div>
+                </div>
+                <div class="popup-body">
+                    <div class="popup-row">
+                        <span class="popup-row-label">Intensidad carbono</span>
+                        <span class="popup-row-value" style="color:${ciColorSolid(ci)}">${ci != null ? ci.toFixed(0) + ' gCO\u2082/kWh' : 'N/D'}</span>
+                    </div>
+                    <div class="popup-row">
+                        <span class="popup-row-label">PUE</span>
+                        <span class="popup-row-value">${dc.pue ? dc.pue.toFixed(2) : 'N/D'}</span>
+                    </div>
+                    <div class="popup-row">
+                        <span class="popup-row-label">Renovables declaradas</span>
+                        <span>${renewableBadge(renewPct)}</span>
+                    </div>
+                    ${gwBadge}
+                    <hr class="popup-divider">
+                    <div class="popup-co2">
+                        ${co2Estimate
+                            ? `<div class="popup-co2-label">Estimación CO\u2082/query en este DC:</div>
+                               <div class="popup-co2-value">${co2Estimate} gCO\u2082</div>
+                               <div class="popup-co2-sub">${modelName} | ${reqType}</div>`
+                            : `<div class="popup-co2-label" style="color:#64748b;font-style:italic;">Realiza un cálculo primero para ver la estimación de CO\u2082/query</div>`
+                        }
+                    </div>
+                </div>
+            `;
+            marker.setPopupContent(popupHtml);
+        });
     }
 
     function renderMapPanels(totalDCs, providers, avgPUE, bestPUE, bestName, worstPUE, worstName) {

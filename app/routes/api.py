@@ -145,6 +145,13 @@ def compare():
         label_data = reports.energy_label(result)
         row["environmental_label"] = label_data.get("label", {})
 
+    # Propagar num_parameters del custom_model si estaba en la solicitud
+    custom_model = params.get("custom_model")
+    if custom_model and custom_model.get("num_parameters"):
+        for row in comparative.get("comparative_table", []):
+            if row.get("is_custom"):
+                row["num_parameters"] = custom_model["num_parameters"]
+
     return jsonify(comparative)
 
 

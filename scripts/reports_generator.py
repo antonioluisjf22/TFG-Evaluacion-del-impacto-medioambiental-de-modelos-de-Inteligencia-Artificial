@@ -140,6 +140,16 @@ class ReportGenerator:
         rows = []
         for r in results:
             meta = model_meta.get(r.model_name, {})
+            is_custom = r.model_name not in model_meta
+
+            # Para el modelo custom, derivar tokens_per_second y latency de los datos del resultado
+            tps = meta.get("tokens_per_second")
+            lat = meta.get("latency_ms_per_token")
+            nparams = meta.get("num_parameters")
+            if is_custom and r.inference_time_sec > 0 and r.tokens_processed > 0:
+                tps = tps or round(r.tokens_processed / r.inference_time_sec, 1)
+                lat = lat or round((r.inference_time_sec / r.tokens_processed) * 1000, 2)
+
             rows.append({
                 "model": r.model_name,
                 "organization": meta.get("organization", ""),
@@ -151,9 +161,10 @@ class ReportGenerator:
                 "carbon_intensity": round(r.dc_carbon_intensity or 0, 1) if r.dc_carbon_intensity else None,
                 "inference_time_sec": round(r.inference_time_sec, 3),
                 "tokens_processed": r.tokens_processed,
-                "tokens_per_second": meta.get("tokens_per_second"),
-                "latency_ms_per_token": meta.get("latency_ms_per_token"),
-                "num_parameters": meta.get("num_parameters"),
+                "tokens_per_second": tps,
+                "latency_ms_per_token": lat,
+                "num_parameters": nparams,
+                "is_custom": is_custom,
             })
         
         df = pd.DataFrame(rows)

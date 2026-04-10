@@ -186,20 +186,31 @@ class CalculatorService:
 
         params: mismos que calculate() pero sin model_id.
         custom_dc/custom_device/custom_network se propagan;
-        custom_model se ignora (se itera sobre los del dataset).
+        custom_model se añade al final si estaba presente en params.
         """
         models = self.calculator.models_df
         if models is None:
             return []
 
+        custom_model_data = params.get("custom_model")
+
         results: list[EmissionResult] = []
         for model_id in models["model_id"]:
             try:
                 p = {**params, "model_id": model_id}
-                p.pop("custom_model", None)  # no custom model en comparación
+                p.pop("custom_model", None)  # no custom model para modelos del dataset
                 results.append(self.calculate(p))
             except Exception:
                 continue
+
+        # Incluir modelo personalizado si se proporcionó
+        if custom_model_data:
+            try:
+                p = {**params, "model_id": "__custom__"}
+                results.append(self.calculate(p))
+            except Exception:
+                pass
+
         return results
 
 
