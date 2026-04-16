@@ -234,11 +234,12 @@ def get_environmental_label(
             - request_type: Tipo de petición usado
     
     Examples:
-        >>> get_environmental_label(0.0005)
-        {'label': 'A+', 'description': 'Muy bueno', ...}
-        
-        >>> get_environmental_label(0.003, request_type="chat_simple")
-        {'label': 'A', 'description': 'Bueno', ...}
+        >>> get_environmental_label(0.0005)['label']
+        'A+++'
+        >>> get_environmental_label(0.015)['label']
+        'C'
+        >>> get_environmental_label(0.003, request_type="chat_simple")['label']
+        'A'
     """
     # Lista ordenada de clases (Opción B: escala europea)
     LABEL_ORDER = ["A+++", "A++", "A+", "A", "B", "C", "D", "E", "F"]
@@ -307,6 +308,12 @@ def get_percentile(co2_grams: float) -> float:
     
     Returns:
         Percentil estimado (0-100)
+
+    Examples:
+        >>> get_percentile(0.013359)
+        50.0
+        >>> 20 < get_percentile(0.005) < 30
+        True
     """
     percentiles = REFERENCE_STATISTICS["percentiles"]
     
@@ -400,6 +407,13 @@ def get_label_scale() -> Dict[str, Dict[str, Any]]:
     
     Returns:
         Dict con información de cada clase (A+++ a F)
+
+    Examples:
+        >>> scale = get_label_scale()
+        >>> len(scale)
+        9
+        >>> scale['A+++']['description']
+        'Excepcional'
     """
     LABEL_ORDER = ["A+++", "A++", "A+", "A", "B", "C", "D", "E", "F"]
     scale = {}

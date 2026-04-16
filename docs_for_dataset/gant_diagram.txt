@@ -25,14 +25,14 @@ gantt
     EP-01.3 Datos dispositivos (7h) :ep0103, after ep0102, 4d
     EP-01.4 Datos red (5h) :ep0104, after ep0103, 3d
     EP-01.5 Datos data centers (8h) :ep0105, after ep0104, 4d
-    EP-01.6 Validación limpieza (6h) :ep0106, after ep0105, 3d
+    EP-01.6 Validación limpieza (4h) :ep0106, after ep0105, 2d
     
     EP-02.1 Arquitectura software (6h) :ep0201, after ep0106, 3d
     EP-02.2 Fórmulas dispositivo (8h) :ep0202, after ep0201, 4d
     EP-02.3 Fórmulas red (5h) :ep0203, after ep0202, 3d
     EP-02.4 Fórmulas data center (7h) :ep0204, after ep0203, 4d
     EP-02.5 Integración motor (9h) :ep0205, after ep0204, 5d
-    EP-02.6 Tests unitarios (8h) :ep0206, after ep0205, 4d
+    EP-02.6 Tests unitarios (6h) :ep0206, after ep0205, 3d
     
     EP-03.1 Estudio API (3h) :ep0301, after ep0206, 2d
     EP-03.2 Cliente API (6h) :ep0302, after ep0301, 3d
@@ -44,8 +44,8 @@ gantt
     
     EP-04.1 Diseño wireframes (6h) :ep0401, after ep0307, 3d
     EP-04.2 Stack frontend (3h) :ep0402, after ep0401, 2d
-    EP-04.3 Formulario entrada (11h) :ep0403, after ep0402, 6d
-    EP-04.4 Visualización resultados (11h) :ep0404, after ep0403, 6d
+    EP-04.3 Formulario entrada (8h) :ep0403, after ep0402, 4d
+    EP-04.4 Visualización resultados (8h) :ep0404, after ep0403, 4d
     EP-04.5 Comparador escenarios (8h) :ep0405, after ep0404, 4d
     EP-04.6 Integración frontend-backend (9h) :ep0406, after ep0405, 5d
     
@@ -53,7 +53,7 @@ gantt
     EP-05.2 Validación literatura (5h) :ep0502, after ep0501, 3d
     EP-05.3 Tests integración (6h) :ep0503, after ep0502, 3d
     EP-05.4 Pruebas usabilidad (4h) :ep0504, after ep0503, 2d
-    EP-05.5 Corrección bugs (6h) :ep0505, after ep0504, 3d
+    EP-05.5 Corrección bugs (4h) :ep0505, after ep0504, 2d
     EP-05.6 Documentación técnica (4h) :ep0506, after ep0505, 2d
     
     EP-06.1 Config repositorio (2h) :ep0601, after ep0506, 1d
@@ -67,5 +67,5 @@ gantt
     CI-01 Terminar redacción memoria (6h) :ci01, after mem03, 3d
     CI-02 Revisión tutores (5h) :ci02, after ci01, 3d
     CI-03 Maquetación final (6h) :ci03, after ci02, 3d
-    CI-04 Presentación (11h) :ci04, after ci03, 6d
+    CI-04 Presentación (7h) :ci04, after ci03, 4d
     CI-05 Defensa cierre (4h) :crit, ci05, after ci04, 2d
