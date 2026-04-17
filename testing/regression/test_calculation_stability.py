@@ -143,3 +143,48 @@ class TestRelationalInvariants:
         assert 0 <= bp['device'] <= 100
         assert 0 <= bp['network'] <= 100
         assert 0 <= bp['datacenter'] <= 100
+
+
+@pytest.mark.regression
+class TestCompareOutputStability:
+    """Verifica que la salida de compare_models sea estable entre versiones."""
+
+    @pytest.fixture(autouse=True)
+    def _service(self):
+        from app.services.calculator_service import CalculatorService
+        self.service = CalculatorService()
+
+    def test_compare_returns_all_15_models(self):
+        """compare_models siempre retorna los 15 modelos del dataset."""
+        results = self.service.compare_models({
+            "data_center_id": "aws-us-east-1",
+            "device_id": "laptop-macbook-air-m3",
+            "network_id": "WiFi 6 802.11ax",
+            "user_country": "ES",
+            "request_type": "chat_simple",
+        })
+        assert len(results) == 15
+
+    def test_compare_phi2_always_first(self):
+        """Phi-2 siempre debe ser el modelo más eficiente en la comparativa."""
+        results = self.service.compare_models({
+            "data_center_id": "aws-us-east-1",
+            "device_id": "laptop-macbook-air-m3",
+            "network_id": "WiFi 6 802.11ax",
+            "user_country": "ES",
+            "request_type": "chat_simple",
+        })
+        sorted_results = sorted(results, key=lambda r: r.co2_total_g)
+        assert sorted_results[0].model_name == "Phi-2"
+
+    def test_compare_no_negative_emissions(self):
+        """Ningún modelo en la comparativa debe tener emisiones negativas."""
+        results = self.service.compare_models({
+            "data_center_id": "aws-us-east-1",
+            "device_id": "laptop-macbook-air-m3",
+            "network_id": "WiFi 6 802.11ax",
+            "user_country": "ES",
+            "request_type": "chat_simple",
+        })
+        for r in results:
+            assert r.co2_total_g >= 0, f"Modelo {r.model_name} tiene CO2 negativo"

@@ -1,0 +1,993 @@
+{
+  "info": {
+    "name": "TFG Carbon AI",
+    "description": "Suite de pruebas de integración manual para los 6 endpoints REST de la calculadora de emisiones de CO₂ de modelos de IA. Complementa la suite automática de pytest (373 tests).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [],
+  "item": [
+    {
+      "name": "1. Setup — Catálogos",
+      "item": [
+        {
+          "name": "GET /api/options",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/options",
+              "host": ["{{base_url}}"],
+              "path": ["api", "options"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Contiene todos los catálogos', () => {",
+                  "    const d = pm.response.json();",
+                  "    ['models','data_centers','devices','networks','request_types','countries']",
+                  "        .forEach(k => pm.expect(d).to.have.property(k));",
+                  "});",
+                  "pm.test('15 modelos exactos', () => pm.expect(pm.response.json().models.length).to.equal(15));",
+                  "pm.test('71 datacenters exactos', () => pm.expect(pm.response.json().data_centers.length).to.equal(71));",
+                  "pm.test('20 dispositivos exactos', () => pm.expect(pm.response.json().devices.length).to.equal(20));",
+                  "pm.test('5 tipos de red exactos', () => pm.expect(pm.response.json().networks.length).to.equal(5));",
+                  "pm.test('7 request_types exactos', () => pm.expect(pm.response.json().request_types.length).to.equal(7));",
+                  "pm.test('Cada modelo tiene los campos requeridos', () => {",
+                  "    pm.response.json().models.forEach(m => {",
+                  "        pm.expect(m).to.have.property('model_id');",
+                  "        pm.expect(m).to.have.property('model_name');",
+                  "        pm.expect(m).to.have.property('num_parameters');",
+                  "    });",
+                  "});",
+                  "pm.test('Todos los DCs tienen country_code', () => {",
+                  "    pm.response.json().data_centers.forEach(dc => {",
+                  "        pm.expect(dc).to.have.property('country_code');",
+                  "    });",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /api/map-data",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/map-data",
+              "host": ["{{base_url}}"],
+              "path": ["api", "map-data"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('data_centers con coordenadas', () => {",
+                  "    const dcs = pm.response.json().data_centers;",
+                  "    pm.expect(dcs.length).to.be.greaterThan(0);",
+                  "    pm.expect(dcs[0]).to.have.property('latitude');",
+                  "    pm.expect(dcs[0]).to.have.property('longitude');",
+                  "});",
+                  "pm.test('Países con intensidad de carbono', () => {",
+                  "    const countries = pm.response.json().countries;",
+                  "    pm.expect(countries.length).to.be.greaterThan(0);",
+                  "    const withCI = countries.filter(c => c.carbon_intensity != null);",
+                  "    pm.expect(withCI.length).to.be.greaterThan(0);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "2. Cálculo Individual",
+      "item": [
+        {
+          "name": "2.1 GPT-4 estándar",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"model_id\": \"{{model_id}}\",\n  \"data_center_id\": \"{{data_center_id}}\",\n  \"device_id\": \"{{device_id}}\",\n  \"network_id\": \"{{network_id}}\",\n  \"user_country\": \"{{user_country}}\",\n  \"request_type\": \"{{request_type}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/calculate",
+              "host": ["{{base_url}}"],
+              "path": ["api", "calculate"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Content-Type JSON', () => pm.expect(pm.response.headers.get('Content-Type')).to.include('application/json'));",
+                  "pm.test('emissions_gCO2.total > 0', () => pm.expect(pm.response.json().emissions_gCO2.total).to.be.greaterThan(0));",
+                  "pm.test('Tiene todas las secciones', () => {",
+                  "    const d = pm.response.json();",
+                  "    ['emissions_gCO2','energy_Wh','metadata','breakdown_percentage','environmental_label','equivalencies']",
+                  "        .forEach(k => pm.expect(d).to.have.property(k));",
+                  "});",
+                  "pm.test('breakdown_percentage suma ~100%', () => {",
+                  "    const bp = pm.response.json().breakdown_percentage;",
+                  "    const sum = bp.device + bp.network + bp.datacenter;",
+                  "    pm.expect(Math.abs(sum - 100)).to.be.lessThan(0.5);",
+                  "});",
+                  "pm.test('Etiqueta ambiental válida', () => {",
+                  "    const labels = ['A+++','A++','A+','A','B','C','D','E','F'];",
+                  "    const label = pm.response.json().environmental_label?.label?.label;",
+                  "    pm.expect(labels).to.include(label);",
+                  "});",
+                  "pm.test('processor_used válido', () => {",
+                  "    pm.expect(['cpu','gpu','npu']).to.include(pm.response.json().metadata.device_processor);",
+                  "});",
+                  "pm.collectionVariables.set('gpt4_co2', pm.response.json().emissions_gCO2.total);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.2 Phi-2 (modelo eficiente)",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"model_id\": \"phi-2\",\n  \"data_center_id\": \"{{data_center_id}}\",\n  \"device_id\": \"{{device_id}}\",\n  \"network_id\": \"{{network_id}}\",\n  \"user_country\": \"{{user_country}}\",\n  \"request_type\": \"{{request_type}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/calculate",
+              "host": ["{{base_url}}"],
+              "path": ["api", "calculate"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Phi-2 emite menos que GPT-4', () => {",
+                  "    const phi2_co2 = pm.response.json().emissions_gCO2.total;",
+                  "    const gpt4_co2 = parseFloat(pm.collectionVariables.get('gpt4_co2') || 999);",
+                  "    pm.expect(phi2_co2).to.be.lessThan(gpt4_co2);",
+                  "});",
+                  "pm.test('Etiqueta A+++ a B (modelo eficiente)', () => {",
+                  "    const labels = ['A+++','A++','A+','A','B'];",
+                  "    const label = pm.response.json().environmental_label?.label?.label;",
+                  "    pm.expect(labels).to.include(label);",
+                  "});",
+                  "pm.collectionVariables.set('phi2_co2', pm.response.json().emissions_gCO2.total);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.3 Con tokens explícitos (100 input + 200 output)",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"model_id\": \"phi-2\",\n  \"data_center_id\": \"{{data_center_id}}\",\n  \"device_id\": \"{{device_id}}\",\n  \"network_id\": \"{{network_id}}\",\n  \"tokens_input\": 100,\n  \"tokens_output\": 200\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/calculate",
+              "host": ["{{base_url}}"],
+              "path": ["api", "calculate"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('tokens_processed == 300', () => {",
+                  "    pm.expect(pm.response.json().metadata.tokens_processed).to.equal(300);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.4 Modelo personalizado (__custom__)",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"model_id\": \"__custom__\",\n  \"custom_model\": {\n    \"model_name\": \"Mi LLM 13B\",\n    \"num_parameters\": 13000000000\n  },\n  \"data_center_id\": \"{{data_center_id}}\",\n  \"device_id\": \"{{device_id}}\",\n  \"network_id\": \"{{network_id}}\",\n  \"request_type\": \"{{request_type}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/calculate",
+              "host": ["{{base_url}}"],
+              "path": ["api", "calculate"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Nombre del modelo personalizado correcto', () => {",
+                  "    pm.expect(pm.response.json().metadata.model).to.include('Mi LLM 13B');",
+                  "});",
+                  "pm.test('Emisiones > 0', () => pm.expect(pm.response.json().emissions_gCO2.total).to.be.greaterThan(0));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.5 Datacenter personalizado (PUE 1.5)",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"model_id\": \"phi-2\",\n  \"data_center_id\": \"__custom__\",\n  \"custom_dc\": {\n    \"country_code\": \"DE\",\n    \"pue\": 1.5\n  },\n  \"device_id\": \"{{device_id}}\",\n  \"network_id\": \"{{network_id}}\",\n  \"request_type\": \"{{request_type}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/calculate",
+              "host": ["{{base_url}}"],
+              "path": ["api", "calculate"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 con DC personalizado', () => pm.response.to.have.status(200));",
+                  "pm.test('Emisiones DC > 0', () => {",
+                  "    pm.expect(pm.response.json().emissions_gCO2.datacenter).to.be.greaterThan(0);",
+                  "});",
+                  "pm.collectionVariables.set('dc_custom_pue15_co2', pm.response.json().emissions_gCO2.datacenter);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.6 Dispositivo personalizado (GPU 200W)",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"model_id\": \"phi-2\",\n  \"data_center_id\": \"{{data_center_id}}\",\n  \"device_id\": \"__custom__\",\n  \"custom_device\": {\n    \"inference_gpu_watts\": 200.0,\n    \"system_idle_watts\": 30.0\n  },\n  \"network_id\": \"{{network_id}}\",\n  \"request_type\": \"{{request_type}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/calculate",
+              "host": ["{{base_url}}"],
+              "path": ["api", "calculate"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 con dispositivo personalizado', () => pm.response.to.have.status(200));",
+                  "pm.test('Emisiones de dispositivo > 0', () => {",
+                  "    pm.expect(pm.response.json().emissions_gCO2.device).to.be.greaterThan(0);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.7 Red personalizada (5G alternativa)",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"model_id\": \"phi-2\",\n  \"data_center_id\": \"{{data_center_id}}\",\n  \"device_id\": \"{{device_id}}\",\n  \"network_id\": \"__custom__\",\n  \"custom_network\": {\n    \"energy_kWh_per_MB\": 0.0003,\n    \"energy_kWh_per_GB\": 0.3\n  },\n  \"request_type\": \"{{request_type}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/calculate",
+              "host": ["{{base_url}}"],
+              "path": ["api", "calculate"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 con red personalizada', () => pm.response.to.have.status(200));",
+                  "pm.test('Emisiones de red > 0', () => {",
+                  "    pm.expect(pm.response.json().emissions_gCO2.network).to.be.greaterThan(0);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.8 Request type: generation_long",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"model_id\": \"{{model_id}}\",\n  \"data_center_id\": \"{{data_center_id}}\",\n  \"device_id\": \"{{device_id}}\",\n  \"network_id\": \"{{network_id}}\",\n  \"request_type\": \"generation_long\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/calculate",
+              "host": ["{{base_url}}"],
+              "path": ["api", "calculate"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('generation_long usa más tokens que chat_simple', () => {",
+                  "    const tokens = pm.response.json().metadata.tokens_processed;",
+                  "    pm.expect(tokens).to.be.greaterThan(285);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.9 Request type: code_generation",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"model_id\": \"{{model_id}}\",\n  \"data_center_id\": \"{{data_center_id}}\",\n  \"device_id\": \"{{device_id}}\",\n  \"network_id\": \"{{network_id}}\",\n  \"request_type\": \"code_generation\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/calculate",
+              "host": ["{{base_url}}"],
+              "path": ["api", "calculate"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('tokens_processed > 0', () => pm.expect(pm.response.json().metadata.tokens_processed).to.be.greaterThan(0));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "3. Comparativa de Modelos",
+      "item": [
+        {
+          "name": "3.1 Comparar todos los modelos",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"data_center_id\": \"{{data_center_id}}\",\n  \"device_id\": \"{{device_id}}\",\n  \"network_id\": \"{{network_id}}\",\n  \"user_country\": \"{{user_country}}\",\n  \"request_type\": \"{{request_type}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/compare",
+              "host": ["{{base_url}}"],
+              "path": ["api", "compare"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Retorna 15 modelos', () => {",
+                  "    pm.expect(pm.response.json().comparative_table.length).to.equal(15);",
+                  "});",
+                  "pm.test('Cada fila tiene environmental_label', () => {",
+                  "    pm.response.json().comparative_table.slice(0,5).forEach(row => {",
+                  "        pm.expect(row).to.have.property('environmental_label');",
+                  "    });",
+                  "});",
+                  "pm.test('Phi-2 emite menos que GPT-4', () => {",
+                  "    const rows = pm.response.json().comparative_table;",
+                  "    const phi2 = rows.find(r => r.model_id === 'phi-2');",
+                  "    const gpt4 = rows.find(r => r.model_id === 'gpt-4');",
+                  "    if (phi2 && gpt4) pm.expect(phi2.emissions_gCO2).to.be.lessThan(gpt4.emissions_gCO2);",
+                  "});",
+                  "pm.test('Tabla tiene resumen best/worst', () => {",
+                  "    const d = pm.response.json();",
+                  "    pm.expect(d).to.have.property('summary');",
+                  "    pm.expect(d.summary).to.have.property('best_option');",
+                  "    pm.expect(d.summary).to.have.property('worst_option');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.2 Comparativa con modelo personalizado",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"data_center_id\": \"{{data_center_id}}\",\n  \"device_id\": \"{{device_id}}\",\n  \"network_id\": \"{{network_id}}\",\n  \"request_type\": \"{{request_type}}\",\n  \"custom_model\": {\n    \"model_name\": \"GPT-4 Fine-tuned\",\n    \"num_parameters\": 175000000000\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/compare",
+              "host": ["{{base_url}}"],
+              "path": ["api", "compare"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Tabla incluye el modelo personalizado (is_custom: true)', () => {",
+                  "    const rows = pm.response.json().comparative_table;",
+                  "    const custom = rows.find(r => r.is_custom === true);",
+                  "    pm.expect(custom).to.not.be.undefined;",
+                  "});",
+                  "pm.test('Total: 15 modelos + 1 custom = 16', () => {",
+                  "    pm.expect(pm.response.json().comparative_table.length).to.equal(16);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.3 Compare sin campos obligatorios → 400",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"data_center_id\": \"{{data_center_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/compare",
+              "host": ["{{base_url}}"],
+              "path": ["api", "compare"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Sin device_id ni network_id → 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Mensaje de error descriptivo', () => pm.expect(pm.response.json()).to.have.property('error'));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "4. Reportes",
+      "item": [
+        {
+          "name": "4.1 Breakdown — Estructura completa",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"model_id\": \"{{model_id}}\",\n  \"data_center_id\": \"{{data_center_id}}\",\n  \"device_id\": \"{{device_id}}\",\n  \"network_id\": \"{{network_id}}\",\n  \"user_country\": \"{{user_country}}\",\n  \"request_type\": \"{{request_type}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/report/breakdown",
+              "host": ["{{base_url}}"],
+              "path": ["api", "report", "breakdown"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Tiene breakdown y breakdown_gco2', () => {",
+                  "    const d = pm.response.json();",
+                  "    pm.expect(d).to.have.property('breakdown');",
+                  "    pm.expect(d).to.have.property('breakdown_gco2');",
+                  "});",
+                  "pm.test('Porcentajes suman ~100%', () => {",
+                  "    const bp = pm.response.json().breakdown;",
+                  "    const sum = bp.device_pct + bp.network_pct + bp.datacenter_pct;",
+                  "    pm.expect(Math.abs(sum - 100)).to.be.lessThan(0.5);",
+                  "});",
+                  "pm.test('Tiene colores para Chart.js', () => {",
+                  "    pm.expect(pm.response.json().chart_colors.length).to.equal(3);",
+                  "});",
+                  "pm.test('breakdown_gco2 no tiene negativos', () => {",
+                  "    const bg = pm.response.json().breakdown_gco2;",
+                  "    pm.expect(bg.device).to.be.at.least(0);",
+                  "    pm.expect(bg.network).to.be.at.least(0);",
+                  "    pm.expect(bg.datacenter).to.be.at.least(0);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "4.2 Production — 1M consultas/día",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"model_id\": \"{{model_id}}\",\n  \"data_center_id\": \"{{data_center_id}}\",\n  \"device_id\": \"{{device_id}}\",\n  \"network_id\": \"{{network_id}}\",\n  \"user_country\": \"{{user_country}}\",\n  \"request_type\": \"{{request_type}}\",\n  \"queries_per_day\": 1000000\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/report/production",
+              "host": ["{{base_url}}"],
+              "path": ["api", "report", "production"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Estructura production_impact correcta', () => {",
+                  "    const pi = pm.response.json().production_impact;",
+                  "    pm.expect(pi).to.have.property('input');",
+                  "    pm.expect(pi).to.have.property('emissions');",
+                  "    pm.expect(pi).to.have.property('energy');",
+                  "    pm.expect(pi).to.have.property('equivalencies');",
+                  "});",
+                  "pm.test('1M queries/día reflejado en input', () => {",
+                  "    pm.expect(pm.response.json().production_impact.input.queries_per_day).to.equal(1000000);",
+                  "});",
+                  "pm.test('Emisiones anuales > 0', () => {",
+                  "    pm.expect(pm.response.json().production_impact.emissions.tons_co2_annual).to.be.greaterThan(0);",
+                  "});",
+                  "pm.test('Equivalencias con árboles y vuelos', () => {",
+                  "    const equiv = pm.response.json().production_impact.equivalencies;",
+                  "    pm.expect(equiv.trees_needed).to.be.greaterThan(0);",
+                  "    pm.expect(equiv.transatlantic_flights).to.be.greaterThan(0);",
+                  "});",
+                  "pm.collectionVariables.set('prod_1M_kg', pm.response.json().production_impact.emissions.kg_co2_annual);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "4.3 Production — Parámetro days_per_year=180",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"model_id\": \"{{model_id}}\",\n  \"data_center_id\": \"{{data_center_id}}\",\n  \"device_id\": \"{{device_id}}\",\n  \"network_id\": \"{{network_id}}\",\n  \"user_country\": \"{{user_country}}\",\n  \"request_type\": \"{{request_type}}\",\n  \"queries_per_day\": 1000,\n  \"days_per_year\": 180\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/report/production",
+              "host": ["{{base_url}}"],
+              "path": ["api", "report", "production"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('days_per_year=180 reflejado en input', () => {",
+                  "    pm.expect(pm.response.json().production_impact.input.days_per_year).to.equal(180);",
+                  "});",
+                  "pm.test('total_queries = 1000 × 180 = 180000', () => {",
+                  "    pm.expect(pm.response.json().production_impact.input.total_queries_per_year).to.equal(180000);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "4.4 Production — Escalado lineal (2× queries = 2× CO2)",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"model_id\": \"{{model_id}}\",\n  \"data_center_id\": \"{{data_center_id}}\",\n  \"device_id\": \"{{device_id}}\",\n  \"network_id\": \"{{network_id}}\",\n  \"user_country\": \"{{user_country}}\",\n  \"request_type\": \"{{request_type}}\",\n  \"queries_per_day\": 2000000\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/report/production",
+              "host": ["{{base_url}}"],
+              "path": ["api", "report", "production"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('2M queries produce ~2× CO2 vs 1M (test 4.2)', () => {",
+                  "    const kg_2M = pm.response.json().production_impact.emissions.kg_co2_annual;",
+                  "    const kg_1M = parseFloat(pm.collectionVariables.get('prod_1M_kg') || 0);",
+                  "    if (kg_1M > 0) {",
+                  "        const ratio = kg_2M / kg_1M;",
+                  "        pm.expect(Math.abs(ratio - 2.0)).to.be.lessThan(0.05);",
+                  "    }",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "5. Impacto Geográfico",
+      "item": [
+        {
+          "name": "5.1 Islandia — CI muy baja (red limpia)",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"model_id\": \"phi-2\",\n  \"data_center_id\": \"aws-eu-north-1\",\n  \"device_id\": \"{{device_id}}\",\n  \"network_id\": \"{{network_id}}\",\n  \"user_country\": \"IS\",\n  \"request_type\": \"{{request_type}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/calculate",
+              "host": ["{{base_url}}"],
+              "path": ["api", "calculate"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Emisiones de red muy bajas en Islandia', () => {",
+                  "    pm.expect(pm.response.json().emissions_gCO2.network).to.be.lessThan(0.005);",
+                  "});",
+                  "pm.collectionVariables.set('co2_IS', pm.response.json().emissions_gCO2.total);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5.2 Polonia — CI alta (red sucia)",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"model_id\": \"phi-2\",\n  \"data_center_id\": \"aws-us-east-1\",\n  \"device_id\": \"{{device_id}}\",\n  \"network_id\": \"{{network_id}}\",\n  \"user_country\": \"PL\",\n  \"request_type\": \"{{request_type}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/calculate",
+              "host": ["{{base_url}}"],
+              "path": ["api", "calculate"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Polonia emite más de red que Islandia', () => {",
+                  "    const co2_PL = pm.response.json().emissions_gCO2.total;",
+                  "    const co2_IS = parseFloat(pm.collectionVariables.get('co2_IS') || 0);",
+                  "    if (co2_IS > 0) pm.expect(co2_PL).to.be.greaterThan(co2_IS);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "6. Validación de Errores",
+      "item": [
+        {
+          "name": "6.1 Sin model_id → 400",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"data_center_id\": \"{{data_center_id}}\",\n  \"device_id\": \"{{device_id}}\",\n  \"network_id\": \"{{network_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/calculate",
+              "host": ["{{base_url}}"],
+              "path": ["api", "calculate"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Sin model_id → 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Respuesta es JSON con campo error', () => {",
+                  "    pm.expect(pm.response.headers.get('Content-Type')).to.include('application/json');",
+                  "    pm.expect(pm.response.json()).to.have.property('error');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "6.2 Body vacío → 400",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {"mode": "raw", "raw": "{}"},
+            "url": {
+              "raw": "{{base_url}}/api/calculate",
+              "host": ["{{base_url}}"],
+              "path": ["api", "calculate"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('Body vacío → 400', () => pm.response.to.have.status(400));"]
+              }
+            }
+          ]
+        },
+        {
+          "name": "6.3 model_id inexistente → 200 (fallback)",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"model_id\": \"modelo-que-no-existe-xyz\",\n  \"data_center_id\": \"{{data_center_id}}\",\n  \"device_id\": \"{{device_id}}\",\n  \"network_id\": \"{{network_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/calculate",
+              "host": ["{{base_url}}"],
+              "path": ["api", "calculate"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('model_id inexistente → 200 (usa nombre como fallback)', () => { pm.response.to.have.status(200); pm.expect(pm.response.json().metadata.model).to.equal('modelo-que-no-existe-xyz'); });"]
+              }
+            }
+          ]
+        },
+        {
+          "name": "6.4 __custom__ sin custom_model → 400",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"model_id\": \"__custom__\",\n  \"data_center_id\": \"{{data_center_id}}\",\n  \"device_id\": \"{{device_id}}\",\n  \"network_id\": \"{{network_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/calculate",
+              "host": ["{{base_url}}"],
+              "path": ["api", "calculate"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('__custom__ sin custom_model → 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Error menciona custom_model', () => {",
+                  "    pm.expect(pm.response.json().error.toLowerCase()).to.include('custom_model');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "6.5 Compare sin device_id → 400",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"data_center_id\": \"{{data_center_id}}\",\n  \"network_id\": \"{{network_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/compare",
+              "host": ["{{base_url}}"],
+              "path": ["api", "compare"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('Compare sin device_id → 400', () => pm.response.to.have.status(400));"]
+              }
+            }
+          ]
+        },
+        {
+          "name": "6.6 Compare sin network_id → 400",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"data_center_id\": \"{{data_center_id}}\",\n  \"device_id\": \"{{device_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/compare",
+              "host": ["{{base_url}}"],
+              "path": ["api", "compare"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('Compare sin network_id → 400', () => pm.response.to.have.status(400));"]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "7. Smoke Tests",
+      "item": [
+        {
+          "name": "SMOKE — API viva (< 200ms)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/options",
+              "host": ["{{base_url}}"],
+              "path": ["api", "options"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Respuesta < 500ms', () => pm.expect(pm.response.responseTime).to.be.lessThan(500));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "SMOKE — Cálculo básico (< 300ms)",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"model_id\": \"phi-2\",\n  \"data_center_id\": \"{{data_center_id}}\",\n  \"device_id\": \"{{device_id}}\",\n  \"network_id\": \"{{network_id}}\",\n  \"request_type\": \"{{request_type}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/calculate",
+              "host": ["{{base_url}}"],
+              "path": ["api", "calculate"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Tiene emisiones', () => pm.expect(pm.response.json().emissions_gCO2.total).to.be.greaterThan(0));",
+                  "pm.test('Respuesta < 300ms', () => pm.expect(pm.response.responseTime).to.be.lessThan(300));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "SMOKE — Error handling activo",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {"mode": "raw", "raw": "{}"},
+            "url": {
+              "raw": "{{base_url}}/api/calculate",
+              "host": ["{{base_url}}"],
+              "path": ["api", "calculate"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Error handling → 400 con JSON', () => {",
+                  "    pm.response.to.have.status(400);",
+                  "    pm.expect(pm.response.json()).to.have.property('error');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
