@@ -1984,8 +1984,8 @@
                 c.lineTo(area.left, area.bottom);
                 c.closePath();
                 const grad = c.createLinearGradient(0, area.top, 0, area.bottom);
-                grad.addColorStop(0, 'rgba(0,230,118,0.10)');
-                grad.addColorStop(1, 'rgba(0,230,118,0.01)');
+                grad.addColorStop(0, 'rgba(0,200,100,0.04)');
+                grad.addColorStop(1, 'rgba(0,200,100,0.00)');
                 c.fillStyle = grad;
                 c.fill();
 
@@ -2083,17 +2083,35 @@
                 meta.data.forEach((el, i) => {
                     const p = chart.data.datasets[0].data[i];
                     c.save();
-                    c.fillStyle = p.isCustom ? '#00e5ff' : (p.isCurrent ? '#00e5ff' : (p.isPareto ? '#ffd600' : 'rgba(200,214,207,0.7)'));
+                    // Manual outline instead of shadowBlur (shadowBlur bleeds into dots on animation frames)
+                    const labelY = el.y - (p.isPareto || p.isCustom ? 13 : 8);
+                    const fgColor = p.isCustom ? '#00e5ff'
+                        : (p.isCurrent ? '#00e5ff'
+                        : (p.isPareto ? '#ffe033'
+                        : 'rgba(195,215,205,0.95)'));
                     c.font = (p.isCurrent || p.isCustom) ? '700 10px Inter' : '500 9px Inter';
                     c.textAlign = 'center';
-                    c.fillText(p.model, el.x, el.y - (p.isPareto || p.isCustom ? 13 : 8));
+                    // Dark stroke pass first (acts as outline/shadow without shadowBlur)
+                    c.strokeStyle = 'rgba(0,0,0,0.75)';
+                    c.lineWidth = 3;
+                    c.lineJoin = 'round';
+                    c.strokeText(p.model, el.x, labelY);
+                    // Fill pass on top
+                    c.fillStyle = fgColor;
+                    c.fillText(p.model, el.x, labelY);
                     if (p.isCustom) {
-                        c.fillStyle = '#00e5ff';
                         c.font = '700 12px Inter';
+                        c.strokeStyle = 'rgba(0,0,0,0.75)';
+                        c.lineWidth = 3;
+                        c.strokeText('◆', el.x, el.y - 21);
+                        c.fillStyle = '#00e5ff';
                         c.fillText('◆', el.x, el.y - 21);
                     } else if (p.isPareto && !p.isCurrent) {
-                        c.fillStyle = '#00e676';
                         c.font = '700 12px Inter';
+                        c.strokeStyle = 'rgba(0,0,0,0.75)';
+                        c.lineWidth = 3;
+                        c.strokeText('★', el.x, el.y - 21);
+                        c.fillStyle = '#00e676';
                         c.fillText('★', el.x, el.y - 21);
                     }
                     c.restore();
@@ -2958,323 +2976,992 @@
     }
 
     // ──────────────────────────────────────────────────────────────────
-    // PDF export — Professional Report using jsPDF
+    // PDF export — Professional Consultancy Report using jsPDF
     // ──────────────────────────────────────────────────────────────────
     function exportComparatorPDF() {
         if (!window.jspdf) { showError('jsPDF no está cargado todavía, inténtalo de nuevo.'); return; }
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
         const W = 210, H = 297;
-        const ML = 18, MR = 18, MT = 15;
-        const CW = W - ML - MR; // content width
+        const ML = 18, MR = 18;
+        const CW = W - ML - MR; // 174 mm
 
-        const p = LAST_PARAMS || {};
-        const currentModelName = (OPTIONS.models || []).find(m => m.model_id === p.model_id)?.model_name || p.model_id || '—';
+        // ── Color palette — Navy / Slate professional (BCG/Deloitte style) ──
+        const C = {
+            white:     [255, 255, 255],
+            bgLight:   [248, 250, 252],
+            bgAccent:  [239, 246, 255],
+            bgAmber:   [255, 251, 235],
+            separator: [203, 213, 225],
+            textMain:  [ 15,  23,  42],
+            textSub:   [ 71,  85, 105],
+            textLight: [148, 163, 184],
+            navy:      [ 15,  23,  42],
+            navyMid:   [ 30,  58,  95],
+            navyLt:    [ 51,  83, 145],
+            accentBlue:[  37, 99, 235],
+            accentTeal:[  8, 145, 178],
+            amber:     [180, 110,   0],
+            green:     [ 22, 101,  52],
+            greenMid:  [ 22, 163,  74],
+            red:       [185,  28,  28],
+        };
 
-        // ── Utility helpers ──
-        function darkPage() { doc.setFillColor(10, 20, 14); doc.rect(0, 0, W, H, 'F'); }
-        function greenLine(y) { doc.setDrawColor(74, 222, 128); doc.setLineWidth(0.3); doc.line(ML, y, W - MR, y); }
-        function sectionTitle(title, y) {
-            doc.setFont('helvetica', 'bold'); doc.setFontSize(13); doc.setTextColor(74, 222, 128);
+        // ── Palette helpers ──
+        function fc(rgb) { doc.setFillColor(rgb[0], rgb[1], rgb[2]); }
+        function dc(rgb) { doc.setDrawColor(rgb[0], rgb[1], rgb[2]); }
+        function tc(rgb) { doc.setTextColor(rgb[0], rgb[1], rgb[2]); }
+        function whitePage() { fc(C.white); doc.rect(0, 0, W, H, 'F'); }
+        function checkPage(y, need) {
+            if (y + need > H - 22) { doc.addPage(); whitePage(); return 22; }
+            return y;
+        }
+        function sectionHeader(title, y) {
+            fc(C.navyMid); doc.rect(ML, y - 5, 3.5, 9, 'F');
+            doc.setFont('helvetica', 'bold'); doc.setFontSize(13); tc(C.navyMid);
+            doc.text(title, ML + 8, y);
+            dc(C.separator); doc.setLineWidth(0.25);
+            doc.line(ML + 8, y + 2.5, W - MR, y + 2.5);
+            return y + 11;
+        }
+        function subHeader(title, y) {
+            doc.setFont('helvetica', 'bold'); doc.setFontSize(10); tc(C.navy);
             doc.text(title, ML, y);
-            greenLine(y + 2);
-            return y + 8;
+            return y + 6;
         }
-        function bodyText(text, x, y, opts) {
-            doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(200, 214, 207);
-            const lines = doc.splitTextToSize(text, opts?.maxWidth || CW);
+        function bodyText(text, x, y, maxW) {
+            doc.setFont('helvetica', 'normal'); doc.setFontSize(9); tc(C.textSub);
+            const lines = doc.splitTextToSize(text, maxW || CW);
             doc.text(lines, x, y);
-            return y + lines.length * 4;
+            return y + lines.length * 4.8;
         }
-        function labelText(label, value, x, y) {
-            doc.setFont('helvetica', 'bold'); doc.setFontSize(8.5); doc.setTextColor(56, 189, 248);
-            doc.text(label, x, y);
-            doc.setFont('helvetica', 'normal'); doc.setTextColor(200, 214, 207);
-            doc.text(String(value), x + 42, y);
-            return y + 5;
+        function infoBox(text, x, y, w, borderColor) {
+            // Set font BEFORE splitting so line-width calculation uses the correct size
+            doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5);
+            const lines = doc.splitTextToSize(text, w - 12);
+            const LH = 5.0;
+            const bh = 8 + lines.length * LH + 4;
+            fc(C.bgAccent); doc.rect(x, y - 4, w, bh, 'F');
+            fc(borderColor); doc.rect(x, y - 4, 3, bh, 'F');
+            tc(C.navyMid);
+            doc.text(lines, x + 7, y, { lineHeightFactor: LH / 8.5 * 2.835 });
+            return y + bh;
         }
-        function checkPage(y, need) { if (y + need > H - 20) { doc.addPage(); darkPage(); return MT + 5; } return y; }
+        function labelColor(lbl) {
+            const l = (lbl || '').trim();
+            if (l === 'A+++') return [  0, 128,   0];
+            if (l === 'A++')  return [ 22, 163,  74];
+            if (l === 'A+')   return [ 34, 197,  94];
+            if (l === 'A')    return [ 74, 222, 128];
+            if (l === 'B')    return [180, 110,   0];
+            if (l === 'C')    return [234,  88,  12];
+            if (l === 'D')    return [185,  28,  28];
+            if (l === 'E')    return [153,  27,  27];
+            return [127, 29, 29];
+        }
+        // KEY FIX: composite canvas on white background before export
+        function canvasToWhiteImg(canvas) {
+            const off = document.createElement('canvas');
+            off.width  = canvas.width;
+            off.height = canvas.height;
+            const ctx = off.getContext('2d');
+            ctx.fillStyle = '#FFFFFF';
+            ctx.fillRect(0, 0, off.width, off.height);
+            ctx.drawImage(canvas, 0, 0);
+            return off.toDataURL('image/png', 0.95);
+        }
+        function fitText(text, maxW) {
+            let t = String(text);
+            while (t.length > 1 && doc.getTextWidth(t) > maxW) t = t.slice(0, -1);
+            return t;
+        }
 
-        // ═══════════════════════════════════════════════════════════════
-        // PAGE 1: Cover + Configuration + Methodology + Summary
-        // ═══════════════════════════════════════════════════════════════
-        darkPage();
-
-        // Header decoration
-        doc.setFillColor(14, 35, 20);
-        doc.roundedRect(ML - 3, 10, CW + 6, 42, 3, 3, 'F');
-        doc.setDrawColor(74, 222, 128); doc.setLineWidth(0.5);
-        doc.roundedRect(ML - 3, 10, CW + 6, 42, 3, 3, 'S');
-
-        // Title
-        doc.setFont('helvetica', 'bold'); doc.setFontSize(20); doc.setTextColor(74, 222, 128);
-        doc.text('Informe Comparativo de Modelos de IA', ML + 2, 26);
-
-        doc.setFont('helvetica', 'normal'); doc.setFontSize(11); doc.setTextColor(200, 214, 207);
-        doc.text('Evaluación del impacto medioambiental — Emisiones de CO₂ en inferencia', ML + 2, 34);
-
-        doc.setFontSize(9); doc.setTextColor(148, 163, 177);
-        doc.text(`Generado: ${new Date().toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}`, ML + 2, 42);
-        doc.text('Calculadora de Carbono para IA — TFG Antonio Luis Jiménez de la Fuente', ML + 2, 48);
-
-        let y = 60;
-
-        // Section: Configuration
-        y = sectionTitle('1. Configuración del escenario', y);
-
-        const dcObj = (OPTIONS.data_centers || []).find(d => d.dc_id === p.data_center_id);
-        const deviceObj = (OPTIONS.devices || []).find(d => d.device_id === p.device_id);
-
-        y = labelText('Modelo seleccionado:', currentModelName, ML, y);
-        y = labelText('Tipo de petición:', formatRequestType(p.request_type || 'chat_simple'), ML, y);
-        y = labelText('Tokens (in + out):', `${p.tokens_input || '—'} + ${p.tokens_output || '—'}`, ML, y);
-        y = labelText('Data Center:', dcObj ? `${dcObj.provider_name} — ${dcObj.region || ''} (${dcObj.country_code || ''})` : (p.data_center_id || '—'), ML, y);
-        y = labelText('PUE del DC:', dcObj?.pue || '—', ML, y);
-        y = labelText('Dispositivo:', deviceObj?.device_name || p.device_id || '—', ML, y);
-        y = labelText('Red:', p.network_id || '—', ML, y);
-        y = labelText('País usuario:', p.user_country || 'ES', ML, y);
-        y = labelText('Procesador:', (p.inference_processor || 'auto').toUpperCase(), ML, y);
-        y = labelText('Utilización:', `${p.utilization != null ? Math.round(p.utilization * 100) : 70}%`, ML, y);
-        y += 4;
-
-        // Section: Methodology
-        y = sectionTitle('2. Nota metodológica', y);
-        y = bodyText(
-            'Este comparador evalúa exclusivamente las emisiones de CO₂ asociadas a los modelos de IA durante el periodo de inferencia. ' +
-            'El resto de parámetros (dispositivo del usuario, red de datos y data center) se mantienen fijos según la configuración indicada arriba, ' +
-            'de modo que la única variable entre modelos es su consumo energético por cada 1.000 tokens procesados (energy_wh_per_1k_tokens). ' +
-            'Esto permite una comparación directa, equitativa y bajo condiciones idénticas. ' +
-            'Las etiquetas de eficiencia se calculan en base a percentiles de la distribución de emisiones de todos los modelos del dataset.',
-            ML, y
-        );
-        y += 4;
-
-        // Section: Summary statistics
-        const tableEl = document.getElementById('detailed-comp-table');
-        const allRows = tableEl ? Array.from(tableEl.querySelectorAll('tbody tr')) : [];
-        const modelCount = allRows.length;
-
-        y = sectionTitle('3. Resumen ejecutivo', y);
-        // Get data from the DOM table
+        // ── Extract data ──
+        const p = LAST_PARAMS || {};
+        const currentModelName = (OPTIONS.models || []).find(m => m.model_id === p.model_id)?.model_name || p.model_id || '-';
+        const dcObj     = (OPTIONS.data_centers || []).find(d => d.dc_id     === p.data_center_id);
+        const deviceObj = (OPTIONS.devices      || []).find(d => d.device_id === p.device_id);
+        const tableEl   = document.getElementById('detailed-comp-table');
+        const allRows   = tableEl ? Array.from(tableEl.querySelectorAll('tbody tr')) : [];
         const summaryData = [];
         allRows.forEach(row => {
             const cells = Array.from(row.querySelectorAll('td'));
             if (cells.length >= 7) {
                 summaryData.push({
-                    model: cells[0].textContent.replace('ACTUAL', '').trim(),
-                    org: cells[1].textContent.trim(),
-                    co2: cells[2].textContent.trim(),
+                    model:   cells[0].textContent.replace('ACTUAL', '').trim(),
+                    org:     cells[1].textContent.trim(),
+                    co2:     cells[2].textContent.trim(),
                     savings: cells[4].textContent.trim(),
-                    tps: cells[5].textContent.trim(),
+                    tps:     cells[5].textContent.trim(),
                     latency: cells[6].textContent.trim(),
-                    label: cells[7]?.textContent.trim() || '—',
+                    label:   cells[7]?.textContent.trim() || '-',
                 });
             }
         });
 
-        const bestModel = summaryData[0];
-        const worstModel = summaryData[summaryData.length - 1];
+        const bestModel   = summaryData[0];
+        const worstModel  = summaryData[summaryData.length - 1];
+        const bco2 = parseFloat(bestModel?.co2)  || 0;
+        const wco2 = parseFloat(worstModel?.co2) || 0;
+        const spreadPct  = (wco2 > 0 && bco2 > 0) ? ((wco2 / bco2 - 1) * 100).toFixed(0) : '-';
+        const avgCO2val  = summaryData.length
+            ? summaryData.reduce((s, r) => s + (parseFloat(r.co2) || 0), 0) / summaryData.length
+            : 0;
+        const currentRow = summaryData.find(r => r.model === currentModelName ||
+            r.model.startsWith(currentModelName.substring(0, 8)));
+        const currentCO2 = parseFloat(currentRow?.co2) || 0;
+        const currentRank = summaryData.findIndex(r => r.model === currentModelName ||
+            r.model.startsWith(currentModelName.substring(0, 8))) + 1;
 
-        doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(200, 214, 207);
-        y = labelText('Modelos analizados:', modelCount, ML, y);
-        y = labelText('Modelo más eficiente:', bestModel ? `${bestModel.model} (${bestModel.co2} gCO₂) — Clase ${bestModel.label}` : '—', ML, y);
-        y = labelText('Modelo menos eficiente:', worstModel ? `${worstModel.model} (${worstModel.co2} gCO₂) — Clase ${worstModel.label}` : '—', ML, y);
-        if (bestModel && worstModel) {
-            const bco2 = parseFloat(bestModel.co2) || 0;
-            const wco2 = parseFloat(worstModel.co2) || 0;
-            const spread = wco2 > 0 ? ((wco2 / (bco2 || 1) - 1) * 100).toFixed(0) : 0;
-            y = labelText('Diferencia máx.:', `El modelo menos eficiente emite un ${spread}% más que el más eficiente`, ML, y);
-        }
-        y = labelText('Modelo seleccionado:', currentModelName, ML, y);
+        const now       = new Date();
+        const dateStr   = now.toISOString().slice(0, 10);
+        const dateHuman = now.toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 
         // ═══════════════════════════════════════════════════════════════
-        // PAGE 2: Detailed comparison table
+        // PAGE 1 — COVER
         // ═══════════════════════════════════════════════════════════════
-        doc.addPage(); darkPage();
-        y = MT + 5;
-        y = sectionTitle('4. Tabla comparativa detallada', y);
+        whitePage();
 
-        // Table header
-        const cols = [
-            { label: 'Modelo', x: ML, w: 32 },
-            { label: 'Organización', x: ML + 32, w: 30 },
-            { label: 'CO₂ (gCO₂)', x: ML + 62, w: 22 },
-            { label: 'Ahorro vs actual', x: ML + 84, w: 26 },
-            { label: 'Tokens/s', x: ML + 110, w: 18 },
-            { label: 'Latencia', x: ML + 128, w: 20 },
-            { label: 'Etiqueta', x: ML + 148, w: 18 },
+        // Top navy band
+        const BANNER_H = 70;
+        fc(C.navy);    doc.rect(0, 0, W, BANNER_H, 'F');
+        fc(C.navyMid); doc.rect(0, BANNER_H - 3, W, 3, 'F');
+        fc(C.accentBlue); doc.rect(0, BANNER_H, W, 1.2, 'F');
+
+        // Decorative side stripe
+        fc(C.accentTeal); doc.rect(0, 0, 5, BANNER_H, 'F');
+
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(22); tc(C.white);
+        doc.text('Informe Comparativo de Modelos de IA', ML + 2, 24);
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(12); tc([147, 197, 253]);
+        doc.text('Evaluacion del impacto medioambiental en inferencia', ML + 2, 35);
+        dc([147, 197, 253]); doc.setLineWidth(0.6); doc.line(ML + 2, 40, W - MR, 40);
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5); tc([186, 215, 254]);
+        doc.text('Calculadora de Carbono para IA  |  TFG  |  ' + dateHuman, ML + 2, 50);
+        doc.text('Antonio Luis Jimenez de la Fuente  |  Universidad de Sevilla', ML + 2, 58);
+
+        let y = BANNER_H + 14;
+
+        // "Prepared by" block
+        fc(C.bgLight); doc.rect(ML, y, CW, 24, 'F');
+        dc(C.separator); doc.setLineWidth(0.2); doc.rect(ML, y, CW, 24, 'S');
+        doc.setFont('helvetica', 'bold');   doc.setFontSize(7.5); tc(C.accentBlue);
+        doc.text('PREPARADO POR', ML + 5, y + 7);
+        doc.setFont('helvetica', 'bold');   doc.setFontSize(11); tc(C.navy);
+        doc.text('Antonio Luis Jimenez de la Fuente', ML + 5, y + 14);
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(9);  tc(C.textSub);
+        doc.text('TFG - Evaluacion del impacto medioambiental de modelos de Inteligencia Artificial', ML + 5, y + 20);
+
+        y += 32;
+
+        // Executive summary box
+        const sumLines = [
+            { label: 'Modelos analizados:',      val: String(summaryData.length) },
+            { label: 'Modelo mas eficiente:',    val: bestModel  ? `${bestModel.model}  (Clase ${bestModel.label})` : '-' },
+            { label: 'Modelo menos eficiente:',  val: worstModel ? `${worstModel.model}  (Clase ${worstModel.label})` : '-' },
+            { label: 'Diferencia maxima:',        val: spreadPct !== '-' ? `${spreadPct}% mas emisiones (peor vs mejor)` : '-' },
+            { label: 'Modelo de referencia:',    val: `${currentModelName}  (posicion ${currentRank} de ${summaryData.length})` },
+            { label: 'Emisiones referencia:',    val: currentCO2 > 0 ? `${currentCO2.toFixed(4)} gCO2/query` : '-' },
+            { label: 'Media del conjunto:',      val: avgCO2val > 0 ? `${avgCO2val.toFixed(4)} gCO2/query` : '-' },
         ];
+        const LINE_H = 6.8;
+        const BOX_H  = 13 + sumLines.length * LINE_H;
+        fc(C.bgAccent); doc.rect(ML, y, CW, BOX_H, 'F');
+        fc(C.navyMid);  doc.rect(ML, y, 4, BOX_H, 'F');
+        dc(C.separator); doc.setLineWidth(0.2); doc.rect(ML, y, CW, BOX_H, 'S');
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(8); tc(C.accentBlue);
+        doc.text('RESUMEN EJECUTIVO', ML + 8, y + 7);
+        let by = y + 7 + LINE_H;
+        sumLines.forEach(sl => {
+            doc.setFont('helvetica', 'bold');   doc.setFontSize(8.5); tc(C.navy);    doc.text(sl.label, ML + 8, by);
+            doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5); tc(C.textSub); doc.text(sl.val,   ML + 64, by);
+            by += LINE_H;
+        });
+        y += BOX_H + 10;
 
-        // Header row
-        doc.setFillColor(14, 35, 20);
-        doc.rect(ML, y - 4, CW, 7, 'F');
-        doc.setFont('helvetica', 'bold'); doc.setFontSize(7.5); doc.setTextColor(56, 189, 248);
-        cols.forEach(c => doc.text(c.label, c.x + 1, y));
+        // Scope note at bottom of cover
+        doc.setFont('helvetica', 'italic'); doc.setFontSize(8); tc(C.textLight);
+        const scopeNote = 'ALCANCE: Este informe cubre exclusivamente las emisiones de CO2 en la fase de inferencia de los modelos. ' +
+            'No incluye emisiones de entrenamiento, fabricacion de hardware ni ciclo de vida completo.';
+        const scopeLines = doc.splitTextToSize(scopeNote, CW);
+        doc.text(scopeLines, ML, y);
+
+        // ═══════════════════════════════════════════════════════════════
+        // PAGE 2 — CONFIGURATION + METHODOLOGY
+        // ═══════════════════════════════════════════════════════════════
+        doc.addPage(); whitePage();
+        y = 22;
+        y = sectionHeader('1. Configuracion del escenario de evaluacion', y);
+        y += 2;
+        y = bodyText(
+            'Los parametros de la siguiente tabla definen el escenario de inferencia fijo bajo el cual se han calculado las emisiones de todos los modelos comparados. Estos valores permanecen constantes entre modelos, de modo que la unica variable es el consumo energetico propio de cada modelo (energy_wh_per_1k_tokens).',
+            ML, y, CW
+        );
         y += 5;
-        greenLine(y - 2);
 
-        // Data rows
-        doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5);
+        const configRows = [
+            ['Modelo de referencia',       currentModelName],
+            ['Tipo de peticion',           formatRequestType(p.request_type || 'chat_simple')],
+            ['Tokens entrada / salida',    `${p.tokens_input ?? '-'} / ${p.tokens_output ?? '-'}`],
+            ['Data Center',                dcObj ? `${dcObj.provider_name} - ${dcObj.region || ''} (${dcObj.country_code || ''})` : (p.data_center_id || '-')],
+            ['PUE del Data Center',        String(dcObj?.pue ?? '-')],
+            ['Energia renovable DC',       dcObj?.renewable_pct != null ? `${dcObj.renewable_pct}%` : '-'],
+            ['Intensidad carbono DC',      dcObj?.carbon_intensity_gco2_kwh != null ? `${dcObj.carbon_intensity_gco2_kwh} gCO2/kWh` : '-'],
+            ['Dispositivo del usuario',    deviceObj?.device_name || p.device_id || '-'],
+            ['Tipo de red',                p.network_id || '-'],
+            ['Pais del usuario',           p.user_country || 'ES'],
+            ['Procesador de inferencia',   (p.inference_processor || 'auto').toUpperCase()],
+            ['Utilizacion del procesador', `${p.utilization != null ? Math.round(p.utilization * 100) : 70}%`],
+        ];
+        const COL2 = ML + 72, ROW_H = 7.2;
+        configRows.forEach((row, i) => {
+            if (i % 2 !== 0) { fc(C.bgLight); doc.rect(ML, y - 5, CW, ROW_H, 'F'); }
+            dc(C.separator); doc.setLineWidth(0.1); doc.line(ML, y + 2, W - MR, y + 2);
+            doc.setFont('helvetica', 'bold');   doc.setFontSize(8.5); tc(C.navy);    doc.text(row[0],        ML + 2, y);
+            doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5); tc(C.textSub); doc.text(String(row[1]), COL2,   y);
+            y += ROW_H;
+        });
+        y += 10;
+
+        y = sectionHeader('2. Nota metodologica y alcance', y);
+        y += 2;
+        y = infoBox(
+            'Este comparador evalua exclusivamente las emisiones de CO2 asociadas a los modelos de IA durante el periodo de inferencia. ' +
+            'El resto de parametros (dispositivo del usuario, red de datos y data center) se mantienen fijos segun la configuracion indicada, ' +
+            'de modo que la unica variable entre modelos es su consumo energetico por cada 1.000 tokens procesados (energy_wh_per_1k_tokens). ' +
+            'Esto permite una comparacion directa, equitativa y bajo condiciones identicas.',
+            ML, y, CW, C.accentBlue
+        );
+        y += 6;
+        y = bodyText(
+            'Las etiquetas de eficiencia energetica (A+++ hasta F) se asignan en base a la distribucion de percentiles de emisiones del dataset completo de modelos analizados (~693.000 combinaciones de configuraciones), por lo que representan la posicion relativa de cada modelo frente al universo de uso real.',
+            ML, y, CW
+        );
+        y += 4;
+        y = infoBox(
+            'Nota: la metodologia de calculo de emisiones con sus tres componentes (dispositivo de usuario, red de datos y data center) corresponde al flujo general de la Calculadora de Carbono para IA y no aplica directamente a este informe comparativo. En este analisis, todos los parametros del escenario permanecen fijos; la unica variable entre modelos es su consumo energetico por cada 1.000 tokens procesados (energy_wh_per_1k_tokens), lo que garantiza una comparacion equitativa y directa.',
+            ML, y, CW, C.accentBlue
+        );
+
+        // ═══════════════════════════════════════════════════════════════
+        // PAGE 3 — DETAILED COMPARISON TABLE
+        // ═══════════════════════════════════════════════════════════════
+        doc.addPage(); whitePage();
+        y = 22;
+        y = sectionHeader('3. Tabla comparativa detallada de modelos', y);
+        y += 2;
+        y = bodyText(
+            'La siguiente tabla compara los ' + summaryData.length + ' modelos disponibles bajo el mismo escenario de inferencia. ' +
+            'Los modelos se ordenan de menor a mayor emision de CO2 por consulta. ' +
+            'La columna "Ahorro vs ref." refleja la diferencia porcentual entre cada modelo y el modelo de referencia (marcado con [ref]): ' +
+            'un valor negativo indica que ese modelo emite menos CO2 que la referencia (es decir, es mas eficiente), mientras que un valor positivo indica que emite mas. ' +
+            'Las etiquetas energeticas (A+++ a D) reflejan la posicion percentil del modelo frente al dataset completo.',
+            ML, y, CW
+        );
+        y += 5;
+
+        const tCols = [
+            { label: '#',             x: ML,       w: 8  },
+            { label: 'Modelo',        x: ML + 8,   w: 36 },
+            { label: 'Org.',          x: ML + 44,  w: 24 },
+            { label: 'CO2 (gCO2)',    x: ML + 68,  w: 24 },
+            { label: 'Ahorro vs ref.',x: ML + 92,  w: 22 },
+            { label: 'Tok/s',         x: ML + 114, w: 16 },
+            { label: 'Latencia',      x: ML + 130, w: 22 },
+            { label: 'Etiqueta',      x: ML + 152, w: 22 },
+        ];
+        const T_ROW_H = 7;
+
+        function drawTableHeader(yy) {
+            fc(C.navyMid); doc.rect(ML, yy - 5, CW, T_ROW_H, 'F');
+            doc.setFont('helvetica', 'bold'); doc.setFontSize(7.2); tc(C.white);
+            tCols.forEach(c => doc.text(c.label, c.x + 1.5, yy));
+            return yy + T_ROW_H;
+        }
+        y = drawTableHeader(y);
+
+        const co2Values = summaryData.map(r => parseFloat(r.co2) || 0).filter(v => v > 0);
+        const co2Min = co2Values.length ? Math.min(...co2Values) : 0;
+        const co2Max = co2Values.length ? Math.max(...co2Values) : 1;
+
         summaryData.forEach((row, idx) => {
-            y = checkPage(y, 7);
-            const isCurrent = row.model === currentModelName;
+            const prevY = y;
+            y = checkPage(y, T_ROW_H + 3);
+            if (y !== prevY) y = drawTableHeader(y);
 
+            const isCurrent = row.model === currentModelName ||
+                              row.model.startsWith(currentModelName.substring(0, 8));
             if (isCurrent) {
-                doc.setFillColor(0, 229, 255, 8);
-                doc.rect(ML, y - 3.5, CW, 6, 'F');
-            } else if (idx % 2 === 0) {
-                doc.setFillColor(14, 28, 18);
-                doc.rect(ML, y - 3.5, CW, 6, 'F');
-            }
-
-            doc.setTextColor(isCurrent ? 0 : 232, isCurrent ? 229 : 240, isCurrent ? 255 : 235);
-            doc.setFont('helvetica', isCurrent ? 'bold' : 'normal');
-            doc.text((row.model + (isCurrent ? ' ★' : '')).substring(0, 18), cols[0].x + 1, y);
-            doc.setFont('helvetica', 'normal');
-            doc.setTextColor(200, 214, 207);
-            doc.text(row.org.substring(0, 16), cols[1].x + 1, y);
-
-            // CO₂ in green
-            doc.setTextColor(74, 222, 128);
-            doc.text(row.co2, cols[2].x + 1, y);
-
-            // Savings — color coded
-            const savingsVal = row.savings;
-            if (savingsVal.includes('−') || savingsVal.includes('-')) {
-                doc.setTextColor(74, 222, 128);
-            } else if (savingsVal.includes('+')) {
-                doc.setTextColor(249, 115, 22);
+                fc(C.bgAmber);   doc.rect(ML, y - 5, CW, T_ROW_H, 'F');
+                fc(C.amber);     doc.rect(ML, y - 5, 2.5, T_ROW_H, 'F');
+            } else if (idx === 0) {
+                fc([240, 253, 244]); doc.rect(ML, y - 5, CW, T_ROW_H, 'F');
+                fc(C.greenMid);  doc.rect(ML, y - 5, 2.5, T_ROW_H, 'F');
             } else {
-                doc.setTextColor(148, 163, 177);
+                fc(idx % 2 === 0 ? [239, 246, 255] : [221, 234, 250]);
+                doc.rect(ML, y - 5, CW, T_ROW_H, 'F');
             }
-            doc.text(savingsVal || '—', cols[3].x + 1, y);
+            dc(C.separator); doc.setLineWidth(0.1); doc.line(ML, y + 1.8, W - MR, y + 1.8);
 
-            doc.setTextColor(200, 214, 207);
-            doc.text(row.tps, cols[4].x + 1, y);
-            doc.text(row.latency, cols[5].x + 1, y);
+            doc.setFontSize(7.2);
+            // Rank
+            tc(C.textLight); doc.setFont('helvetica', 'normal');
+            doc.text(String(idx + 1), tCols[0].x + 2, y);
 
-            // Label with color
-            const lbl = row.label;
-            if (lbl.includes('A')) doc.setTextColor(74, 222, 128);
-            else if (lbl === 'B') doc.setTextColor(251, 191, 36);
-            else if (lbl === 'C') doc.setTextColor(249, 115, 22);
-            else doc.setTextColor(239, 68, 68);
+            // Model name
+            doc.setFont('helvetica', isCurrent ? 'bold' : 'normal'); tc(C.navy);
+            const modelLabel = fitText(row.model + (isCurrent ? ' [ref]' : ''), tCols[1].w - 2);
+            doc.text(modelLabel, tCols[1].x + 1.5, y);
+
+            // Org
+            doc.setFont('helvetica', 'normal'); tc(C.textSub);
+            doc.text(fitText(row.org, tCols[2].w - 2), tCols[2].x + 1.5, y);
+
+            // CO2 — gradient green-amber-red by rank
+            const co2Val = parseFloat(row.co2) || 0;
+            const ratio  = co2Max > co2Min ? (co2Val - co2Min) / (co2Max - co2Min) : 0;
+            tc(ratio < 0.33 ? C.green : ratio < 0.66 ? C.amber : C.red);
             doc.setFont('helvetica', 'bold');
-            doc.text(lbl, cols[6].x + 4, y);
-            doc.setFont('helvetica', 'normal');
+            doc.text(fitText(row.co2, tCols[3].w - 2), tCols[3].x + 1.5, y);
 
-            y += 6;
+            // Savings — sanitize whitespace and unicode minus (\u2212 → '-') from DOM text
+            doc.setFont('helvetica', 'normal');
+            const sv = (row.savings || '').replace(/\s+/g, '').replace(/\u2212/g, '-');
+            if      (sv.includes('-') || sv.includes('\u2212')) tc(C.green);
+            else if (sv.includes('+'))                           tc(C.red);
+            else                                                 tc(C.textLight);
+            doc.text(fitText(sv || '-', tCols[4].w - 2), tCols[4].x + 1.5, y);
+
+            // Speed / Latency
+            tc(C.textSub);
+            doc.text(fitText(row.tps,     tCols[5].w - 2), tCols[5].x + 1.5, y);
+            doc.text(fitText(row.latency, tCols[6].w - 2), tCols[6].x + 1.5, y);
+
+            // Label
+            tc(labelColor(row.label)); doc.setFont('helvetica', 'bold');
+            doc.text(row.label, tCols[7].x + 3, y);
+            y += T_ROW_H;
         });
 
-        y += 6;
+        // Stats footer
+        y += 2;
+        const avgCO2 = avgCO2val > 0 ? avgCO2val.toFixed(4) : '-';
+        fc(C.bgLight); doc.rect(ML, y - 4.5, CW, T_ROW_H + 1, 'F');
+        dc(C.navyMid); doc.setLineWidth(0.4); doc.line(ML, y - 4.5, W - MR, y - 4.5);
+        doc.setFont('helvetica', 'bold');   doc.setFontSize(7.2); tc(C.navy);    doc.text('Estadisticas del conjunto:', ML + 2, y);
+        doc.setFont('helvetica', 'normal'); tc(C.textSub);
+        doc.text(`Min: ${co2Min.toFixed(4)} gCO2`, ML + 48, y);
+        doc.text(`Max: ${co2Max.toFixed(4)} gCO2`, ML + 92, y);
+        doc.text(`Media: ${avgCO2} gCO2`,           ML + 136, y);
+        y += T_ROW_H + 2;
 
         // ═══════════════════════════════════════════════════════════════
-        // Section: Pareto-optimal models (from PS state)
+        // PAGE 4 — KEY INSIGHTS & ANALYSIS
         // ═══════════════════════════════════════════════════════════════
-        y = checkPage(y, 50);
-        y = sectionTitle('5. Modelos Pareto-óptimos', y);
+        doc.addPage(); whitePage();
+        y = 22;
+        y = sectionHeader('4. Analisis e interpretacion de resultados', y);
+        y += 3;
+
+        // Insight 1: efficiency ratio
+        y = subHeader('4.1 Rango de eficiencia del conjunto', y);
+        const rangeText = spreadPct !== '-'
+            ? `El modelo mas eficiente (${bestModel?.model || '-'}, Clase ${bestModel?.label || '-'}) emite ` +
+              `${bco2.toFixed(4)} gCO2/query, mientras que el menos eficiente (${worstModel?.model || '-'}, Clase ${worstModel?.label || '-'}) ` +
+              `emite ${wco2.toFixed(4)} gCO2/query. Esto supone una diferencia de ${spreadPct}x entre extremos, ` +
+              `lo que evidencia la enorme variabilidad de huella de carbono segun el modelo elegido para una misma tarea de inferencia.`
+            : 'No hay datos suficientes para calcular el rango de eficiencia.';
+        y = bodyText(rangeText, ML, y, CW);
+        y += 5;
+
+        // Insight 2: reference model position
+        y = subHeader('4.2 Posicion del modelo de referencia', y);
+        if (currentRow && currentRank > 0) {
+            const pctBetter   = ((currentRank - 1) / Math.max(summaryData.length - 1, 1) * 100).toFixed(0);
+            const isTopThird  = currentRank <= Math.ceil(summaryData.length / 3);
+            const isLastThird = currentRank > Math.floor(summaryData.length * 2 / 3);
+            const rankAssess  = isTopThird
+                ? 'posicionandose entre los modelos mas eficientes del conjunto analizado — una opcion sostenible destacada'
+                : isLastThird
+                ? 'situandose entre los modelos con mayor impacto medioambiental del conjunto. Existen alternativas significativamente mas eficientes disponibles en este analisis que podrian reducir la huella de carbono considerablemente'
+                : 'situandose en la franja intermedia del conjunto en cuanto a eficiencia energetica, con margen de mejora frente a los modelos de la zona superior';
+            const aboveBelowAvg = currentCO2 > avgCO2val
+                ? `Sus emisiones superan la media del conjunto en un ${((currentCO2 / avgCO2val - 1) * 100).toFixed(0)}% (media: ${avgCO2} gCO2/query), lo que representa una penalizacion ambiental notable frente a la mayoria de alternativas disponibles en este analisis.`
+                : `Sus emisiones se situan un ${((1 - currentCO2 / avgCO2val) * 100).toFixed(0)}% por debajo de la media del conjunto (media: ${avgCO2} gCO2/query), lo que confirma su buen posicionamiento ambiental dentro del universo de modelos analizado.`;
+            const refText = `El modelo de referencia seleccionado (${currentModelName}) ocupa la posicion ${currentRank} de ${summaryData.length} ` +
+                `con ${currentCO2.toFixed(4)} gCO2/query (Clase ${currentRow.label}), ${rankAssess}. ` +
+                `Supera en eficiencia al ${pctBetter}% de los modelos analizados. ` +
+                aboveBelowAvg;
+            y = bodyText(refText, ML, y, CW);
+        } else {
+            y = bodyText('No se pudo determinar la posicion del modelo de referencia.', ML, y, CW);
+        }
+        y += 5;
+
+        // Insight 3: top 3 alternatives
+        y = subHeader('4.3 Alternativas mas eficientes al modelo de referencia', y);
+        const alternatives = summaryData.filter(r => {
+            const isCurr = r.model === currentModelName || r.model.startsWith(currentModelName.substring(0, 8));
+            return !isCurr && parseFloat(r.co2) < currentCO2;
+        }).slice(0, 3);
+        if (alternatives.length > 0) {
+            y = bodyText(
+                'Los siguientes modelos presentan menor huella de carbono que el modelo de referencia y podrian considerarse como alternativas sostenibles:',
+                ML, y, CW
+            );
+            y += 3;
+            alternatives.forEach((alt, i) => {
+                const altCO2 = parseFloat(alt.co2) || 0;
+                const saving = currentCO2 > 0 ? ((1 - altCO2 / currentCO2) * 100).toFixed(0) : '?';
+                y = checkPage(y, 12);
+                fc(C.bgLight); doc.rect(ML, y - 4, CW, 10, 'F');
+                fc(C.green);   doc.rect(ML, y - 4, 3, 10, 'F');
+                doc.setFont('helvetica', 'bold');   doc.setFontSize(9);   tc(C.navy);    doc.text(`${i + 1}. ${alt.model}`, ML + 6, y);
+                doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5); tc(C.textSub);
+                doc.text(`${alt.co2} gCO2/query  |  Clase ${alt.label}  |  ${alt.tps} tok/s  |  Ahorro: ${saving}%`, ML + 6, y + 5.5);
+                y += 13;
+            });
+        } else {
+            y = infoBox('El modelo de referencia ya es el mas eficiente del conjunto o no hay alternativas con menor emision disponibles.', ML, y, CW, C.green);
+        }
+        y += 5;
+
+        // Insight 4: scale impact
+        y = checkPage(y, 40);
+        y = subHeader('4.4 Impacto a escala productiva', y);
+        const scaleText = currentCO2 > 0
+            ? `A modo de referencia, si el modelo de referencia (${currentModelName}) procesase 1 millon de consultas diarias, ` +
+              `generaria aproximadamente ${(currentCO2 * 1e6 / 1000).toFixed(1)} kg de CO2 al dia ` +
+              `(${(currentCO2 * 1e6 * 365 / 1e6).toFixed(1)} toneladas al año). ` +
+              `El modelo mas eficiente (${bestModel?.model}) reduciria esa cifra a ` +
+              `${(bco2 * 1e6 / 1000).toFixed(1)} kg/dia (${(bco2 * 1e6 * 365 / 1e6).toFixed(1)} t/año), ` +
+              `un ahorro de ${((1 - bco2 / currentCO2) * 100).toFixed(0)}%.`
+            : 'No hay datos de emision del modelo de referencia para calcular el impacto a escala.';
+        y = bodyText(scaleText, ML, y, CW);
+
+        // ═══════════════════════════════════════════════════════════════
+        // PAGE 5 — PARETO-OPTIMAL MODELS
+        // ═══════════════════════════════════════════════════════════════
+        doc.addPage(); whitePage();
+        y = 22;
+        y = sectionHeader('5. Modelos Pareto-optimos', y);
+        y += 3;
+        y = bodyText(
+            'La frontera de Pareto identifica los modelos que ofrecen el mejor equilibrio posible entre los criterios activos (emisiones de CO2, velocidad en tokens/s y latencia). Un modelo es Pareto-optimo si ningun otro modelo lo supera en todos los criterios simultaneamente. Son la mejor eleccion objetiva cuando no se quiere sacrificar ningun aspecto del rendimiento o la sostenibilidad.',
+            ML, y, CW
+        );
+        y += 5;
+        y = bodyText(
+            'A diferencia de simplemente elegir el modelo mas rapido o el de menor CO2, la seleccion Pareto incorpora trade-offs multidimensionales. Los modelos aqui listados representan puntos de la frontera eficiente del espacio de decision.',
+            ML, y, CW
+        );
+        y += 8;
 
         if (PS.paretoModels && PS.paretoModels.length > 0) {
             PS.paretoModels.forEach((modelName, idx) => {
                 const m = PS.table.find(r => r.model === modelName);
                 if (!m) return;
-                y = checkPage(y, 22);
-                const ec = ENERGY_CLASSES[m.environmental_label?.label] || { color: '#4ade80' };
-                const co2Str = m.co2_gCO2 < 0.01 ? m.co2_gCO2.toExponential(2) : m.co2_gCO2.toFixed(4);
+                y = checkPage(y, 46);
+                const co2Str = (m.co2_gCO2 || 0) < 0.01
+                    ? (m.co2_gCO2 || 0).toExponential(2)
+                    : (m.co2_gCO2 || 0).toFixed(4);
+                const lbl    = m.environmental_label?.label || '?';
+                const CARD_H = 40;
+                fc(C.bgLight);  doc.rect(ML, y, CW, CARD_H, 'F');
+                fc(C.navyMid);  doc.rect(ML, y, 3.5, CARD_H, 'F');
+                dc(C.separator); doc.setLineWidth(0.2); doc.rect(ML, y, CW, CARD_H, 'S');
 
-                doc.setFillColor(14, 35, 20);
-                doc.roundedRect(ML, y - 4, CW, 18, 2, 2, 'F');
-                doc.setDrawColor(74, 222, 128); doc.setLineWidth(0.2);
-                doc.roundedRect(ML, y - 4, CW, 18, 2, 2, 'S');
+                // Badge
+                fc(C.accentBlue); doc.roundedRect(ML + 8, y + 5, 22, 7, 1, 1, 'F');
+                doc.setFont('helvetica', 'bold'); doc.setFontSize(7.5); tc(C.white);
+                doc.text(`Pareto #${idx + 1}`, ML + 10, y + 10);
 
-                doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(0, 230, 118);
-                doc.text(`★ Pareto #${idx + 1}`, ML + 3, y);
+                // Label badge
+                const lblColor = labelColor(lbl);
+                fc(lblColor); doc.roundedRect(W - MR - 22, y + 5, 18, 7, 1, 1, 'F');
+                doc.setFont('helvetica', 'bold'); doc.setFontSize(7.5); tc(C.white);
+                doc.text(`Clase ${lbl}`, W - MR - 20, y + 10);
 
-                doc.setFontSize(10); doc.setTextColor(232, 240, 235);
-                doc.text(m.model, ML + 3, y + 6);
+                doc.setFont('helvetica', 'bold');   doc.setFontSize(12); tc(C.navy);
+                doc.text(m.model, ML + 8, y + 22);
+                doc.setFont('helvetica', 'normal'); doc.setFontSize(9);  tc(C.textSub);
+                doc.text(m.organization || '-', ML + 8, y + 29);
 
-                doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(148, 163, 177);
-                doc.text(`${m.organization}  ·  ${co2Str} gCO₂  ·  ${(m.tokens_per_second || 0).toFixed(1)} tok/s  ·  Clase ${m.environmental_label?.label || '?'}`, ML + 3, y + 11);
-
-                y += 22;
+                // Metrics row
+                const metrics = [
+                    `CO2: ${co2Str} gCO2/query`,
+                    `Velocidad: ${(m.tokens_per_second || 0).toFixed(1)} tok/s`,
+                    `Latencia: ${m.latency_ms != null ? m.latency_ms + ' ms' : '-'}`,
+                ];
+                doc.setFont('helvetica', 'bold'); doc.setFontSize(8); tc(C.navyLt);
+                let mx = ML + 8;
+                metrics.forEach(met => {
+                    doc.text(met, mx, y + 36);
+                    mx += doc.getTextWidth(met) + 8;
+                });
+                y += CARD_H + 6;
             });
         } else {
-            y = bodyText('No se identificaron modelos Pareto-óptimos con los criterios actuales.', ML, y);
+            y = infoBox('No se identificaron modelos Pareto-optimos con los criterios activos actuales. Prueba a ajustar los pesos de los criterios en la interfaz del comparador.', ML, y, CW, C.accentTeal);
+            y += 5;
         }
 
+        // ── Dynamic interpretation texts ──
+        const scatterInterpDyn = (() => {
+            const paretoList  = PS.paretoModels || [];
+            const paretoCount = paretoList.length;
+            const topNames    = paretoList.slice(0, 3).join(', ');
+            const zone = !currentRow ? '' :
+                currentRank <= Math.ceil(summaryData.length / 3)
+                    ? 'zona eficiente (esquina inferior derecha: baja emision y alta velocidad)'
+                    : currentRank <= Math.ceil(summaryData.length * 2 / 3)
+                    ? 'zona intermedia del grafico'
+                    : 'zona de alta emision (esquina superior izquierda)';
+            const refTps = (PS.table || []).find(r => r.model === currentModelName)?.tokens_per_second || 0;
+            return (
+                `Los ${summaryData.length} modelos evaluados bajo el mismo escenario presentan una dispersion de ${spreadPct}x entre el mas eficiente y el menos eficiente. ` +
+                (paretoCount > 0
+                    ? `Se identificaron ${paretoCount} modelo${paretoCount > 1 ? 's' : ''} en la frontera de Pareto — ${topNames}${paretoCount > 3 ? ' entre otros' : ''} —, que representan los mejores equilibrios posibles entre emision de CO2 y velocidad de inferencia: ningun otro modelo del conjunto los supera simultaneamente en ambos criterios. `
+                    : `No se identificaron modelos Pareto-optimos con los criterios activos actuales, lo que indica que todos los modelos presentan algun trade-off entre emision y velocidad. `) +
+                `El modelo mas sostenible es ${bestModel?.model || '-'} (${bestModel?.co2 || '-'} gCO2/query), ` +
+                `mientras que ${worstModel?.model || '-'} registra la mayor huella de carbono con ${wco2.toFixed(4)} gCO2/query. ` +
+                (currentRow && zone
+                    ? `El modelo de referencia seleccionado, ${currentModelName}, se situa en la ${zone} con ${currentCO2.toFixed(4)} gCO2/query ` +
+                      `y ${refTps > 0 ? refTps.toFixed(0) + ' tok/s' : 'velocidad no disponible'}.`
+                    : '')
+            );
+        })();
+        const barInterpDyn = (() => {
+            const aboveAvg = summaryData.filter(r => (parseFloat(r.co2) || 0) > avgCO2val).length;
+            const belowAvg = summaryData.length - aboveAvg;
+            return (
+                `De los ${summaryData.length} modelos analizados, ${belowAvg} presentan emisiones por debajo de la media del conjunto ` +
+                `(${avgCO2val.toFixed(4)} gCO2/query) y ${aboveAvg} la superan. ` +
+                `${bestModel?.model || '-'} destaca como la opcion mas sostenible ` +
+                `(${bestModel?.co2 || '-'} gCO2/query, Clase ${bestModel?.label || '-'}), ` +
+                `mientras que ${worstModel?.model || '-'} representa el mayor impacto ambiental ` +
+                `(${wco2.toFixed(4)} gCO2/query, Clase ${worstModel?.label || '-'}), ` +
+                `con una diferencia de ${spreadPct}x entre ambos extremos. ` +
+                (currentRow
+                    ? (currentCO2 > avgCO2val
+                        ? `El modelo de referencia, ${currentModelName}, ocupa la posicion ${currentRank} de ${summaryData.length} en este analisis ` +
+                          `y tiene una huella de carbono por encima de la media del conjunto (${avgCO2val.toFixed(4)} gCO2/query), ` +
+                          `lo que lo situa como uno de los modelos menos eficientes del conjunto. ` +
+                          `Existen ${currentRank - 1} alternativa${currentRank - 1 !== 1 ? 's' : ''} con menor impacto ambiental disponibles en este comparador.`
+                        : `El modelo de referencia, ${currentModelName}, ocupa la posicion ${currentRank} de ${summaryData.length} en este analisis ` +
+                          `y tiene una huella de carbono por debajo de la media del conjunto (${avgCO2val.toFixed(4)} gCO2/query), ` +
+                          `siendo una opcion eficiente dentro del universo de modelos comparados.`)
+                    : '')
+            );
+        })();
+
         // ═══════════════════════════════════════════════════════════════
-        // PAGE 3+: Charts
+        // CHART PAGES — White background compositing + Dominance Matrix
         // ═══════════════════════════════════════════════════════════════
         const charts = [
-            { id: 'scatter-chart', title: '6. Rendimiento vs Sostenibilidad (Scatter Plot)',
-              desc: 'Relación entre velocidad de inferencia (tokens/s) y emisiones de CO₂ por consulta. Escala logarítmica en ambos ejes. Los modelos Pareto-óptimos (★) representan las mejores combinaciones de velocidad y sostenibilidad.' },
-            { id: 'radar-chart', title: '7. Radar comparativo multi-criterio',
-              desc: 'Comparación de hasta 4 modelos seleccionados en 5 dimensiones normalizadas: Eficiencia CO₂, Velocidad, Eficiencia de latencia, Eficiencia energética y Capacidad (parámetros).' },
-            { id: 'vertical-bar-chart', title: '8. Comparativa de emisiones CO₂/query',
-              desc: 'Emisiones de CO₂ por consulta para cada modelo, con escala logarítmica. Las barras se colorean según la etiqueta de eficiencia energética. El modelo seleccionado se destaca en cian.' },
+            { id: 'scatter-chart',
+              num: '6',
+              title: 'Grafico 6: Rendimiento vs Sostenibilidad',
+              desc: 'Diagrama de dispersion (Scatter Plot) con escala logaritmica en ambos ejes. El eje X representa la velocidad de inferencia (tokens/s) y el eje Y las emisiones de CO2 por consulta. Los modelos situados en la esquina inferior derecha combinan alta velocidad y baja emision, siendo los mas deseables. Los puntos con anillo de pulso destacan los modelos Pareto-optimos.',
+              interp: scatterInterpDyn },
+            { type: 'matrix', num: '7', title: '7. Matriz de dominancia cruzada' },
+            { id: 'vertical-bar-chart',
+              num: '8',
+              title: 'Grafico 8: Comparativa de emisiones CO2/query',
+              desc: 'Grafico de barras con escala logaritmica en el eje Y. Cada barra representa las emisiones de CO2 por consulta de un modelo, coloreada segun su etiqueta de eficiencia energetica (verde = clase A, rojo = clase D). El modelo de referencia aparece resaltado.',
+              interp: barInterpDyn },
         ];
 
         charts.forEach(ch => {
+
+            // ── DOMINANCE MATRIX (synthetic page, built from data) ──
+            if (ch.type === 'matrix') {
+                doc.addPage(); whitePage();
+                y = 22;
+                y = sectionHeader('7. Matriz de dominancia cruzada', y);
+                y += 2;
+                y = bodyText(
+                    'La siguiente matriz compara cada par de modelos de forma bilateral en tres criterios: emisiones CO2 por consulta, velocidad de inferencia (tokens/s) y latencia. ' +
+                    'Para cada combinacion (fila i vs. columna j) se contabilizan los criterios ganados por cada modelo, mostrando el resultado como i:j. ' +
+                    'Las celdas en verde intenso reflejan una ventaja clara o total del modelo de la fila; las rojas indican lo contrario; las grises, un empate. ' +
+                    'Esta representacion permite identificar rapidamente que modelos dominan al conjunto y cuales presentan trade-offs segun el criterio priorizado.',
+                    ML, y, CW
+                );
+                y += 6;
+
+                function getMetricsForDom(row) {
+                    const psRow = (PS.table || []).find(r =>
+                        r.model === row.model || r.model.startsWith(row.model.substring(0, 8))
+                    );
+                    return {
+                        co2: psRow ? (psRow.co2_gCO2 || 0)         : (parseFloat(row.co2) || 0),
+                        tps: psRow ? (psRow.tokens_per_second || 0): (parseFloat(row.tps) || 0),
+                        lat: psRow ? (psRow.latency_ms || 0)       : (parseFloat(row.latency) || 0),
+                    };
+                }
+                function compareForDom(a, b) {
+                    const am = getMetricsForDom(a), bm = getMetricsForDom(b);
+                    let aW = 0, bW = 0;
+                    if (am.co2 > 0 && bm.co2 > 0) { if (am.co2 < bm.co2) aW++; else if (bm.co2 < am.co2) bW++; }
+                    if (am.tps > 0 && bm.tps > 0) { if (am.tps > bm.tps) aW++; else if (bm.tps > am.tps) bW++; }
+                    if (am.lat > 0 && bm.lat > 0) { if (am.lat < bm.lat) aW++; else if (bm.lat < am.lat) bW++; }
+                    return { aW, bW };
+                }
+
+                const MAX_DOM  = Math.min(summaryData.length, 8);
+                const domData  = summaryData.slice(0, MAX_DOM);
+                const abbrevN  = (n, max) => n.length > max ? n.substring(0, max - 1) + '.' : n;
+                const LABEL_W  = 34;
+                const CELL_W   = (CW - LABEL_W) / MAX_DOM;
+                const DOM_ROW_H = 9;
+                const matTopY  = y;
+
+                // ── Header row ──
+                fc(C.navyMid); doc.rect(ML, matTopY, CW, DOM_ROW_H, 'F');
+                doc.setFont('helvetica', 'bold'); doc.setFontSize(5.5); tc(C.white);
+                doc.text('Fila vs Columna >', ML + 1, matTopY + 6.5);
+                domData.forEach((m, j) => {
+                    const cx = ML + LABEL_W + j * CELL_W + CELL_W / 2;
+                    doc.text(abbrevN(m.model, 8), cx, matTopY + 6.5, { align: 'center' });
+                });
+                let rowY = matTopY + DOM_ROW_H;
+
+                // ── Data rows ──
+                domData.forEach((rowM, i) => {
+                    fc(i % 2 === 0 ? [239, 246, 255] : [221, 234, 250]);
+                    doc.rect(ML, rowY, CW, DOM_ROW_H, 'F');
+
+                    // Row label
+                    doc.setFont('helvetica', 'bold'); doc.setFontSize(5.5); tc(C.navy);
+                    doc.text(abbrevN(rowM.model, 16), ML + 1, rowY + 6.5);
+
+                    // Cells
+                    domData.forEach((colM, j) => {
+                        const cx = ML + LABEL_W + j * CELL_W;
+                        if (i === j) {
+                            fc(C.separator);
+                            doc.rect(cx, rowY, CELL_W, DOM_ROW_H, 'F');
+                            tc(C.textLight); doc.setFont('helvetica', 'normal'); doc.setFontSize(9);
+                            doc.text('-', cx + CELL_W / 2, rowY + 6.5, { align: 'center' });
+                        } else {
+                            const { aW, bW } = compareForDom(rowM, colM);
+                            let bg, fg;
+                            if      (aW === 3 && bW === 0) { bg = [187, 247, 208]; fg = C.green;    }
+                            else if (aW === 2 && bW === 0) { bg = [209, 250, 229]; fg = C.greenMid; }
+                            else if (aW > bW)              { bg = [240, 253, 244]; fg = C.greenMid; }
+                            else if (aW === bW)            { bg = [241, 245, 249]; fg = C.textSub;  }
+                            else if (bW === 3 && aW === 0) { bg = [252, 192, 192]; fg = C.red;      }
+                            else                           { bg = [254, 226, 226]; fg = C.red;      }
+                            fc(bg); doc.rect(cx, rowY, CELL_W, DOM_ROW_H, 'F');
+                            tc(fg); doc.setFont('helvetica', 'bold'); doc.setFontSize(7);
+                            doc.text(`${aW}:${bW}`, cx + CELL_W / 2, rowY + 6.5, { align: 'center' });
+                        }
+                    });
+
+                    // Horizontal separator
+                    dc(C.separator); doc.setLineWidth(0.1);
+                    doc.line(ML, rowY + DOM_ROW_H, W - MR, rowY + DOM_ROW_H);
+                    rowY += DOM_ROW_H;
+                });
+
+                // Vertical separators
+                dc([176, 190, 208]); doc.setLineWidth(0.25);
+                doc.line(ML + LABEL_W, matTopY, ML + LABEL_W, rowY);
+                domData.forEach((_, j) => {
+                    dc(C.separator); doc.setLineWidth(0.1);
+                    doc.line(ML + LABEL_W + j * CELL_W, matTopY + DOM_ROW_H, ML + LABEL_W + j * CELL_W, rowY);
+                });
+
+                // Outer border
+                dc(C.navyMid); doc.setLineWidth(0.4);
+                doc.rect(ML, matTopY, CW, rowY - matTopY, 'S');
+
+                y = rowY + 8;
+
+                // ── Legend ──
+                y = checkPage(y, 50);
+                doc.setFont('helvetica', 'bold'); doc.setFontSize(8.5); tc(C.navy);
+                doc.text('Leyenda de colores:', ML, y);
+                y += 5;
+                const domLegend = [
+                    { bg: [187, 247, 208], fg: C.green,    txt: '3:0  Dominancia estricta: la fila supera a la columna en TODOS los criterios (CO2 + velocidad + latencia)' },
+                    { bg: [209, 250, 229], fg: C.greenMid, txt: '2:0  Ventaja clara: la fila gana en 2 criterios sin perder ninguno' },
+                    { bg: [240, 253, 244], fg: C.greenMid, txt: '2:1  Ventaja relativa: la fila gana en la mayoria de criterios' },
+                    { bg: [241, 245, 249], fg: C.textSub,  txt: '1:1  Empate: misma cantidad de criterios ganados por cada modelo' },
+                    { bg: [254, 226, 226], fg: C.red,      txt: '1:2  Desventaja relativa: la columna gana en la mayoria de criterios' },
+                    { bg: [252, 192, 192], fg: C.red,      txt: '0:3  Dominancia estricta inversa: la columna supera en TODOS los criterios' },
+                ];
+                domLegend.forEach(li => {
+                    fc(li.bg); doc.rect(ML, y - 3.5, 8, 5, 'F');
+                    dc(li.fg); doc.setLineWidth(0.3); doc.rect(ML, y - 3.5, 8, 5, 'S');
+                    doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5); tc(C.textSub);
+                    doc.text(li.txt, ML + 11, y);
+                    y += 6;
+                });
+
+                y += 4;
+
+                // ── Dynamic "Cómo leer" with actual model findings ──
+                let mostDomModel = domData[0]?.model || '', mostDomWins = -1;
+                let leastDomModel = domData[0]?.model || '', leastDomWins = Infinity;
+                domData.forEach((rowM, i) => {
+                    let wins = 0;
+                    domData.forEach((colM, j) => {
+                        if (i === j) return;
+                        const { aW, bW } = compareForDom(rowM, colM);
+                        if (aW > bW) wins++;
+                    });
+                    if (wins > mostDomWins)  { mostDomWins  = wins; mostDomModel  = rowM.model; }
+                    if (wins < leastDomWins) { leastDomWins = wins; leastDomModel = rowM.model; }
+                });
+                const exA = domData[0]?.model || 'Modelo A';
+                const exB = domData[domData.length - 1]?.model || 'Modelo B';
+                const exResult = compareForDom(domData[0], domData[domData.length - 1]);
+                y = infoBox(
+                    `C\u00f3mo leer la matriz: cada fila es el modelo "atacante" y cada columna el "defensor". ` +
+                    `Por ejemplo, la celda (${exA} vs. ${exB}) muestra ${exResult.aW}:${exResult.bW}, ` +
+                    `lo que significa que ${exA} gana en ${exResult.aW} de los tres criterios frente a ${exB}. ` +
+                    `Segun este analisis, ${mostDomModel} acumula el mayor numero de victorias frente al resto de modelos, ` +
+                    `posicionandose como el mas dominante del subconjunto comparado. ` +
+                    `${leastDomModel !== mostDomModel ? leastDomModel + ' presenta el mayor numero de desventajas. ' : ''}` +
+                    `La matriz es asimetrica: si la celda (i, j) = 2:1, necesariamente la celda (j, i) = 1:2.`,
+                    ML, y, CW, C.accentTeal
+                );
+                return; // exit this forEach iteration, skip canvas code below
+            }
+
+            // ── NORMAL CHART PAGE ──
             const canvas = document.getElementById(ch.id);
             if (!canvas) return;
             try {
-                const img = canvas.toDataURL('image/png', 0.9);
-                doc.addPage(); darkPage();
-                y = MT + 5;
-                y = sectionTitle(ch.title, y);
-                y = bodyText(ch.desc, ML, y);
+                const img = canvasToWhiteImg(canvas);
+                doc.addPage(); whitePage();
+                y = 22;
+                y = sectionHeader(ch.title, y);
                 y += 2;
-                const ratio = canvas.width / canvas.height;
-                const imgW = Math.min(CW, 170);
-                const imgH = imgW / ratio;
-                doc.addImage(img, 'PNG', ML, y, imgW, imgH);
-            } catch (_) { /* canvas tainted */ }
+                y = infoBox(ch.desc, ML, y, CW, C.accentBlue);
+                y += 4;
+                const ratio   = canvas.width / canvas.height;
+                const availH  = H - y - 30;
+                const maxImgH = Math.min(availH * 0.65, 130);
+                const imgH    = Math.min(maxImgH, CW / ratio);
+                const imgW    = Math.min(imgH * ratio, CW);
+                const imgX    = ML + (CW - imgW) / 2;
+                dc(C.separator); doc.setLineWidth(0.3);
+                doc.rect(imgX - 1, y - 1, imgW + 2, imgH + 2, 'S');
+                doc.addImage(img, 'PNG', imgX, y, imgW, imgH);
+                y += imgH + 6;
+                y = checkPage(y, 20);
+                y = infoBox(ch.interp, ML, y, CW, C.accentTeal);
+
+                // ── Tabla de valores exactos (solo en la página del scatter) ──
+                if (ch.id === 'scatter-chart' && PS.table && PS.table.length > 0) {
+                    const allRows = [...PS.table].sort((a, b) => (a.co2_gCO2 || 0) - (b.co2_gCO2 || 0));
+                    const paretoSet = new Set(PS.paretoModels || []);
+                    const ref = allRows[0];
+
+                    const ptCols = [
+                        { label: 'Modelo',           w: 54 },
+                        { label: 'Clase',            w: 14 },
+                        { label: 'CO2/query (gCO2)', w: 38 },
+                        { label: 'vs. ref. CO2',     w: 22 },
+                        { label: 'Vel. (tok/s)',      w: 24 },
+                        { label: 'vs. ref. Vel.',     w: 22 },
+                    ];
+                    if (PS.criteria.latency) {
+                        ptCols.push({ label: 'Lat. (ms/tok)', w: 26 });
+                        ptCols.push({ label: 'vs. ref. Lat.', w: 22 });
+                    }
+
+                    const ptW  = ptCols.reduce((s, c) => s + c.w, 0);
+                    const ptX  = ML + (CW - ptW) / 2;
+                    const ROW_H = 7;
+                    const HDR_H = 8;
+
+                    y = checkPage(y, 20 + HDR_H + allRows.length * ROW_H + 10);
+                    y += 8;
+
+                    doc.setFont('helvetica', 'bold'); doc.setFontSize(10); tc(C.navy);
+                    doc.text('Tabla de valores exactos — Todos los modelos (criterios activos del frente de Pareto)', ML, y);
+                    y += 4;
+                    doc.setFont('helvetica', 'normal'); doc.setFontSize(8); tc(C.textSub);
+                    doc.text('Diferencia % respecto al modelo de menor CO2/query (referencia = ' + ref.model + '). Estrella = Pareto-optimo.', ML, y);
+                    y += 5;
+
+                    // Header
+                    fc(C.navy); doc.rect(ptX, y, ptW, HDR_H, 'F');
+                    doc.setFont('helvetica', 'bold'); doc.setFontSize(7.5); tc(C.white);
+                    let ptcx = ptX;
+                    ptCols.forEach(col => {
+                        doc.text(col.label, ptcx + 2, y + 5.5, { maxWidth: col.w - 3 });
+                        ptcx += col.w;
+                    });
+                    y += HDR_H;
+
+                    function ptPctStr(a, b, higherBetter) {
+                        if (!b || isNaN(a) || isNaN(b)) return '\u2014';
+                        const pct = ((a - b) / Math.abs(b)) * 100;
+                        if (Math.abs(pct) < 0.1) return '= igual';
+                        const sign = pct > 0 ? '+' : '';
+                        return sign + pct.toFixed(1) + '%';
+                    }
+                    function ptCO2Str(v) {
+                        if (v == null || isNaN(v)) return '\u2014';
+                        return v < 0.01 ? v.toExponential(3) : v.toFixed(5);
+                    }
+                    function ptPctColor(a, b, higherBetter) {
+                        if (!b || isNaN(a) || isNaN(b)) return C.textSub;
+                        const pct = ((a - b) / Math.abs(b)) * 100;
+                        if (Math.abs(pct) < 0.1) return C.textSub;
+                        const good = higherBetter ? pct > 0 : pct < 0;
+                        return good ? [0, 130, 60] : [200, 50, 50];
+                    }
+
+                    // Rows
+                    allRows.forEach((row, idx) => {
+                        const isRef        = idx === 0;
+                        const isPareto     = paretoSet.has(row.model);
+                        const isFormRef    = !!currentRow && row.model === currentModelName;
+                        const bgRgb        = isPareto   ? [220, 240, 230]
+                                           : isFormRef  ? [230, 238, 255]
+                                           : (idx % 2 === 0 ? [245, 248, 252] : [235, 240, 248]);
+                        fc(bgRgb); doc.rect(ptX, y, ptW, ROW_H, 'F');
+                        if (isPareto)  { fc([0, 160, 80]); doc.rect(ptX, y, 2, ROW_H, 'F'); }
+                        if (isFormRef) { fc(C.navy);       doc.rect(ptX + ptW - 2, y, 2, ROW_H, 'F'); }
+                        dc(C.separator); doc.setLineWidth(0.15);
+                        doc.line(ptX, y + ROW_H, ptX + ptW, y + ROW_H);
+
+                        const co2 = row.co2_gCO2 || 0;
+                        const tps = row.tokens_per_second || 0;
+                        const lbl = row.environmental_label?.label || '?';
+                        const lat = row.latency_ms_per_token;
+
+                        ptcx = ptX;
+                        doc.setFont('helvetica', (isPareto || isFormRef) ? 'bold' : 'normal'); doc.setFontSize(7); tc(C.navy);
+                        const ptPrefix = isPareto ? '(P) ' : isFormRef ? '[*] ' : '    ';
+                        doc.text(ptPrefix + row.model + (isFormRef ? ' [ref]' : ''), ptcx + 2, y + 4.8, { maxWidth: ptCols[0].w - 3 });
+                        ptcx += ptCols[0].w;
+
+                        const lblC = labelColor(lbl);
+                        fc(lblC); doc.roundedRect(ptcx + 1, y + 1.5, 10, 4, 0.8, 0.8, 'F');
+                        doc.setFont('helvetica', 'bold'); doc.setFontSize(6.5); tc([255,255,255]);
+                        doc.text(lbl, ptcx + 3, y + 4.5);
+                        ptcx += ptCols[1].w;
+
+                        doc.setFont('helvetica', 'normal'); doc.setFontSize(7); tc(C.textMain);
+                        doc.text(ptCO2Str(co2), ptcx + 2, y + 4.8);
+                        ptcx += ptCols[2].w;
+
+                        const co2Diff = isRef ? 'referencia' : ptPctStr(co2, ref.co2_gCO2, false);
+                        tc(isRef ? C.textSub : ptPctColor(co2, ref.co2_gCO2, false));
+                        doc.setFont('helvetica', isRef ? 'italic' : 'bold'); doc.setFontSize(6.5);
+                        doc.text(co2Diff, ptcx + 2, y + 4.8);
+                        ptcx += ptCols[3].w;
+
+                        doc.setFont('helvetica', 'normal'); doc.setFontSize(7); tc(C.textMain);
+                        doc.text(tps > 0 ? tps.toFixed(1) : '\u2014', ptcx + 2, y + 4.8);
+                        ptcx += ptCols[4].w;
+
+                        const tpsDiff = isRef ? 'referencia' : ptPctStr(tps, ref.tokens_per_second || 0, true);
+                        tc(isRef ? C.textSub : ptPctColor(tps, ref.tokens_per_second || 0, true));
+                        doc.setFont('helvetica', isRef ? 'italic' : 'bold'); doc.setFontSize(6.5);
+                        doc.text(tpsDiff, ptcx + 2, y + 4.8);
+                        ptcx += ptCols[5].w;
+
+                        if (PS.criteria.latency) {
+                            doc.setFont('helvetica', 'normal'); doc.setFontSize(7); tc(C.textMain);
+                            doc.text(lat != null ? lat.toFixed(2) : '\u2014', ptcx + 2, y + 4.8);
+                            ptcx += ptCols[6].w;
+                            const latDiff = isRef ? 'referencia' : ptPctStr(lat, ref.latency_ms_per_token, false);
+                            tc(isRef ? C.textSub : ptPctColor(lat, ref.latency_ms_per_token, false));
+                            doc.setFont('helvetica', isRef ? 'italic' : 'bold'); doc.setFontSize(6.5);
+                            doc.text(latDiff, ptcx + 2, y + 4.8);
+                        }
+                        y += ROW_H;
+                    });
+
+                    dc(C.navyMid); doc.setLineWidth(0.4);
+                    doc.line(ptX, y, ptX + ptW, y);
+                    y += 3;
+                    doc.setFont('helvetica', 'italic'); doc.setFontSize(7); tc(C.textSub);
+                    const ftLines = doc.splitTextToSize(
+                        '(P) = Modelo Pareto-optimo (fondo verde). ' +
+                        (currentRow ? '[*] = Modelo de referencia seleccionado en el formulario (fondo azul, borde derecho navy). ' : '') +
+                        'La columna vs. ref. CO2 y vs. ref. Vel. muestra la diferencia porcentual respecto al modelo de menor CO2/query. Verde = mejor que la referencia; Rojo = peor.',
+                        CW
+                    );
+                    doc.text(ftLines, ML, y);
+                }
+            } catch (e) {
+                doc.addPage(); whitePage();
+                y = 22;
+                y = sectionHeader(ch.title, y);
+                y = bodyText('No se pudo exportar el grafico (canvas inaccesible).', ML, y, CW);
+            }
         });
 
         // ═══════════════════════════════════════════════════════════════
-        // LAST PAGE: Glossary + Footer
+        // GLOSSARY PAGE (9)
         // ═══════════════════════════════════════════════════════════════
-        doc.addPage(); darkPage();
-        y = MT + 5;
-        y = sectionTitle('9. Glosario y metodología', y);
+        doc.addPage(); whitePage();
+        y = 22;
+        y = sectionHeader('9. Glosario de terminos', y);
+        y += 3;
+        y = bodyText(
+            'Este glosario define los terminos tecnicos utilizados en este informe comparativo de modelos de IA.',
+            ML, y, CW
+        );
+        y += 5;
 
         const glossary = [
-            ['CO₂/query (gCO₂)', 'Gramos de CO₂ equivalente emitidos por una sola consulta al modelo de IA, considerando exclusivamente la fase de inferencia.'],
-            ['Energía (Wh)', 'Energía eléctrica consumida durante el procesamiento de una consulta, expresada en vatios-hora.'],
-            ['Tokens/s', 'Velocidad de generación de tokens del modelo. Mayor valor indica mayor rapidez de respuesta.'],
-            ['Latencia (ms)', 'Tiempo total estimado desde el envío de la consulta hasta la recepción completa de la respuesta.'],
-            ['Etiqueta energética', 'Clasificación de eficiencia basada en percentiles del dataset: A+++ (top 5%), A++ (5-15%), A+ (15-30%), A (30-50%), B (50-70%), C (70-85%), D (85-95%), E (>95%).'],
-            ['Pareto-óptimo (★)', 'Modelo que no es superado simultáneamente en todos los criterios activos (CO₂, velocidad, latencia) por ningún otro. Representan las mejores elecciones objetivas según la frontera de Pareto.'],
-            ['TOPSIS', 'Technique for Order of Preference by Similarity to Ideal Solution — método de decisión multicriterio que ordena alternativas midiendo su distancia al escenario ideal y anti-ideal.'],
-            ['PUE', 'Power Usage Effectiveness — ratio de eficiencia del data center. Un PUE de 1.2 significa que por cada 1 Wh de cómputo se usan 0.2 Wh adicionales en refrigeración e infraestructura.'],
-            ['energy_wh_per_1k_tokens', 'Consumo energético del modelo por cada 1.000 tokens procesados. Es la variable diferencial en este comparador.'],
-            ['Ahorro vs actual', 'Porcentaje de reducción (−) o incremento (+) de emisiones respecto al modelo seleccionado como referencia.'],
+            ['CO2/query (gCO2)',
+             'Gramos de CO2 equivalente emitidos por una sola consulta al modelo de IA, considerando exclusivamente la fase de inferencia bajo el escenario configurado. Es la metrica principal de comparacion entre modelos en este informe.'],
+            ['energy_wh_per_1k_tokens',
+             'Consumo energetico del modelo por cada 1.000 tokens procesados (entrada + salida). Es el unico parametro que diferencia a los modelos en este comparador: todos los demas factores del escenario permanecen fijos. A mayor valor, mayor huella de carbono por consulta.'],
+            ['Etiqueta energetica',
+             'Clasificacion de eficiencia basada en percentiles calculados sobre el dataset completo (~693.000 combinaciones). A+++ = top 5% mas eficiente; A++ = 5-15%; A+ = 15-30%; A = 30-50%; B = 50-70%; C = 70-85%; D = 85-95%. Permite ubicar cada modelo en el universo de referencia.'],
+            ['Tokens/s (velocidad de inferencia)',
+             'Numero de tokens generados por segundo por el modelo. Un valor mas alto indica mayor rapidez de respuesta. Junto con el CO2/query, define el perfil de eficiencia de cada modelo en el grafico de dispersion.'],
+            ['Latencia (ms)',
+             'Tiempo total estimado de respuesta desde el envio de la consulta hasta la recepcion completa de la respuesta. Depende principalmente de la velocidad del modelo y del numero de tokens de salida.'],
+            ['Ahorro vs. referencia',
+             'Diferencia porcentual de emisiones entre cada modelo y el modelo de referencia seleccionado. Un valor negativo indica que ese modelo emite menos CO2 (es mas eficiente que la referencia). Un valor positivo indica mayor emision. Se calcula como: (CO2_modelo - CO2_ref) / CO2_ref x 100.'],
+            ['Pareto-optimo',
+             'Un modelo es Pareto-optimo si ningun otro modelo del conjunto lo supera simultaneamente en todos los criterios activos (CO2, velocidad, latencia). La frontera de Pareto representa el subconjunto de modelos que ofrecen los mejores trade-offs posibles: elegir uno de estos modelos garantiza que no existe ninguna alternativa mejor en todos los criterios a la vez.'],
+            ['Dominancia cruzada',
+             'Relacion bilateral entre dos modelos: el modelo A domina a B si gana en mas criterios de los que pierde. La matriz de dominancia (seccion 7 de este informe) muestra estas relaciones para todos los pares, permitiendo identificar que modelos son globalmente superiores y cuales presentan debilidades especificas frente a sus competidores.'],
+            ['TOPSIS',
+             'Technique for Order of Preference by Similarity to Ideal Solution. Metodo de decision multicriterio que ordena los modelos midiendo su distancia euclidea al escenario ideal (mejor en todos los criterios) y al anti-ideal (peor en todos). Nota: el ranking TOPSIS no aparece en ninguna de las secciones ni graficas de este informe PDF; puede consultarse de forma interactiva en la seccion de analisis TOPSIS de la herramienta web.'],
         ];
 
         glossary.forEach(([term, def]) => {
-            y = checkPage(y, 14);
-            doc.setFont('helvetica', 'bold'); doc.setFontSize(8.5); doc.setTextColor(74, 222, 128);
-            doc.text(term, ML, y);
-            y += 4;
-            y = bodyText(def, ML + 2, y, { maxWidth: CW - 4 });
-            y += 2;
+            y = checkPage(y, 20);
+            fc(C.bgLight); doc.rect(ML, y - 4, CW, 5, 'F');
+            fc(C.navyMid); doc.rect(ML, y - 4, 3, 5, 'F');
+            doc.setFont('helvetica', 'bold');   doc.setFontSize(8.5); tc(C.navyMid); doc.text(term, ML + 6, y);
+            y += 5;
+            const defLines = doc.splitTextToSize(def, CW - 4);
+            doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5); tc(C.textSub); doc.text(defLines, ML + 2, y);
+            y += defLines.length * 4.8 + 2;
+            dc(C.separator); doc.setLineWidth(0.15); doc.line(ML, y, W - MR, y);
+            y += 5;
         });
 
-        y = checkPage(y, 20);
-        y += 6;
-        greenLine(y);
-        y += 6;
+        // ═══════════════════════════════════════════════════════════════
+        // POST-PROCESSING: footer + page numbers on all pages
+        // ═══════════════════════════════════════════════════════════════
+        const totalPages = doc.internal.getNumberOfPages();
+        for (let pg = 1; pg <= totalPages; pg++) {
+            doc.setPage(pg);
+            // Same footer for all pages (including cover)
+            fc(C.navyMid); doc.rect(0, H - 8, W, 8, 'F');
+            doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5); tc([147, 197, 253]);
+            doc.text('TFG - Evaluacion del impacto medioambiental de modelos de IA  |  Antonio Luis Jimenez de la Fuente', ML, H - 3);
+            const pgLabel = `Pag. ${pg} / ${totalPages}`;
+            doc.text(pgLabel, W - MR - doc.getTextWidth(pgLabel), H - 3);
+        }
 
-        doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(148, 163, 177);
-        doc.text('Este informe ha sido generado automáticamente por la Calculadora de Carbono para IA.', ML, y);
-        y += 4;
-        doc.text('TFG — Evaluación del impacto medioambiental de modelos de Inteligencia Artificial', ML, y);
-        y += 4;
-        doc.text('Autor: Antonio Luis Jiménez de la Fuente — Universidad de Huelva', ML, y);
-        y += 4;
-        doc.text(`Fecha de generación: ${new Date().toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}`, ML, y);
-
-        doc.save('informe_comparativa_modelos_IA.pdf');
+        doc.save(`informe_comparativo_modelos_IA_${dateStr}.pdf`);
     }
 
     // ------------------------------------------------------------------
@@ -5073,3 +5760,4 @@
     }
 
 })();
+

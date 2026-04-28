@@ -1063,17 +1063,17 @@
     "source": "hardcoded_fallback"
   },
   "ci_ES": {
-    "carbonIntensity": 87,
+    "carbonIntensity": 100,
     "zone": "ES",
-    "timestamp": "2026-04-17T17:13:36.998637",
+    "timestamp": "2026-04-28T19:54:52.379780",
     "source": "electricity_maps_api",
     "fossilFreePercentage": null,
     "renewablePercentage": null
   },
   "ci_IE": {
-    "carbonIntensity": 168,
+    "carbonIntensity": 162,
     "zone": "IE",
-    "timestamp": "2026-04-17T17:22:18.890909",
+    "timestamp": "2026-04-17T16:54:38.058320",
     "source": "electricity_maps_api",
     "fossilFreePercentage": null,
     "renewablePercentage": null
@@ -1087,9 +1087,9 @@
     "renewablePercentage": null
   },
   "ci_DE": {
-    "carbonIntensity": 379,
+    "carbonIntensity": 274,
     "zone": "DE",
-    "timestamp": "2026-04-17T17:22:16.527007",
+    "timestamp": "2026-04-28T19:54:53.224325",
     "source": "electricity_maps_api",
     "fossilFreePercentage": null,
     "renewablePercentage": null
@@ -1103,9 +1103,9 @@
     "renewablePercentage": null
   },
   "ci_US-MIDA-PJM": {
-    "carbonIntensity": 333,
+    "carbonIntensity": 324,
     "zone": "US-MIDA-PJM",
-    "timestamp": "2026-04-17T17:13:37.388463",
+    "timestamp": "2026-04-17T18:29:04.988262",
     "source": "electricity_maps_api",
     "fossilFreePercentage": null,
     "renewablePercentage": null
@@ -1129,15 +1129,15 @@
   "ci_FR": {
     "carbonIntensity": 23,
     "zone": "FR",
-    "timestamp": "2026-04-17T17:22:18.089609",
+    "timestamp": "2026-04-17T16:54:37.675076",
     "source": "electricity_maps_api",
     "fossilFreePercentage": null,
     "renewablePercentage": null
   },
   "ci_PL": {
-    "carbonIntensity": 645,
+    "carbonIntensity": 682,
     "zone": "PL",
-    "timestamp": "2026-04-17T17:22:18.490399",
+    "timestamp": "2026-04-17T18:29:08.484099",
     "source": "electricity_maps_api",
     "fossilFreePercentage": null,
     "renewablePercentage": null
@@ -1191,9 +1191,9 @@
     "renewablePercentage": null
   },
   "ci_SE-SE3": {
-    "carbonIntensity": 23,
+    "carbonIntensity": 22,
     "zone": "SE-SE3",
-    "timestamp": "2026-04-17T17:09:08.262570",
+    "timestamp": "2026-04-17T18:29:07.981264",
     "source": "electricity_maps_api",
     "fossilFreePercentage": null,
     "renewablePercentage": null
@@ -1201,7 +1201,7 @@
   "ci_IS": {
     "carbonIntensity": 31,
     "zone": "IS",
-    "timestamp": "2026-04-17T17:09:07.775723",
+    "timestamp": "2026-04-17T18:29:07.450380",
     "source": "electricity_maps_api",
     "fossilFreePercentage": null,
     "renewablePercentage": null
