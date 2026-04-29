@@ -44,6 +44,9 @@ jobs:
     name: Verificación de imagen Docker
     runs-on: ubuntu-latest
     needs: test          # Solo se ejecuta si los tests pasan
+    permissions:
+      contents: read
+      packages: write    # Necesario para publicar en GHCR
 
     steps:
       - name: Checkout del repositorio
