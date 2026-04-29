@@ -99,7 +99,7 @@ jobs:
           echo "Health check de Docker: OK"
 
       - name: Escanear imagen con Trivy (vulnerabilidades)
-        uses: aquasecurity/trivy-action@0.30.0
+        uses: aquasecurity/trivy-action@master
         with:
           image-ref: tfg-carbon-calculator:ci
           format: table
