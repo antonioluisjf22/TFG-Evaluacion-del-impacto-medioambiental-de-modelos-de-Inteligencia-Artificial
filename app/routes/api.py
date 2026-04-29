@@ -23,6 +23,36 @@ def _get_services():
 
 
 # ------------------------------------------------------------------
+# GET /api/health — estado interno del servicio
+# ------------------------------------------------------------------
+
+@api_bp.route("/health", methods=["GET"])
+def health():
+    """Healthcheck con estado de los servicios internos."""
+    import os
+    status = {"status": "ok", "services": {}}
+
+    # Verificar que los servicios de dominio están cargados
+    try:
+        calc, _ = _get_services()
+        n_models = len(calc.calculator.models_df)
+        status["services"]["calculator"] = {"status": "ok", "models_loaded": n_models}
+    except Exception as exc:  # noqa: BLE001
+        status["status"] = "degraded"
+        status["services"]["calculator"] = {"status": "error", "detail": str(exc)}
+
+    # Verificar disponibilidad de la API de Electricity Maps
+    api_key = os.environ.get("ELECTRICITY_MAPS_API_KEY", "")
+    status["services"]["electricity_maps_api"] = {
+        "status": "configured" if api_key else "offline",
+        "mode": "realtime" if api_key else "fallback_csv",
+    }
+
+    http_status = 200 if status["status"] == "ok" else 503
+    return jsonify(status), http_status
+
+
+# ------------------------------------------------------------------
 # GET /api/options — catálogos para el formulario
 # ------------------------------------------------------------------
 
