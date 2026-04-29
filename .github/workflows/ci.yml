@@ -184,12 +184,12 @@ jobs:
     steps:
       - name: Notificar éxito en Slack
         if: ${{ !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled') }}
-        uses: slackapi/slack-github-action@v1
-        with:
-          webhook: ${{ secrets.SLACK_WEBHOOK }}
-          webhook-type: incoming-webhook
-          payload: |
-            {
+        env:
+          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+        run: |
+          curl -s -X POST "$SLACK_WEBHOOK" \
+            -H 'Content-Type: application/json' \
+            -d '{
               "text": "✅ *Despliegue completado con éxito*",
               "blocks": [
                 {
@@ -201,25 +201,23 @@ jobs:
                 },
                 {
                   "type": "actions",
-                  "elements": [
-                    {
-                      "type": "button",
-                      "text": { "type": "plain_text", "text": "Ver workflow" },
-                      "url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-                    }
-                  ]
+                  "elements": [{
+                    "type": "button",
+                    "text": { "type": "plain_text", "text": "Ver workflow" },
+                    "url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+                  }]
                 }
               ]
-            }
+            }'
 
       - name: Notificar fallo en Slack
         if: ${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') }}
-        uses: slackapi/slack-github-action@v1
-        with:
-          webhook: ${{ secrets.SLACK_WEBHOOK }}
-          webhook-type: incoming-webhook
-          payload: |
-            {
+        env:
+          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+        run: |
+          curl -s -X POST "$SLACK_WEBHOOK" \
+            -H 'Content-Type: application/json' \
+            -d '{
               "text": "❌ *Fallo en el pipeline de CI/CD*",
               "blocks": [
                 {
@@ -231,14 +229,12 @@ jobs:
                 },
                 {
                   "type": "actions",
-                  "elements": [
-                    {
-                      "type": "button",
-                      "text": { "type": "plain_text", "text": "Ver logs" },
-                      "style": "danger",
-                      "url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-                    }
-                  ]
+                  "elements": [{
+                    "type": "button",
+                    "text": { "type": "plain_text", "text": "Ver logs" },
+                    "style": "danger",
+                    "url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+                  }]
                 }
               ]
-            }
+            }'
