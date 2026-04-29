@@ -6,6 +6,10 @@ on:
   pull_request:
     branches: [main]
 
+# Forzar Node.js 24 en todas las acciones (evita deprecation warnings de Node.js 20)
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   # ──────────────────────────────────────────────────────────
   # JOB 1: Suite de pruebas pytest
