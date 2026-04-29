@@ -1,0 +1,31 @@
+# render.yaml — Configuración de despliegue en Render
+# Documentación: https://render.com/docs/render-yaml-spec
+
+services:
+  - type: web
+    name: tfg-carbon-ai-calculator
+    runtime: python
+    region: frankfurt          # Frankfurt (eu-central) — reduce latencia desde Europa
+    plan: free                 # Cambiar a 'starter' o superior para producción real
+
+    # Render clona el repositorio y ejecuta estos comandos en orden
+    buildCommand: pip install --upgrade pip && pip install -r requirements.txt
+    startCommand: gunicorn --workers 2 --bind 0.0.0.0:$PORT --timeout 120 run:app
+
+    # Variables de entorno (los valores secretos se configuran en el panel de Render,
+    # nunca se almacenan aquí; solo se declaran los nombres)
+    envVars:
+      - key: FLASK_ENV
+        value: production
+      - key: PYTHONUNBUFFERED
+        value: "1"
+      - key: SECRET_KEY
+        generateValue: true        # Render genera un valor aleatorio seguro automáticamente
+      - key: ELECTRICITY_MAPS_API_KEY
+        sync: false                # Valor secreto: introducir manualmente en el panel de Render
+
+    # Comprobación de salud: Render verifica que la aplicación responda en /
+    healthCheckPath: /
+
+    # Render monta automáticamente un disco efímero; los datasets están en el repo
+    # Si en el futuro se necesita persistencia, añadir un disk: aquí
