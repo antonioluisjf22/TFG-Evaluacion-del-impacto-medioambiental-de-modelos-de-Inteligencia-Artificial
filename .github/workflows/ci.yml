@@ -98,6 +98,15 @@ jobs:
 
           echo "Health check de Docker: OK"
 
+      - name: Escanear imagen con Trivy (vulnerabilidades)
+        uses: aquasecurity/trivy-action@0.30.0
+        with:
+          image-ref: tfg-carbon-calculator:ci
+          format: table
+          exit-code: '1'
+          ignore-unfixed: true
+          severity: CRITICAL,HIGH
+
       - name: Mostrar logs del contenedor (siempre, para diagnóstico)
         if: always()
         run: docker logs tfg_test || true
