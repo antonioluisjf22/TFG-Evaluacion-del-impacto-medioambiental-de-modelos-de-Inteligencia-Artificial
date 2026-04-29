@@ -1,0 +1,54 @@
+# Archivos y directorios a excluir de la imagen Docker
+# (reducen el tamaño del contexto de build y evitan incluir datos sensibles)
+
+# Entorno virtual local
+entorno_tfg/
+
+# Caché de Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Pruebas
+testing/
+
+# Artefactos de datos temporales
+outputs/
+
+# Credenciales y ficheros de configuración locales
+credentials.json
+.env
+*.env
+
+# Documentación
+docs/
+docs_for_dataset/
+docs_conversion_scripts/
+*.md
+*.tex
+*.html
+mockups_interactivos*.html
+
+# Imágenes de documentación
+images/
+
+# Scripts de análisis (no necesarios en producción)
+scripts/analyze_percentiles.py
+scripts/extract_data_centers.py
+scripts/extract_devices.py
+scripts/extract_models_v2.py
+scripts/generate_new_models.py
+apply_visual_polish.py
+
+# Control de versiones
+.git/
+.gitignore
+
+# IDE
+.vscode/
+.idea/
+
+# emisiones de prueba
+emissions.csv

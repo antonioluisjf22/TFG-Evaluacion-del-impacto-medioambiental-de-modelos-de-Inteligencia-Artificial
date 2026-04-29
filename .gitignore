@@ -4,6 +4,7 @@ entorno_tfg/
 # Credenciales y secretos
 credentials.json
 emissions.csv
+.env
 
 # Python
 __pycache__/
