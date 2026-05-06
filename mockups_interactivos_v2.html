@@ -469,7 +469,7 @@
         <div class="tab-content" id="energy-label">
             <div class="section">
                 <h2 class="section-title">Etiqueta de eficiencia energetica</h2>
-                <p style="font-size: 13px; color: var(--text-gray); margin-bottom: 24px;">Sistema de 9 clases (A+++ a F) basado en el analisis de 426.000 combinaciones de modelos, data centers, dispositivos, redes y tipos de peticion.</p>
+                <p style="font-size: 13px; color: var(--text-gray); margin-bottom: 24px;">Sistema de 9 clases (A+++ a F) basado en el analisis de 639.000 combinaciones de modelos, data centers, dispositivos, redes y tipos de peticion.</p>
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 48px;">
                     <div class="energy-label" id="energy-label-widget">
                         <div class="energy-label-header" id="energy-label-header">
@@ -683,14 +683,14 @@
 
     // Environmental label thresholds (from environmental_labels.py)
     const LABEL_THRESHOLDS = [
-        {label:"A+++", max:0.000892, desc:"Excepcional", color:"#1B5E20", pct:"P0-P2"},
-        {label:"A++",  max:0.002885, desc:"Excelente",   color:"#2D5016", pct:"P2-P10"},
-        {label:"A+",   max:0.005406, desc:"Muy bueno",   color:"#388E3C", pct:"P10-P20"},
-        {label:"A",    max:0.008973, desc:"Bueno",       color:"#4CAF50", pct:"P20-P30"},
-        {label:"B",    max:0.022489, desc:"Aceptable",   color:"#8BC34A", pct:"P30-P50"},
-        {label:"C",    max:0.053997, desc:"Mejorable",   color:"#FFC107", pct:"P50-P70"},
-        {label:"D",    max:0.171746, desc:"Ineficiente", color:"#FF9800", pct:"P70-P90"},
-        {label:"E",    max:0.338943, desc:"Muy ineficiente", color:"#F44336", pct:"P90-P97"},
+        {label:"A+++", max:0.000711, desc:"Excepcional", color:"#1B5E20", pct:"P0-P2"},
+        {label:"A++",  max:0.002052, desc:"Excelente",   color:"#2D5016", pct:"P2-P10"},
+        {label:"A+",   max:0.003877, desc:"Muy bueno",   color:"#388E3C", pct:"P10-P20"},
+        {label:"A",    max:0.006066, desc:"Bueno",       color:"#4CAF50", pct:"P20-P30"},
+        {label:"B",    max:0.013359, desc:"Aceptable",   color:"#8BC34A", pct:"P30-P50"},
+        {label:"C",    max:0.032327, desc:"Mejorable",   color:"#FFC107", pct:"P50-P70"},
+        {label:"D",    max:0.108598, desc:"Ineficiente", color:"#FF9800", pct:"P70-P90"},
+        {label:"E",    max:0.241226, desc:"Muy ineficiente", color:"#F44336", pct:"P90-P97"},
         {label:"F",    max:Infinity,  desc:"No recomendado",  color:"#B71C1C", pct:"P97+"}
     ];
 
@@ -1734,7 +1734,7 @@
                 },
                 {
                     title: 'Alcance del analisis',
-                    text: 'Este informe cubre unicamente las emisiones de la fase de inferencia. Las emisiones de entrenamiento no estan incluidas. Los valores de intensidad de carbono (CI) provienen de Electricity Maps o de fallbacks regionales. Dataset: 10 modelos, 71 data centers en 6 continentes, 20 dispositivos de usuario y 15 tipos de red.'
+                    text: 'Este informe cubre unicamente las emisiones de la fase de inferencia. Las emisiones de entrenamiento no estan incluidas. Los valores de intensidad de carbono (CI) provienen de Electricity Maps o de fallbacks regionales. Dataset: 15 modelos, 71 data centers en 6 continentes, 20 dispositivos de usuario y 15 tipos de red.'
                 },
             ];
             metaSections.forEach(({title, text}) => {
