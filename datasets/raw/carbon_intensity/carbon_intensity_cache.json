@@ -1063,9 +1063,9 @@
     "source": "hardcoded_fallback"
   },
   "ci_ES": {
-    "carbonIntensity": 100,
+    "carbonIntensity": 150,
     "zone": "ES",
-    "timestamp": "2026-04-28T19:54:52.379780",
+    "timestamp": "2026-05-06T20:13:28.544889",
     "source": "electricity_maps_api",
     "fossilFreePercentage": null,
     "renewablePercentage": null
@@ -1087,9 +1087,9 @@
     "renewablePercentage": null
   },
   "ci_DE": {
-    "carbonIntensity": 274,
+    "carbonIntensity": 451,
     "zone": "DE",
-    "timestamp": "2026-04-28T19:54:53.224325",
+    "timestamp": "2026-05-06T20:13:30.809776",
     "source": "electricity_maps_api",
     "fossilFreePercentage": null,
     "renewablePercentage": null
@@ -1103,9 +1103,9 @@
     "renewablePercentage": null
   },
   "ci_US-MIDA-PJM": {
-    "carbonIntensity": 324,
+    "carbonIntensity": 320,
     "zone": "US-MIDA-PJM",
-    "timestamp": "2026-04-17T18:29:04.988262",
+    "timestamp": "2026-05-06T20:13:29.464966",
     "source": "electricity_maps_api",
     "fossilFreePercentage": null,
     "renewablePercentage": null
@@ -1135,9 +1135,9 @@
     "renewablePercentage": null
   },
   "ci_PL": {
-    "carbonIntensity": 682,
+    "carbonIntensity": 765,
     "zone": "PL",
-    "timestamp": "2026-04-17T18:29:08.484099",
+    "timestamp": "2026-05-06T20:13:35.280125",
     "source": "electricity_maps_api",
     "fossilFreePercentage": null,
     "renewablePercentage": null
@@ -1191,17 +1191,17 @@
     "renewablePercentage": null
   },
   "ci_SE-SE3": {
-    "carbonIntensity": 22,
+    "carbonIntensity": 23,
     "zone": "SE-SE3",
-    "timestamp": "2026-04-17T18:29:07.981264",
+    "timestamp": "2026-05-06T20:13:34.140345",
     "source": "electricity_maps_api",
     "fossilFreePercentage": null,
     "renewablePercentage": null
   },
   "ci_IS": {
-    "carbonIntensity": 31,
+    "carbonIntensity": 30,
     "zone": "IS",
-    "timestamp": "2026-04-17T18:29:07.450380",
+    "timestamp": "2026-05-06T20:13:33.080408",
     "source": "electricity_maps_api",
     "fossilFreePercentage": null,
     "renewablePercentage": null
