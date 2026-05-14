@@ -517,6 +517,16 @@
             startTransition();
         }
     });
+
+    // When the page is restored from the browser back-forward cache the
+    // transition overlay is still fully opaque (black). Reset it so the
+    // landing is visible again.
+    window.addEventListener("pageshow", e => {
+        if (e.persisted) {
+            const overlay = document.getElementById("transition-overlay");
+            overlay.classList.remove("active");
+        }
+    });
     </script>
 </body>
 </html>
