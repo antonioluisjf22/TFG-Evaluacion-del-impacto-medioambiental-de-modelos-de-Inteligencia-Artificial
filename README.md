@@ -264,9 +264,3 @@ $env:ELECTRICITY_MAPS_API_KEY="tu-key"   # PowerShell
 python run.py
 ```
 
----
-
-## Licencia
-
-Trabajo de Fin de Grado — Antonio Luis Jiménez de la Fuente.  
-Código disponible para uso académico y educativo.
