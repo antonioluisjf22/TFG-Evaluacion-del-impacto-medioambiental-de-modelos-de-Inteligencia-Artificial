@@ -1,13 +1,9 @@
 # DATASET SOURCES DOCUMENTATION
 
-**Última actualización**: 2026-01-28
-
----
-
-## 📋 Tabla: `models.csv` (v2.0)
+## 📋 Tabla: `models.csv` (v3.0)
 
 ### Descripción
-Características técnicas y energéticas de 10 modelos de IA representativos, incluyendo parámetros, FLOPS de entrenamiento, **consumo energético por token**, latencia, y tipos de petición soportados.
+Características técnicas y energéticas de **15 modelos LLM generativos**, incluyendo parámetros, FLOPS de entrenamiento, **consumo energético por token**, latencia, y tipos de petición soportados.
 
 ### Fuentes Utilizadas
 
@@ -23,6 +19,11 @@ Características técnicas y energéticas de 10 modelos de IA representativos, i
 | **Gemma 7B** | Google DeepMind Paper | https://arxiv.org/abs/2403.08295 | 2026-03-07 | 85% | Energía: 0.02433 Wh/1k tokens (calculada 2N FLOPs). 8.54B params, context_window=8192, max_output_tokens=4096 |
 | **Mistral 7B** | Mistral Research Paper | https://arxiv.org/abs/2310.06825 | 2026-01-10 | 85% | Energía: calculada. SWA 4096, context_window efectivo=8192, max_output_tokens=4096 |
 | **Phi-2** | Microsoft Research Blog | https://www.microsoft.com/en-us/research/blog/phi-2-the-surprising-power-of-small-language-models/ | 2026-03-07 | 85% | Energía: 0.012821 Wh/1k tokens (calculada 2N FLOPs). 2.7B params, context_window=2048, max_output_tokens=1024 |
+| **Claude 3 Haiku** | Anthropic Official | https://www.anthropic.com/claude/haiku | 2026-03-07 | 75% | Energía: calculada 2N FLOPs. Modelo compacto de la familia Claude 3, context_window=200000, max_output_tokens=4096 |
+| **Llama 3 70B** | Meta Research | https://ai.meta.com/blog/meta-llama-3/ | 2026-03-07 | 85% | Energía: calculada 2N FLOPs. 70B params, context_window=8192, max_output_tokens=4096 |
+| **Mixtral 8x7B** | Mistral Research Paper | https://arxiv.org/abs/2401.04088 | 2026-03-07 | 82% | Energía: calculada 2N FLOPs, arquitectura MoE ~12.9B params activos por token. context_window=32768, max_output_tokens=4096 |
+| **Phi-3 Mini** | Microsoft Research | https://arxiv.org/abs/2404.14219 | 2026-03-07 | 85% | Energía: calculada 2N FLOPs. 3.8B params, context_window=4096, max_output_tokens=2048 |
+| **Gemma 2 9B** | Google DeepMind Paper | https://arxiv.org/abs/2408.00118 | 2026-03-07 | 85% | Energía: calculada 2N FLOPs. 9B params, context_window=8192, max_output_tokens=4096 |
 
 ### Fuentes para Datos Energéticos (v2.4)
 
@@ -33,7 +34,6 @@ Características técnicas y energéticas de 10 modelos de IA representativos, i
 | Strubell et al. 2019 | "Energy and Policy Considerations for Deep Learning" | https://arxiv.org/abs/1906.02243 | Metodología de cálculo |
 | Dodge et al. 2022 | "Measuring the Carbon Intensity of AI in Cloud Instances" | https://arxiv.org/abs/2206.05229 | Benchmarks de latencia |
 
-
 ### Metodología de Recopilación
 
 #### **Para modelos disponibles en HuggingFace Hub (70% de los datos)**
@@ -42,10 +42,10 @@ Características técnicas y energéticas de 10 modelos de IA representativos, i
 - FLOPS: obtenido de papers académicos asociados o documentación técnica
 - Confianza: 85-95% (datos de primera mano)
 
-#### **Para modelos NOT en HuggingFace (30% de los datos)**
+#### **Para modelos no disponibles en HuggingFace (30% de los datos)**
 - OpenAI (GPT-4): OpenAI Technical Report
 - Google (PaLM 2): Google AI Official Report
-- Anthropic (Claude 2): Blog oficial + estimaciones basadas en escala
+- Anthropic (Claude 2, Claude 3 Haiku): Blog oficial + estimaciones basadas en escala
 - Confianza: 65-95% (mezcla de datos oficiales y estimaciones)
 
 #### **FLOPS de Entrenamiento: Metodología**
@@ -68,43 +68,44 @@ Características técnicas y energéticas de 10 modelos de IA representativos, i
 - El factor **2×** corresponde al forward pass (multiplicación + activación)
 - En comparación, entrenamiento usa **6×** (forward + backward + optimizer step)
 - Esta fórmula se usa en `calculate_emissions.py` como **fallback** cuando no hay `energy_wh_per_1k_tokens` empírico
+- Para arquitecturas **MoE** (Mixtral 8x7B, GPT-4): se usan los parámetros activos por token, no el total
 
-### Campos del Dataset (v2.0)
+### Campos del Dataset (v3.0)
 
-```
-# IDENTIFICACIÓN
-model_id                 : Identificador único (lowercase, guiones)
-model_name               : Nombre oficial del modelo
-organization             : Organización creadora
-model_type               : Categoría (LLM — todos los modelos son LLMs generativos)
+```text
+IDENTIFICACIÓN
+model_id               : Identificador único (lowercase, guiones)
+model_name             : Nombre oficial del modelo
+organization           : Organización creadora
+model_type             : Categoría (LLM — todos los modelos son LLMs generativos)
 
-# ARQUITECTURA
-num_parameters           : Número total de parámetros (entero)
-flops_training           : FLOPS de entrenamiento (notación científica)
-context_window           : Ventana de contexto máxima (tokens)
-max_output_tokens        : Máximo tokens de salida
+ARQUITECTURA
+num_parameters         : Número total de parámetros (entero)
+flops_training         : FLOPS de entrenamiento (notación científica)
+context_window         : Ventana de contexto máxima (tokens)
+max_output_tokens      : Máximo tokens de salida
 
-# CONSUMO ENERGÉTICO (v2.0 - NUEVO)
-energy_wh_per_1k_tokens  : Energía por 1000 tokens (Wh)
-energy_source            : Fuente: 'empirical' (medido) o 'calculated'
-latency_ms_per_token     : Latencia por token (milisegundos)
-latency_source           : Fuente: 'empirical' o 'calculated'
-tokens_per_second        : Velocidad de generación (tokens/s)
+CONSUMO ENERGÉTICO
+energy_wh_per_1k_tokens : Energía por 1000 tokens (Wh)
+energy_source          : Fuente: 'empirical' (medido) o 'calculated'
+latency_ms_per_token   : Latencia por token (milisegundos)
+latency_source         : Fuente: 'empirical' o 'calculated'
+tokens_per_second      : Velocidad de generación (tokens/s)
 
-# TIPOS DE PETICIÓN (v2.0 - NUEVO)
-supported_request_types  : Lista de tipos soportados (separados por coma)
-typical_request_type     : Tipo de petición más común
-typical_tokens_total     : Tokens totales de petición típica
-typical_energy_wh        : Energía de petición típica (Wh)
-typical_latency_sec      : Tiempo de petición típica (segundos)
+TIPOS DE PETICIÓN
+supported_request_types : Lista de tipos soportados (separados por coma)
+typical_request_type   : Tipo de petición más común
+typical_tokens_total   : Tokens totales de petición típica
+typical_energy_wh      : Energía de petición típica (Wh)
+typical_latency_sec    : Tiempo de petición típica (segundos)
 
-# METADATOS
-release_date             : Fecha de lanzamiento (YYYY-MM-DD)
-source_url               : URL principal de la fuente
-hf_url                   : URL de HuggingFace (si aplica)
-confidence               : Porcentaje de confianza en los datos (0-1)
-notes                    : Anotaciones sobre la recopilación
-data_collected_date      : Fecha de extracción del dato (YYYY-MM-DD)
+METADATOS
+release_date           : Fecha de lanzamiento (YYYY-MM-DD)
+source_url             : URL principal de la fuente
+hf_url                 : URL de HuggingFace (si aplica)
+confidence             : Nivel de confianza en los datos (0–1)
+notes                  : Anotaciones sobre la recopilación
+data_collected_date    : Fecha de extracción del dato (YYYY-MM-DD)
 ```
 
 ---
@@ -116,12 +117,12 @@ Tipos de petición predefinidos para cada categoría de modelo, con estimaciones
 
 ### Campos del Dataset
 
-```
-request_type_id    : Identificador único del tipo de petición
-model_type         : Tipo de modelo (LLM, Vision, Classification)
-tokens_input_avg   : Tokens de entrada promedio
-tokens_output_avg  : Tokens de salida promedio
-description        : Descripción del tipo de petición
+```text
+request_type_id  : Identificador único del tipo de petición
+model_type       : Tipo de modelo (LLM, Vision, Classification)
+tokens_input_avg : Tokens de entrada promedio
+tokens_output_avg: Tokens de salida promedio
+description      : Descripción del tipo de petición
 ```
 
 ### Tipos de Petición Disponibles (v3.0 - Solo LLMs generativos)
@@ -138,17 +139,9 @@ description        : Descripción del tipo de petición
 
 > **Nota v3.0**: Se han eliminado los tipos de petición de Vision (image_classification, image_captioning, visual_qa) y Classification (text_classification, sentiment_analysis, ner) ya que todos los modelos del dataset son ahora LLMs generativos. Los modelos BERT y ViT fueron reemplazados por Gemma 7B y Phi-2.
 
-### Validación de Datos
-
-✅ **Todos los datos han sido verificados contra**:
-- Papers académicos originales (ArXiv, etc.)
-- Documentación oficial de organizaciones
-- Model cards de HuggingFace
-- Reportes técnicos públicos
-- Benchmarks de inferencia públicos
 
 ⚠️ **Limitaciones conocidas**:
-1. **Claude 2**: No hay paper público de técnicas. Estimación basada en escala vs. competencia
+1. **Claude 2 / Claude 3 Haiku**: No hay paper público de técnicas. Estimación basada en escala vs. competencia
 2. **PaLM 2**: No hay acceso directo al modelo. Datos del reporte técnico público
 3. **GPT-4**: OpenAI limita información técnica. FLOPS estimados a partir de compute budget
 4. **Energía calculada**: Para modelos sin datos empíricos, se usa fórmula:
@@ -157,39 +150,33 @@ description        : Descripción del tipo de petición
 
 ### Metodología de Cálculo Energético (v3.0 - Actualizado)
 
-#### **Datos Calculados (10 modelos — todos LLMs generativos)**
+#### **Datos Calculados (15 modelos — todos LLMs generativos)**
 - GPT-4: Calculado desde TDP H100 + overhead estimado (MoE ~280B active params)
 - PaLM 2: Fórmula teórica 2N FLOPs
-- OPT-175B, Llama 2 70B: Fórmula teórica 2N FLOPs
-- Claude 2, Falcon 40B, MPT 30B: Fórmula basada en FLOPS y eficiencia de GPU
+- OPT-175B, Llama 2 70B, Llama 3 70B: Fórmula teórica 2N FLOPs
+- Claude 2, Claude 3 Haiku, Falcon 40B, MPT 30B: Fórmula basada en FLOPS y eficiencia de GPU
 - Gemma 7B: Fórmula teórica 2N FLOPs (Google DeepMind, 8.54B params)
+- Gemma 2 9B: Fórmula teórica 2N FLOPs (Google DeepMind, 9B params)
 - Mistral 7B: Fórmula teórica 2N FLOPs (context efectivo 8192, SWA 4096)
+- Mixtral 8x7B: Fórmula teórica 2N FLOPs, MoE ~12.9B active params por token
 - Phi-2: Fórmula teórica 2N FLOPs (Microsoft Research, 2.7B params)
+- Phi-3 Mini: Fórmula teórica 2N FLOPs (Microsoft Research, 3.8B params)
 - Confianza: 65-85%
 
 > **Nota v3.0**: Se eliminaron BERT Base y Vision Transformer (ViT) del dataset.
 > - BERT es un modelo encoder-only de clasificación, no genera tokens en sentido generativo. El campo max_output_tokens no aplica a su arquitectura.
 > - ViT es un modelo de visión que clasifica imágenes, no genera texto.
-> - Reemplazados por Gemma 7B (Google DeepMind) y Phi-2 (Microsoft Research), ambos LLMs generativos con especificaciones bien documentadas.
-> - Se corrigió el problema de max_output_tokens == context_window en OPT 175B, Llama 2 70B, Falcon 40B y MPT 30B. El max_output_tokens debe ser significativamente menor que context_window (entre 25-50%) para dejar espacio al prompt de entrada.
-> - Se corrigió Mistral 7B: context_window de 32000 a 8192 (valor efectivo práctico, ya que SWA window es 4096 y la calidad se degrada más allá de 8K).
-> - Se corrigió PaLM 2: max_output_tokens de 8192 a 4096, alineado con el límite real de la API comercial (Vertex AI text-bison). El valor 8192 era técnicamente posible pero no representativo del uso comercial.
-
-### Trazabilidad Completa
-
-Cada dato incluye:
-- ✅ URL original de la fuente
-- ✅ Fecha de consulta
-- ✅ Nivel de confianza (0-1)
-- ✅ Notas sobre metodología
-- ✅ Acceso: ¿Público o Privado?
+> - Reemplazados inicialmente por Gemma 7B y Phi-2, y posteriormente ampliado con Claude 3 Haiku, Llama 3-70B, Mixtral 8x7B, Phi-3 Mini y Gemma 2-9B hasta alcanzar los 15 modelos LLMs generativos actuales.
+> - Se corrigió el problema de max_output_tokens == context_window en OPT 175B, Llama 2 70B, Falcon 40B y MPT 30B.
+> - Se corrigió Mistral 7B: context_window de 32000 a 8192.
+> - Se corrigió PaLM 2: max_output_tokens de 8192 a 4096.
 
 ---
 
 ## 📋 Tabla: `data_centers.csv` (v2.0 + Enfoque Híbrido)
 
 ### Descripción
-Características de eficiencia de **71 data centers** de 6 proveedores principales, incluyendo PUE (Power Usage Effectiveness), porcentaje de energía renovable declarada, tipo de refrigeración, y datos de sostenibilidad verificados de reportes oficiales 2024-2025.
+Características de eficiencia de **71 data centers** de **4 proveedores principales** (Google Cloud Platform, Amazon Web Services, Microsoft Azure, Deep Green), incluyendo PUE (Power Usage Effectiveness), porcentaje de energía renovable declarada, tipo de refrigeración, y datos de sostenibilidad verificados de reportes oficiales 2024-2025.
 
 **Nuevo en v2.0**: Integración con Electricity Maps API para obtener CI de cada DC mediante enfoque híbrido:
 - 38 DCs (53.5%) usan endpoint nativo de API: `dataCenterProvider + dataCenterRegion`
@@ -215,11 +202,11 @@ Características de eficiencia de **71 data centers** de 6 proveedores principal
 
 | Proveedor | Cantidad | PUE Rango | PUE Promedio | Confianza |
 |-----------|----------|-----------|------------|-----------|
-| Google Cloud | 31 | 1.06-1.16 | 1.090 | 100% |
+| Google Cloud Platform | 33 | 1.06-1.16 | 1.090 | 100% |
 | AWS | 21 | 1.09-1.46 | 1.200 | 100% |
-| Microsoft Azure | 19 | 1.12-1.30 | 1.180 | 100% |
+| Microsoft Azure | 16 | 1.12-1.30 | 1.180 | 100% |
 | Deep Green | 1 | 1.005 | 1.005 | 100% |
-| **TOTAL** | **72** | **1.005-1.46** | **1.147** | **100%** |
+| **TOTAL** | **71** | **1.005-1.46** | **1.147** | **100%** |
 
 **Nuevos Data Centers Agregados (2026-01-13)**:
 - **AWS**: 6 nuevas regiones - ap-south-2 (Hyderabad, 1.46 PUE), ap-southeast-2, me-south-1, ca-west-1, us-west-1, cn-north-1
@@ -252,25 +239,25 @@ Características de eficiencia de **71 data centers** de 6 proveedores principal
 #### **Deep Green** (Confianza: 82-85%)
 - **Fuente**: https://deepgreen.energy/
 - **Tipo**: Company Website + Case Studies
-- **Datos extraídos**: PUE revolucionario (1.03), heat recovery, % renovables
+- **Datos extraídos**: PUE revolucionario (1.005), heat recovery, % renovables
 - **Validación**: Datos de operación real, pero menos auditoría independiente
 - **Nota**: Startup innovadora, no tiene el volumen de datos que los gigantes
 
 ### Campos del Dataset
 
-```
-dc_id                    : Identificador único (ej: aws-eu-west-1)
-provider_name            : Nombre del proveedor (AWS, Azure, GCP, Deep Green)
-region                   : Ubicación geográfica (ej: eu-west-1 (Ireland))
-country_code             : Código ISO país (ej: IE)
-pue                      : Power Usage Effectiveness (1.0 = perfecto)
-renewable_energy_percent : % de energía renovable en esa región
-cooling_type             : Tipo de refrigeración (Air, Liquid, Heat Recovery)
-notes                    : Descripción y características especiales
-source_url               : URL de la fuente oficial
-confidence               : Confianza en los datos (0-1)
-data_type                : Tipo de fuente (Official Report, Website, etc.)
-data_collected_date      : Fecha de extracción
+```text
+dc_id                 : Identificador único (ej: aws-eu-west-1)
+provider_name         : Nombre del proveedor (AWS, Azure, GCP, Deep Green)
+region                : Ubicación geográfica (ej: eu-west-1 (Ireland))
+country_code          : Código ISO país (ej: IE)
+pue                   : Power Usage Effectiveness (1.0 = perfecto)
+provider_renewable_pct: % de energía renovable declarada por el proveedor (PPAs/RECs)
+cooling_type          : Tipo de refrigeración (Air, Liquid, Heat Recovery)
+notes                 : Descripción y características especiales
+source_url            : URL de la fuente oficial
+confidence            : Confianza en los datos (0–1)
+data_type             : Tipo de fuente (Official Report, Website, etc.)
+data_collected_date   : Fecha de extracción
 ```
 
 ### Validación de Datos
@@ -285,16 +272,18 @@ data_collected_date      : Fecha de extracción
 - National grid statistics
 - Provider PPAs (Power Purchase Agreements)
 
+> **Nota sobre Greenwashing**: El campo `provider_renewable_pct` recoge el porcentaje declarado por el proveedor (incluyendo RECs y PPAs). Este valor se contrasta con el porcentaje real de renovables de la red eléctrica de la zona (`renewable_grid_pct`, obtenido de Electricity Maps) para identificar posibles discrepancias. Esta dualidad se muestra explícitamente en la interfaz de la herramienta.
+
 ### Interpretación de PUE
 
-- **PUE < 1.05**: Excepcional (Deep Green Swindon: 1.03)
+- **PUE < 1.05**: Excepcional (Deep Green Swindon: 1.005)
 - **PUE 1.05-1.10**: Excelente (GCP, AWS region-specific)
 - **PUE 1.10-1.20**: Bueno (Azure, AWS global)
 - **Nuestro promedio**: 1.09 = ✅ Muy Bueno
 
 ---
 
-## ⚡ NUEVA SECCIÓN: Tablas de Carbon Intensity (v2.0 - Enfoque Híbrido)
+## ⚡ Tablas de Carbon Intensity (v2.0 — Enfoque Híbrido)
 
 ### 📋 Tabla: `carbon_intensity_datacenters.csv` (v2.0 - NUEVO)
 
@@ -318,7 +307,7 @@ data_collected_date      : Fecha de extracción
 ## ⚡ Tabla: `carbon_intensity.csv` (v2.0 - FALLBACK TIER 2)
 
 ### Descripción
-Intensidades de carbono en tiempo real para **125+ zonas geográficas** (de 352 disponibles), obtenidas de Electricity Maps API v2.0. Incluye mapeo específico de **71 data centers** a sus zonas exactas. Se actualiza automáticamente con caché de 15 minutos y fallback de 352 zonas hardcodeadas cuando la API está rate-limited.
+Intensidades de carbono en tiempo real para **128 zonas geográficas** (de 352 disponibles), obtenidas de Electricity Maps API v3.0. Incluye mapeo específico de **71 data centers** a sus zonas exactas. Se actualiza automáticamente con caché de 15 minutos y fallback de 352 zonas hardcodeadas cuando la API está rate-limited.
 
 ### Fuente Principal
 
@@ -331,7 +320,7 @@ Intensidades de carbono en tiempo real para **125+ zonas geográficas** (de 352 
 ```json
 // credentials.json
 {
-  "api_key": "DXGpbnPMm7A0e4qk975I",
+  "api_key": "<TU_API_KEY>",
   "service": "electricity_maps"
 }
 ```
@@ -354,7 +343,7 @@ Intensidades de carbono en tiempo real para **125+ zonas geográficas** (de 352 
 **carbon_intensity.csv**:
 | Métrica | Valor |
 |---------|-------|
-| **Total Zonas** | 125 (de 352 disponibles) |
+| **Total Zonas** | 128 (de 352 disponibles) |
 | **CI Mínimo** | 10 gCO2/kWh |
 | **CI Máximo** | 907 gCO2/kWh |
 | **CI Promedio** | 295 gCO2/kWh |
@@ -363,7 +352,7 @@ Intensidades de carbono en tiempo real para **125+ zonas geográficas** (de 352 
 **carbon_intensity_datacenters.csv** (NUEVO):
 | Métrica | Valor |
 |---------|-------|
-| **Total DCs** | 71 (AWS 21, Azure 19, GCP 31) |
+| **Total DCs** | 71 (GCP 33, AWS 21, Azure 16, Deep Green 1) |
 | **CI Mínimo** | 25 gCO2/kWh (Suecia 🇸🇪) |
 | **CI Máximo** | 657 gCO2/kWh (Polonia 🇵🇱) |
 | **CI Promedio** | 358 gCO2/kWh |
@@ -372,7 +361,7 @@ Intensidades de carbono en tiempo real para **125+ zonas geográficas** (de 352 
 ### Comparación Tiempo Real vs Valores Hardcoded
 
 | País | Zona | Real-time | Hardcoded | Δ% | Impacto |
-|------|------|-----------|-----------|----|---------|
+|------|------|-----------|-----------|----|---------| 
 | 🇪🇸 España | ES | 98 | 145 | **-32%** | Mejor de lo esperado |
 | 🇫🇷 Francia | FR | 48 | 50 | -4% | Similar |
 | 🇩🇪 Alemania | DE-LU | 534 | 380 | **+41%** | Peor de lo esperado |
@@ -421,24 +410,15 @@ python scripts/calculate_emissions.py  # Usa API automáticamente
 
 ---
 
-## 🔄 Próximas Tablas a Recopilar
-
-### Fase 4: Energy Consumption (`energy_consumption.csv`)
-- **Fuentes**: ArXiv papers, ML CO2 Initiative, CodeCarbon
-- **Campos**: MWh, PUE, CO2 estimado
-- **Cronograma**: Semana 2
-
----
-
-## 📱 Tabla: `devices.csv` (v2.0)
+##  Tabla: `devices.csv` (v2.0)
 
 ### Descripción
-Catálogo de 19 dispositivos cliente típicos para consultas de IA, incluyendo smartphones, tablets, laptops, desktops y dispositivos edge. Datos de consumo energético (TDP) para calcular emisiones del lado del cliente.
+Catálogo de **20 dispositivos** cliente típicos para consultas de IA en **6 categorías**: portátiles (6), teléfonos inteligentes (4), ordenadores de sobremesa (3), dispositivos edge (3), tabletas (2) y altavoces inteligentes (2). Datos de consumo energético (TDP) para calcular emisiones del lado del cliente.
 
 ### Fuentes Utilizadas
 
 | Categoría | Fuente Principal | URL | Confianza |
-|-----------|-----------------|-----|-----------|
+|-----------|-----------------|-----|-----------| 
 | Apple (iPhone, MacBook, iPad) | Apple Official Specs | https://www.apple.com/[product]/specs/ | 90-95% |
 | Samsung | Samsung Official | https://www.samsung.com/ | 88% |
 | Intel CPUs | Intel ARK | https://ark.intel.com/ | 85-90% |
@@ -457,54 +437,58 @@ Catálogo de 19 dispositivos cliente típicos para consultas de IA, incluyendo s
 | `cpu_model` | string | Modelo de CPU |
 | `gpu_model` | string | Modelo de GPU |
 | `npu_model` | string | Modelo de NPU/Neural Engine (si aplica) |
-| `tdp_watts` | float | Thermal Design Power máximo (W) |
-| `idle_watts` | float | Consumo en reposo (W) |
-| `typical_inference_watts` | float | Consumo típico durante inferencia AI (W) |
+| `has_npu` | bool | Si el dispositivo tiene NPU dedicada |
+| `primary_inference_target` | string | Procesador principal de inferencia (CPU/GPU/NPU) |
+| `system_idle_watts` | float | Consumo en reposo del sistema completo (W) |
+| `system_tdp_watts` | float | TDP máximo del sistema (W) |
 | `memory_gb` | int | Memoria RAM en GB |
-| `efficiency_rating` | string | Calificación de eficiencia (Very High, High, Medium, Low) |
+| `memory_bandwidth_gbps` | float | Ancho de banda de memoria (GB/s) |
+| `year_released` | int | Año de lanzamiento del dispositivo |
 | `confidence` | float | Nivel de confianza del dato (0-1) |
+
+> **Modelo de consumo dinámico**: La potencia de inferencia se calcula como `P_inferencia = P_idle + (P_TDP − P_idle) × U`, donde U es el factor de utilización (0.30–0.50), ya que la inferencia real de redes neuronales ocupa típicamente entre el 30 y el 50% del TDP máximo.
 
 ### Estadísticas
 
 | Métrica | Valor |
 |---------|-------|
-| **Total Dispositivos** | 19 |
-| **Tipos** | 6 (Smartphone, Tablet, Laptop, Desktop, Smart Speaker, Edge) |
-| **Rango TDP** | 4W - 620W |
-| **TDP Promedio** | 96.6W |
-| **Confianza Promedio** | 86.2% |
+| **Total Dispositivos** | 20 |
+| **Tipos** | 6 (Portátiles, Teléfonos inteligentes, Ordenadores sobremesa, Dispositivos edge, Tabletas, Altavoces inteligentes) |
+| **Rango de confianza** | 0.75–0.92 |
 
 ---
 
-## 🌐 Tabla: `network_types.csv`
+## Tabla: `network_energy_sources_2024.csv`
 
 ### Descripción
-Catálogo de 15 tipos de conexión de red, desde Ethernet hasta satélite. Incluye consumo energético por MB transferido para calcular emisiones de transmisión de datos.
+Catálogo de **5 tecnologías de red** con sus consumos energéticos por MB/GB transferido, para calcular emisiones de transmisión de datos.
+
+- Fibra FTTH
+- 4G LTE
+- 5G NSA
+- WiFi 6 (802.11ax)
+- WiFi 6E (802.11be)
 
 ### Fuentes Utilizadas
 
 | Fuente | Tipo | URL | Uso |
 |--------|------|-----|-----|
+| ITU-T L.1330 | Standard | https://www.itu.int/ | Consumo energético por tecnología de red |
 | IEA (International Energy Agency) | Report 2020 | https://www.iea.org/commentaries/the-carbon-footprint-of-streaming-video-fact-checking-the-headlines | Energía por GB streaming |
-| GSMA | Industry Report | https://www.gsma.com/futurenetworks/ | Eficiencia redes móviles |
-| European Commission JRC | Research | https://ec.europa.eu/jrc/ | ICT energy consumption |
-| IEEE | Standards | https://www.ieee.org/ | Ethernet specs |
-| Wi-Fi Alliance | Technical | https://www.wi-fi.org/ | WiFi efficiency |
+| GSMA Intelligence 2023 | Industry Report | https://www.gsma.com/futurenetworks/ | Eficiencia redes móviles |
+| Ericsson Energy Report 2024 | Industry Report | https://www.ericsson.com/ | Consumo por tecnología de red |
+| IEEE 802.11ax/be | Standards | https://www.ieee.org/ | WiFi efficiency |
 
-### Campos del Dataset (v2.1)
+### Campos del Dataset
 
 | Campo | Tipo | Descripción |
 |-------|------|-------------|
 | `network_type` | string | Identificador único (ej: `4G LTE`, `WiFi 6`) |
 | `energy_kWh_per_MB` | float | Energía por MB transferido (kWh) |
 | `energy_kWh_per_GB` | float | Energía por GB transferido (kWh) |
-| `confidence_percent` | int | Nivel de confianza del dato (0-100) |
-| `primary_source` | string | Fuente principal del dato (GSMA, ITU, etc.) |
-| `secondary_sources` | string | Fuentes secundarias de validación |
 | `range_min_kWh_MB` | float | Rango mínimo de energía (kWh/MB) |
 | `range_max_kWh_MB` | float | Rango máximo de energía (kWh/MB) |
 | `deployment_status_2024` | string | Estado de despliegue de la tecnología |
-| `notes` | string | Notas adicionales sobre el dato |
 
 ### Estadísticas
 
@@ -515,42 +499,52 @@ Catálogo de 15 tipos de conexión de red, desde Ethernet hasta satélite. Inclu
 | **Rango Energía** | 0.4 - 6.0 kWh/GB |
 | **Más Eficiente** | Fiber FTTH (0.4 kWh/GB) |
 | **Menos Eficiente** | 4G LTE (6.0 kWh/GB) |
-| **Fuentes** | GSMA Intelligence, ITU-T L.1310/L.1330, Ericsson |
+| **Fuentes** | GSMA Intelligence 2023, ITU-T L.1310/L.1330, Ericsson Energy Report 2024 |
+| **Rango de confianza** | 0.89–0.92 |
 
 ### Notas Metodológicas
 
-**Energía por MB/GB**: Los valores provienen de GSMA Intelligence 2023, ITU-T L.1310/L.1330 y Ericsson Mobility Report 2023. Se incluyen solo tecnologías con mediciones verificables.
+**Energía por MB/GB**: Los valores provienen de GSMA Intelligence 2023, ITU-T L.1310/L.1330 y Ericsson Energy Report 2024. Se incluyen solo tecnologías con mediciones verificables.
 
 **CO₂ calculado dinámicamente (v2.1)**: A partir de v2.1, el CO₂ de red se calcula en runtime usando el CI específico del país del usuario obtenido de **Electricity Maps API**:
+
 ```
 carbon_kg_per_GB = energy_kWh_per_GB × CI_user_country / 1000
 ```
 
 ---
 
-## 🧮 Script: `calculate_emissions.py`
+## Script: `calculate_emissions.py`
 
 ### Descripción
-Calculadora principal que integra todos los datasets para estimar emisiones de CO2 de una consulta de IA.
+Calculadora principal que integra **8 CSVs del dataset** para estimar emisiones de CO2 de una consulta de IA. Carga en memoria: `models.csv` (15 modelos), `datacenters.csv` (71 centros de datos), `devices.csv` (20 dispositivos), `network_energy_sources_2024.csv` (5 tecnologías), `carbon_intensity.csv`, `carbon_intensity_datacenters.csv`, `carbon_intensity_cache.json` y los datos de zonas de Electricity Maps.
 
 ### Fórmula de Cálculo (v2.1)
 
 ```
 CO2_TOTAL = CO2_DISPOSITIVO + CO2_RED + CO2_DATACENTER
 
-Donde:
-  CO2_DISPOSITIVO = (TDP_inferencia × tiempo_sec / 3600) × CI_local / 1000
-  CO2_RED = energy_kWh_per_GB × CI_user_country / 1000 × data_transferred_gb × 1000
-          = data_transferred_gb × (energy_kWh_per_GB × CI_user_country) / 1000 × 1000
-  CO2_DATACENTER = (FLOPS_inferencia / eficiencia_GPU × PUE) × CI_datacenter / 1000
-  
-Nota: CI_user_country se obtiene dinámicamente de Electricity Maps API
+CO2_DISPOSITIVO = (TDP_inferencia × tiempo_sec / 3600) × CI_local / 1000
+              = (P_idle + (P_TDP - P_idle) × U) × t / 3600 × CI_local / 1000
+
+CO2_RED = data_transferred_gb × (energy_kWh_per_GB × CI_user_country) / 1000 × 1000
+
+CO2_DATACENTER = (tokens_procesados / 1000) × energy_wh_per_1k_tokens × PUE × CI_datacenter / 1000
 ```
+
+> **Nota**: `CI_user_country` se obtiene dinámicamente de Electricity Maps API. El capping de `tokens_output` evita que supere un máximo definido.
+
+### Sistema de 4 Niveles de Fallback para CI
+
+1. **Tier 1**: Llamada nativa a Electricity Maps API por datacenter (`dataCenterProvider + dataCenterRegion`)
+2. **Tier 2**: Búsqueda en CSV local `carbon_intensity.csv` con 128 zonas precargadas
+3. **Tier 3**: Valor por defecto del país (55 países cubiertos)
+4. **Tier 4 (último recurso)**: Valor global de 450 gCO2/kWh
 
 ### Parámetros de Entrada
 
 | Parámetro | Tipo | Descripción | Ejemplo |
-|-----------|------|-------------|---------|
+|-----------|------|-------------|---------| 
 | `model_id` | string | ID del modelo AI | `gpt-4`, `llama2-70b` |
 | `data_center_id` | string | ID del data center | `aws-eu-west-1` |
 | `device_id` | string | ID del dispositivo | `laptop-macbook-air-m3` |
@@ -565,8 +559,31 @@ Nota: CI_user_country se obtiene dinámicamente de Electricity Maps API
 | Escenario | Dispositivo | Red | Modelo | CO2 Total |
 |-----------|-------------|-----|--------|-----------|
 | Móvil España | iPhone 15 Pro | 4G LTE | GPT-4 | 0.056 gCO2 |
-| Laptop Casa | MacBook Air M3 | WiFi 5 | Llama 2 70B | 0.026 gCO2 |
+| Laptop Casa | MacBook Air M3 | WiFi 6 | Llama 2 70B | 0.026 gCO2 |
 | Desktop Gaming | RTX 4090 | Fibra | Mistral 7B | 0.048 gCO2 |
+
+---
+
+## 🏷️ Sistema de Etiquetado Medioambiental
+
+### Descripción
+Sistema de **9 clases** (A+++ a F) basado en percentiles estadísticos calculados sobre todas las combinaciones posibles generadas con los datasets (~639 000 combinaciones). Implementado en `scripts/environmental_labels.py`.
+
+### Escala de Clases
+
+| Clase | Descripción | Percentil |
+|-------|-------------|-----------|
+| **A+++** | Excepcional | P0 – P2 |
+| **A++** | Excelente | P2 – P10 |
+| **A+** | Muy bueno | P10 – P20 |
+| **A** | Bueno | P20 – P30 |
+| **B** | Aceptable | P30 – P50 |
+| **C** | Mejorable | P50 – P70 |
+| **D** | Ineficiente | P70 – P90 |
+| **E** | Muy ineficiente | P90 – P97 |
+| **F** | No recomendado | P97 – P100 |
+
+> **Nota**: El sistema utiliza percentiles empíricos reales sobre la distribución completa de escenarios posibles para una clasificación absoluta más robusta, en lugar de una escala basada en ratios de eficiencia arbitrarios.
 
 ---
 
@@ -574,30 +591,30 @@ Nota: CI_user_country se obtiene dinámicamente de Electricity Maps API
 
 | Métrica | Valor |
 |---------|-------|
-| **Total Modelos** | 10 |
-| **Total Data Centers** | 71 (AWS 25, GCP 15, Azure 12, Deep Green 8, Equinix 6, Oracle 5) |
+| **Total Modelos** | 15 (todos LLMs generativos) |
+| **Total Data Centers** | 71 (GCP 33, AWS 21, Azure 16, Deep Green 1) |
 | **  - API nativo** | 38 (53.5%) |
 | **  - Mapeo manual** | 33 (46.5%) |
-| **Total Dispositivos** | 19 |
-| **Total Tipos de Red** | 15 |
-| **Total Zonas EM (fallback tier 2)** | 125 (de 352 disponibles) |
+| **Total Dispositivos** | 20 |
+| **Total Tipos de Red** | 5 |
+| **Total Zonas EM (fallback tier 2)** | 128 (de 352 disponibles) |
 | **Total Zonas EM (DCs únicos)** | 39 |
-| **Total Tipos de Petición** | 13 |
-| **Modelos en HF** | 7 (70%) |
-| **Modelos NOT en HF** | 3 (30%) |
-| **Rango Parámetros** | 86M - 1.7T |
-| **Rango FLOPS** | 1.7e19 - 3.8e23 |
+| **Total Tipos de Petición** | 7 (solo LLMs generativos) |
+| **CSVs cargados por el motor** | 8 |
+| **Rango Parámetros** | 2.7B - ~1T (estimado GPT-4 MoE total) |
 | **Rango PUE** | 1.005 - 1.46 |
-| **PUE Promedio** | 1.17 (mejor que industria 1.22) |
+| **PUE Promedio** | 1.147 |
 | **Rango TDP Dispositivos** | 4W - 620W |
+| **Rango de confianza dispositivos** | 0.75 – 0.92 |
 | **Rango CI (DCs)** | 21 - 589 gCO2/kWh |
 | **Rango CI (zonas globales)** | 10 - 907 gCO2/kWh |
 | **CI Promedio DCs** | 361 gCO2/kWh |
-| **Tipos Representados** | LLM (8), Vision (1), Classification (1) |
-| **Confianza Promedio** | 92% |
+| **Tipos Representados** | LLM (15) |
+| **Confianza Promedio** | 65-95% (varía por modelo) |
 | **Cobertura Temporal** | 2018-2026 |
 | **Fuente CI** | Electricity Maps API v3 (tiempo real, flow-tracing) |
 | **Fallback System** | 4 tiers (garantizado 100%) |
+| **Clases etiquetado** | 9 (A+++ a F, basadas en percentiles) |
 
 ---
 
@@ -610,43 +627,5 @@ Este documento debe ser actualizado cada vez que se:
 - Agreguen nuevos dispositivos o tipos de red
 - Se actualicen zonas de carbon intensity
 
-**Responsable**: Dataset Owner / TFG Autor
-**Versión actual**: v2.0 + v2.1 (Enfoque Híbrido con Electricity Maps API)
-**Última revisión**: 2026-02-01
-**Cambios principales en v2.0-v2.1**: 
-  - 71 data centers (antes 10)
-  - 2 nuevos CSVs: carbon_intensity_datacenters.csv + carbon_intensity.csv mejorado
-  - 4-tier fallback system para garantizar CI siempre
-  - API nativo 38 DCs + mapeo manual 33 DCs
-  - 125 zonas EM disponibles como fallback
-**Próxima revisión planeada**: 2026-02-15
-
 ---
-
-## 📚 Documentación de Arquitectura Híbrida
-
-Nueva documentación de v2.0-v2.1:
-- [ARQUITECTURA_COMPLETA_CARBON_INTENSITY.md](docs_for_dataset/ARQUITECTURA_COMPLETA_CARBON_INTENSITY.md) - Sistema completo explicado
-- [SISTEMA_FALLBACKS_Y_RELACION_CSVS.md](docs_for_dataset/SISTEMA_FALLBACKS_Y_RELACION_CSVS.md) - 4 niveles de fallback
-- [ORIGEN_71_DATACENTERS.md](docs_for_dataset/ORIGEN_71_DATACENTERS.md) - Procedencia de los datos
-- [ENFOQUE_HIBRIDO_DATACENTER_CI.md](docs_for_dataset/ENFOQUE_HIBRIDO_DATACENTER_CI.md) - Detalles técnicos
-
----
-
-## 📎 Referencias Adicionales
-
-### Fuentes Principales
-- HuggingFace Hub: https://huggingface.co/models
-- ArXiv: https://arxiv.org/
-- Papers with Code: https://paperswithcode.com/
-- ML CO2 Impact: https://www.mlco2.org/
-- IEA Data Centres Report: https://www.iea.org/reports/data-centres-and-data-transmission-networks
-- GSMA 5G Energy Efficiency: https://www.gsma.com/futurenetworks/resources/5g-energy-efficiency/
-
-### Carbon Intensity (Tiempo Real)
-- **Electricity Maps**: https://app.electricitymap.org/
-- **Electricity Maps API**: https://api.electricitymap.org/v3
-- **Documentación API**: https://static.electricitymaps.com/api/docs/index.html
-- **Metodología**: https://www.electricitymaps.com/methodology
-
 
