@@ -1,55 +1,74 @@
-
 # Evaluación del Impacto Medioambiental de Modelos de IA
 
-## Español
+[![Python](https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white)](https://www.python.org/)
+[![Flask](https://img.shields.io/badge/Flask-3.1-000000?logo=flask&logoColor=white)](https://flask.palletsprojects.com/)
+[![Docker](https://img.shields.io/badge/Docker-ready-2496ED?logo=docker&logoColor=white)](https://www.docker.com/)
+[![pytest](https://img.shields.io/badge/pytest-tested-0A9EDC?logo=pytest&logoColor=white)](https://pytest.org/)
+[![Demo](https://img.shields.io/badge/Demo-Render-46E3B7?logo=render&logoColor=white)](https://tfg-evaluacion-del-impacto.onrender.com)
 
-El auge de la Inteligencia Artificial ha traído consigo un consumo energético masivo y una huella de carbono significativa, aspectos que con frecuencia quedan en un segundo plano frente al rendimiento técnico. Esta falta de estandarización en el reporte del impacto ecológico crea una asimetría de información que impide a desarrolladores e investigadores valorar si la eficacia de un modelo justifica su coste ambiental.
+> **Trabajo de Fin de Grado — Antonio Luis Jiménez de la Fuente · Mayo 2026**
 
-Este Trabajo de Fin de Grado propone una herramienta de evaluación inspirada en el etiquetado de eficiencia energética de los electrodomésticos. Su objetivo es que el programador deje de ser un consumidor ciego de recursos para convertirse en un decisor consciente, capaz de discernir no solo cuántos "litros de combustible digital" consume un proceso, sino también qué tan limpia es la fuente de esa energía.
+Herramienta web para cuantificar y comparar el impacto medioambiental de consultas a modelos de IA generativa, inspirada en el etiquetado europeo de eficiencia energética (A+++ – F). Descompone las emisiones de CO₂ en tres componentes —datacenter, dispositivo de usuario y red de comunicaciones— integrando datos de carbono en tiempo real de Electricity Maps API.
 
-Para ello, la herramienta integra factores externos como la eficiencia de la infraestructura, la ubicación geográfica y el mix energético local, reconociendo que el impacto real de un modelo va más allá de su arquitectura. Esto permite recomendar alternativas más sostenibles sin comprometer los objetivos técnicos, sentando las bases de una Inteligencia Artificial responsable donde innovación y protección del entorno avancen en una misma dirección.
-
-## English
-
-The rise of Artificial Intelligence has brought massive energy consumption and a significant carbon footprint, aspects that are often overshadowed by technical performance metrics. The lack of standardization in ecological impact reporting creates an information gap that prevents developers and researchers from assessing whether a model's effectiveness justifies its environmental cost.
-
-This Bachelor's Thesis proposes an evaluation tool inspired by household appliance energy labels. Its goal is to transform developers from blind resource consumers into conscious decision-makers, capable of understanding not only how many "digital fuel liters" a process consumes, but also how clean the source of that energy is.
-
-To achieve this, the tool incorporates external factors such as infrastructure efficiency, geographic location, and local energy mix, acknowledging that a model's true impact extends beyond its architecture. This makes it possible to recommend more sustainable alternatives without compromising technical objectives, laying the groundwork for responsible AI where innovation and environmental protection advance together.
-
----
-
-🌐 **Demo en producción:** https://tfg-evaluacion-del-impacto.onrender.com
+**[→ Demo en producción](https://tfg-evaluacion-del-impacto.onrender.com)**
 
 ---
 
 ## Índice
 
-1. [Descripción](#descripción)
-2. [Estructura del proyecto](#estructura-del-proyecto)
-3. [Requisitos previos](#requisitos-previos)
-4. [Instalación local (sin Docker)](#instalación-local-sin-docker)
-5. [Instalación con Docker](#instalación-con-docker)
-6. [Instalación con Docker Compose](#instalación-con-docker-compose)
-7. [Variables de entorno](#variables-de-entorno)
-8. [Uso de la aplicación](#uso-de-la-aplicación)
-9. [API REST](#api-rest)
-10. [Ejecución de pruebas](#ejecución-de-pruebas)
-11. [Despliegue en Render](#despliegue-en-render)
+1. [Stack tecnológico](#stack-tecnológico)
+2. [Funcionalidades](#funcionalidades)
+3. [Cómo funciona](#cómo-funciona)
+4. [Estructura del proyecto](#estructura-del-proyecto)
+5. [Instalación](#instalación)
+6. [Variables de entorno](#variables-de-entorno)
+7. [Uso](#uso)
+8. [API REST](#api-rest)
+9. [Tests](#tests)
+10. [Datasets](#datasets)
+11. [Despliegue](#despliegue)
 12. [Troubleshooting](#troubleshooting)
-13. [Estructura de datasets](#estructura-de-datasets)
 
 ---
 
-## Descripción
+## Stack tecnológico
 
-La herramienta estima las emisiones de CO₂ de una inferencia en un modelo de IA desglosándolas en tres componentes:
+| Capa | Tecnología |
+|---|---|
+| Backend | Python 3.12 · Flask 3.1 · Gunicorn |
+| Frontend | Vanilla JS · Chart.js · Leaflet · CSS custom |
+| Datos carbono | Electricity Maps API v3 (tiempo real) |
+| Contenedores | Docker (python:3.12-slim, multi-stage) · Docker Compose |
+| Pruebas | pytest · Postman (colección incluida) |
+| Despliegue | Render (auto-deploy desde `main`) |
 
-- **Centro de datos:** consumo del servidor según tokens procesados, eficiencia PUE e intensidad de carbono de la red eléctrica local (vía Electricity Maps API o datos históricos en modo offline).
-- **Dispositivo del usuario:** consumo energético del terminal (CPU/GPU/NPU) durante la petición.
-- **Red de comunicaciones:** energía consumida por la transmisión de datos según la tecnología de red (Fibra, WiFi, 4G, 5G).
+---
 
-Los resultados se presentan con una **etiqueta de eficiencia medioambiental** (A+ a G), análoga al etiquetado europeo de electrodomésticos, y permiten comparar múltiples escenarios en paralelo.
+## Funcionalidades
+
+- **Calculadora de emisiones** — modelo, datacenter, dispositivo, red y tokens; resultado en gCO₂eq con desglose por componente y etiqueta medioambiental.
+- **Comparador de escenarios** — análisis de dominancia Pareto para identificar la configuración más sostenible.
+- **Etiquetado A+++ – F** — umbrales calculados sobre ~639 000 combinaciones posibles, análogo al etiquetado de electrodomésticos de la UE.
+- **Carbon intensity en tiempo real** — Electricity Maps API con sistema de 4 niveles de fallback; opera en modo offline sin clave API.
+- **Cobertura**: 15 modelos LLM · 71 datacenters (AWS, GCP, Azure, DeepGreen) · 20 dispositivos · 5 tecnologías de red · 128 zonas geográficas.
+
+---
+
+## Cómo funciona
+
+Las emisiones totales se descomponen en tres términos independientes:
+
+| Componente | Variables |
+|---|---|
+| **Datacenter** | Tokens · energía por 1k tokens (Wh) · PUE · CI de la red eléctrica del DC |
+| **Dispositivo** | Potencia (idle + carga) · tiempo de inferencia · CI local del usuario |
+| **Red** | GB transferidos · kWh/GB según tecnología · CI local del usuario |
+
+$$CO_2^{total} = CO_2^{DC} + CO_2^{disp} + CO_2^{red}$$
+
+$$CO_2^{DC} = \frac{tokens}{1000} \times E_{1k} \times PUE \times \frac{CI_{DC}}{1000}, \qquad CO_2^{disp} = \frac{P \cdot t}{3600} \times \frac{CI_{usr}}{1000}$$
+
+La intensidad de carbono ($CI$, gCO₂/kWh) se obtiene en tiempo real de Electricity Maps. Cuando la API no está disponible, el sistema aplica un fallback de 4 niveles: API nativa por DC → CSV con 128 zonas → valor por defecto del país → 450 gCO₂/kWh global.
 
 ---
 
@@ -57,374 +76,197 @@ Los resultados se presentan con una **etiqueta de eficiencia medioambiental** (A
 
 ```
 ├── app/
-│   ├── __init__.py          # Factory de la aplicación Flask
 │   ├── routes/
-│   │   ├── main.py          # Rutas de vistas HTML
-│   │   └── api.py           # Endpoints REST (/api/*)
+│   │   ├── main.py                  # Rutas HTML
+│   │   └── api.py                   # Endpoints REST (/api/*)
 │   ├── services/
-│   │   ├── calculator_service.py   # Orquestador del motor de cálculo
-│   │   └── report_service.py       # Generación de informes y comparativas
-│   ├── static/              # CSS, JS, imágenes
-│   └── templates/           # Plantillas HTML (Jinja2)
+│   │   ├── calculator_service.py    # Orquestador del motor de cálculo
+│   │   └── report_service.py        # Comparativas y generación de informes
+│   ├── static/                      # CSS + JS (Chart.js, Leaflet)
+│   └── templates/                   # landing.html · index.html · base.html
 ├── scripts/
-│   ├── calculate_emissions.py      # Motor de cálculo (CarbonCalculator)
-│   ├── carbon_intensity_api.py     # Cliente de Electricity Maps API
-│   ├── environmental_labels.py     # Lógica de etiquetas A+–G
-│   └── ...
+│   ├── calculate_emissions.py       # Motor CarbonCalculator (8 CSVs)
+│   ├── carbon_intensity_api.py      # Cliente Electricity Maps + 4-tier fallback
+│   └── environmental_labels.py      # Etiquetas A+++–F por percentiles
 ├── datasets/
-│   ├── raw/                 # Datos fuente originales
-│   └── processed/           # Datasets procesados listos para la app
+│   ├── raw/
+│   │   ├── models/                  # models.csv (15 LLMs) · request_types.csv
+│   │   ├── data_centers/            # data_centers.csv (71 DCs)
+│   │   ├── devices/                 # devices.csv (20 dispositivos)
+│   │   ├── network/                 # network_energy_sources_2024.csv
+│   │   └── carbon_intensity/        # carbon_intensity.csv · carbon_intensity_datacenters.csv
+│   └── processed/
+│       └── emissions_distribution.csv   # Percentiles para etiquetado
 ├── testing/
-│   ├── unit/                # Tests unitarios (pytest)
-│   ├── integration/         # Tests de integración end-to-end
-│   ├── regression/          # Tests de regresión
-│   ├── validation/          # Tests de validación matemática
-│   ├── conftest.py          # Fixtures compartidas
-│   └── pytest.ini           # Configuración de pytest
-├── .env.example             # Plantilla de variables de entorno
-├── docker-compose.yml       # Despliegue con Docker Compose
-├── Dockerfile               # Imagen Docker multi-stage
-├── render.yaml              # Configuración de despliegue en Render
-├── requirements.txt         # Dependencias Python
-└── run.py                   # Punto de entrada de la aplicación
+│   ├── unit/ · integration/ · regression/ · validation/ · performance/
+│   ├── postman/                     # Colección Postman
+│   └── conftest.py · pytest.ini
+├── Dockerfile                       # Imagen multi-stage (python:3.12-slim, uid 1001)
+├── docker-compose.yml
+├── render.yaml                      # Despliegue automático en Render
+├── requirements.txt
+└── run.py                           # Punto de entrada
 ```
 
 ---
 
-## Requisitos previos
+## Instalación
 
-- **Python 3.12** o superior
-- **pip** actualizado (`pip install --upgrade pip`)
-- **Docker** (opcional, para despliegue con contenedores)
-- **Clave API de Electricity Maps** (opcional; sin ella la app opera en modo offline con datos históricos)
-
----
-
-## Instalación local (sin Docker)
-
-### 1. Clonar el repositorio
+### Local
 
 ```bash
 git clone https://github.com/antonioluisjf22/TFG-Evaluacion-del-impacto-medioambiental-de-modelos-de-Inteligencia-Artificial.git
 cd TFG-Evaluacion-del-impacto-medioambiental-de-modelos-de-Inteligencia-Artificial
-```
-
-### 2. Crear y activar un entorno virtual
-
-```bash
-# Crear entorno virtual
 python -m venv .venv
-
-# Activar en Linux/macOS
-source .venv/bin/activate
-
-# Activar en Windows (PowerShell)
-.\.venv\Scripts\Activate.ps1
-```
-
-### 3. Instalar dependencias
-
-```bash
+source .venv/bin/activate        # Windows: .\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
+cp .env.example .env             # Editar con los valores adecuados
+python run.py                    # http://localhost:5000
 ```
 
-### 4. Configurar variables de entorno
-
-```bash
-# Copiar la plantilla
-cp .env.example .env
-```
-
-Editar `.env` con los valores adecuados (ver sección [Variables de entorno](#variables-de-entorno)).
-
-### 5. Arrancar la aplicación
-
-```bash
-python run.py
-```
-
-La aplicación estará disponible en **http://localhost:5000**.
-
----
-
-## Instalación con Docker
-
-### 1. Construir la imagen
+### Docker
 
 ```bash
 docker build -t tfg-carbon-calculator .
-```
-
-### 2. Arrancar el contenedor
-
-```bash
-docker run -d \
-  --name tfg \
-  -p 5000:5000 \
-  -e SECRET_KEY="<clave-secreta-aleatoria>" \
-  -e ELECTRICITY_MAPS_API_KEY="<tu-api-key>" \
+docker run -d -p 5000:5000 \
+  -e SECRET_KEY="$(python -c 'import secrets; print(secrets.token_hex(32))')" \
+  -e ELECTRICITY_MAPS_API_KEY="tu-api-key" \
   tfg-carbon-calculator
 ```
 
-Omitir `ELECTRICITY_MAPS_API_KEY` para usar el modo offline.
-
-### 3. Verificar el estado
-
-```bash
-docker ps
-docker logs tfg
-curl http://localhost:5000/api/health
-```
-
-### 4. Detener el contenedor
-
-```bash
-docker stop tfg && docker rm tfg
-```
-
----
-
-## Instalación con Docker Compose
-
-### 1. Crear el fichero `.env`
+### Docker Compose
 
 ```bash
 cp .env.example .env
-# Editar .env con tus valores
-```
-
-### 2. Arrancar
-
-```bash
 docker compose up -d
-```
-
-### 3. Consultar el estado
-
-```bash
-docker compose ps
-```
-
-### 4. Detener
-
-```bash
-docker compose down
 ```
 
 ---
 
 ## Variables de entorno
 
-| Variable | Requerida | Descripción |
+| Variable | Obligatoria | Descripción |
 |---|---|---|
-| `SECRET_KEY` | Sí (producción) | Clave secreta de Flask para la gestión de sesiones. Generar con: `python -c "import secrets; print(secrets.token_hex(32))"` |
-| `ELECTRICITY_MAPS_API_KEY` | No (pero recomendable) | Token de la API de Electricity Maps para obtener intensidad de carbono en tiempo real. Sin ella la app usa datos históricos del CSV. Obtener en https://api-portal.electricitymaps.com |
-
-> **Nota:** En desarrollo local se puede usar el valor por defecto del `.env.example`. En producción, `SECRET_KEY` debe ser un valor aleatorio y secreto.
+| `SECRET_KEY` | Sí (producción) | Clave Flask para sesiones. Generar: `python -c "import secrets; print(secrets.token_hex(32))"` |
+| `ELECTRICITY_MAPS_API_KEY` | No | Token de [Electricity Maps API](https://api-portal.electricitymaps.com). Sin ella, modo offline con datos históricos. |
 
 ---
 
-## Uso de la aplicación
+## Uso
 
-### Calculadora de emisiones
-
-1. Acceder a **http://localhost:5000**.
-2. Seleccionar el **modelo de IA** (GPT-4, Claude, Llama, etc.).
-3. Seleccionar el **centro de datos** (proveedor y región geográfica).
-4. Seleccionar el **dispositivo** del usuario (MacBook, PC sobremesa, móvil, etc.).
-5. Seleccionar la **tecnología de red** (Fibra, WiFi, 4G, 5G).
-6. Introducir el **número de tokens** de entrada y salida.
-7. Pulsar **Calcular** para obtener el desglose de emisiones y la etiqueta medioambiental.
-
-### Comparador de escenarios
-
-Permite añadir múltiples configuraciones y compararlas en una tabla lado a lado, identificando la opción más sostenible con análisis de dominancia Pareto.
+1. Abrir **http://localhost:5000** → página de inicio.
+2. En la **Calculadora**: seleccionar modelo LLM, datacenter, dispositivo, tecnología de red e introducir número de tokens.
+3. Pulsar **Calcular**: se muestra el CO₂ total, el desglose por componente y la etiqueta A+++ – F.
+4. En el **Comparador**: añadir varias configuraciones para obtener el análisis de dominancia Pareto.
 
 ---
 
 ## API REST
 
-Todos los endpoints devuelven JSON.
+Todos los endpoints devuelven `application/json`.
 
-### `GET /api/health`
+| Método | Endpoint | Descripción |
+|---|---|---|
+| `GET` | `/api/health` | Estado de los servicios internos |
+| `GET` | `/api/options` | Catálogos de modelos, DCs, dispositivos y redes |
+| `POST` | `/api/calculate` | Calcula emisiones para una configuración |
+| `POST` | `/api/compare` | Compara configuraciones con análisis Pareto |
 
-Estado de los servicios internos.
+**Ejemplo `POST /api/calculate`:**
 
-```json
-{
-  "status": "ok",
-  "services": {
-    "calculator": {"status": "ok", "models_loaded": 42},
-    "electricity_maps_api": {"status": "configured", "mode": "realtime"}
-  }
-}
+```jsonc
+// Request
+{ "model_id": "gpt-4", "datacenter_id": "aws-us-east-1",
+  "device_id": "macbook-pro-m3", "network_id": "wifi-6",
+  "input_tokens": 500, "output_tokens": 200 }
+
+// Response
+{ "total_co2_g": 0.847,
+  "breakdown": { "datacenter_co2_g": 0.612, "device_co2_g": 0.198, "network_co2_g": 0.037 },
+  "label": "B", "energy_wh": 2.14, "renewable_pct": 43.2 }
 ```
-
-### `GET /api/options`
-
-Catálogos disponibles para los selectores del formulario (modelos, datacenters, dispositivos, redes).
-
-### `POST /api/calculate`
-
-Calcula las emisiones para una configuración dada.
-
-**Body (JSON):**
-```json
-{
-  "model_id": "gpt-4",
-  "datacenter_id": "aws-us-east-1",
-  "device_id": "macbook-pro-m3",
-  "network_id": "wifi-6",
-  "input_tokens": 500,
-  "output_tokens": 200
-}
-```
-
-**Respuesta:**
-```json
-{
-  "total_co2_g": 0.847,
-  "breakdown": {
-    "datacenter_co2_g": 0.612,
-    "device_co2_g": 0.198,
-    "network_co2_g": 0.037
-  },
-  "label": "B",
-  "energy_wh": 2.14,
-  "renewable_pct": 43.2
-}
-```
-
-### `POST /api/compare`
-
-Compara múltiples configuraciones y devuelve el análisis de dominancia Pareto.
 
 ---
 
-## Ejecución de pruebas
+## Tests
 
-Las pruebas están organizadas en `testing/` con pytest.
-
-### Ejecutar todos los tests (excluye los lentos)
+Las pruebas están en `testing/` organizadas con pytest. Se incluye además una **colección Postman** en `testing/postman/` para pruebas manuales de la API.
 
 ```bash
-cd testing
-pytest -m "not slow"
+# Todos los tests (excluye lentos)
+pytest testing/ -m "not slow"
+
+# Por categoría
+pytest testing/ -m unit          # Unitarios sin I/O externo
+pytest testing/ -m integration   # End-to-end con Flask y datasets
+pytest testing/ -m regression    # Anclan valores conocidos entre versiones
+pytest testing/ -m validation    # Validación matemática de fórmulas
+
+# Con cobertura
+pytest testing/ --cov=scripts --cov=app --cov-report=term-missing
 ```
 
-### Ejecutar por categoría
-
-```bash
-# Solo tests unitarios
-pytest -m unit
-
-# Tests de integración
-pytest -m integration
-
-# Tests de regresión
-pytest -m regression
-
-# Tests de validación matemática
-pytest -m validation
-```
-
-### Ejecutar con informe de cobertura
-
-```bash
-pytest --cov=scripts --cov=app --cov-report=term-missing
-```
-
-### Categorías de marcadores disponibles
-
-| Marcador | Descripción |
+| Marcador | Propósito |
 |---|---|
-| `unit` | Tests unitarios sin I/O externo |
-| `integration` | Tests end-to-end con Flask y datasets |
-| `regression` | Anclan valores conocidos entre versiones |
-| `validation` | Validación matemática y calidad de datos |
-| `boundary` | Casos límite y entradas extremas |
-| `performance` | Tests de rendimiento y timing |
-| `slow` | Tests que tardan más de 5 segundos |
+| `unit` | Lógica aislada sin dependencias externas |
+| `integration` | API completa con datos reales |
+| `regression` | Detección de regresiones numéricas |
+| `validation` | Exactitud matemática de fórmulas de emisiones |
+| `boundary` | Entradas extremas y casos límite |
+| `performance` | Tiempos de respuesta bajo carga |
 
 ---
 
-## Despliegue en Render
+## Datasets
 
-El repositorio incluye `render.yaml` con la configuración completa.
+| Dataset | Registros | Descripción |
+|---|---|---|
+| `models.csv` | 15 LLMs | Parámetros, Wh/1k tokens, latencia (2N FLOPs · A100) |
+| `data_centers.csv` | 71 DCs | PUE, país, % renovables (AWS 21 · GCP 33 · Azure 16 · DeepGreen 1) |
+| `devices.csv` | 20 dispositivos | TDP idle/carga (portátiles, móviles, desktops, edge, tablets) |
+| `network_energy_sources_2024.csv` | 5 tecnologías | kWh/GB por tecnología (0.4–6.0 kWh/GB) |
+| `carbon_intensity.csv` | 128 zonas | CI en tiempo real vía Electricity Maps (fallback tier 2) |
+| `carbon_intensity_datacenters.csv` | 71 DCs | CI por datacenter (53.5% API nativa, 46.5% mapeo manual) |
+| `request_types.csv` | 7 tipos | Tokens entrada/salida por tipo de consulta (LMSYS-Chat-1M, WildChat…) |
+| `emissions_distribution.csv` | ~639 000 combinaciones | Percentiles para cálculo de etiquetas A+++ – F |
 
-1. Crear cuenta en https://render.com y conectar el repositorio de GitHub.
-2. Render detecta automáticamente el `render.yaml` y preconfigura el servicio.
-3. En **Environment**, añadir la variable `ELECTRICITY_MAPS_API_KEY` si se desea modo tiempo real (`SECRET_KEY` se genera automáticamente).
-4. Pulsar **Deploy**.
+---
 
-La aplicación queda disponible en la URL pública asignada por Render. Los redespliegues son automáticos con cada push a `main`.
+## Despliegue
+
+El repositorio incluye `render.yaml` preconfigurado para despliegue automático en [Render](https://render.com).
+
+1. Conectar el repositorio en Render → detección automática del `render.yaml`.
+2. Añadir `ELECTRICITY_MAPS_API_KEY` en **Environment** si se desea modo tiempo real.
+3. Pulsar **Deploy** — la URL pública queda disponible al instante.
+
+Los redespliegues se activan automáticamente con cada push a `main`. En el plan Free, el servicio hiberna tras 15 min de inactividad (*cold start* de ~30–60 s en la primera petición).
 
 ---
 
 ## Troubleshooting
 
-### La aplicación tarda mucho en responder la primera petición
+**La app tarda en responder en Render** — cold start del plan Free; las peticiones siguientes son inmediatas.
 
-Render en plan Free hiberna el servicio tras 15 minutos de inactividad. El primer acceso puede tardar entre 30 y 60 segundos mientras el contenedor arranca (*cold start*). Es el comportamiento esperado; las peticiones siguientes responden con normalidad.
+**Modo offline activo** — `ELECTRICITY_MAPS_API_KEY` no configurada o rate-limit alcanzado. Verificar con `GET /api/health` → campo `electricity_maps_api.mode`.
 
-### Modo offline: no se obtienen datos en tiempo real de Electricity Maps
-
-Si `ELECTRICITY_MAPS_API_KEY` no está configurada o la API no está disponible, la aplicación cambia automáticamente a modo offline y usa los datos históricos del CSV. El endpoint `/api/health` indica el modo activo:
-
-```json
-{"electricity_maps_api": {"mode": "offline"}}
+**Puerto 5000 ocupado localmente:**
+```bash
+lsof -i :5000                                # macOS/Linux
+Get-NetTCPConnection -LocalPort 5000         # Windows PowerShell
 ```
 
-Para activar el modo en tiempo real, añadir la variable al `.env` o a las variables de entorno de Render.
+**`ModuleNotFoundError` en tests** — activar el entorno virtual antes de ejecutar pytest.
 
-### Error `Address already in use` al arrancar localmente
-
-El puerto 5000 está ocupado por otro proceso. Identificar el proceso y terminarlo:
-
+**`.env` no se carga** — `run.py` no auto-carga `.env`. Exportar manualmente o usar Docker Compose:
 ```bash
-# Linux/macOS
-lsof -i :5000
-
-# Windows (PowerShell)
-Get-NetTCPConnection -LocalPort 5000 | Select-Object OwningProcess
-```
-
-### Error al instalar dependencias en Windows (`Microsoft Visual C++ required`)
-
-Algunas dependencias requieren el compilador de C++ de Microsoft. Instalar las **Build Tools para Visual Studio** desde https://visualstudio.microsoft.com/visual-cpp-build-tools/ y volver a ejecutar `pip install -r requirements.txt`.
-
-### Docker: error `permission denied` al construir la imagen
-
-En Linux, añadir el usuario al grupo `docker` para no requerir `sudo`:
-
-```bash
-sudo usermod -aG docker $USER
-# Cerrar sesión y volver a entrar para que el cambio surta efecto
-```
-
-### Los tests fallan con `ModuleNotFoundError`
-
-Asegurarse de que el entorno virtual está activado y las dependencias instaladas antes de ejecutar pytest:
-
-```bash
-source .venv/bin/activate    # Linux/macOS
-.venv\Scripts\Activate.ps1   # Windows
-pip install -r requirements.txt
-pytest testing/
-```
-
-### La variable `ELECTRICITY_MAPS_API_KEY` no se carga desde `.env`
-
-`run.py` no carga automáticamente `.env`. Exportar la variable manualmente o usar Docker Compose (que sí la carga):
-
-```bash
-# Linux/macOS
-export ELECTRICITY_MAPS_API_KEY="tu-api-key"
-python run.py
-
-# Windows (PowerShell)
-$env:ELECTRICITY_MAPS_API_KEY="tu-api-key"
+$env:ELECTRICITY_MAPS_API_KEY="tu-key"   # PowerShell
 python run.py
 ```
 
 ---
+
+## Licencia
+
+Trabajo de Fin de Grado — Antonio Luis Jiménez de la Fuente.  
+Código disponible para uso académico y educativo.
