@@ -779,6 +779,308 @@ th[data-sort] .sort-arrow svg{width:12px;height:12px}
   margin-bottom:12px;font-style:italic;line-height:1.5;
 }
 
+/* ================================================================
+   LIGHT MODE — body.light-mode overrides
+   ================================================================ */
+
+/* ── CSS variable palette ── */
+body.light-mode {
+  --bg-base:#f0f7f1;
+  --bg-surface:#e2eee5;
+  --bg-card:rgba(255,255,255,.82);
+  --bg-card-solid:#ffffff;
+  --bg-card-hover:rgba(255,255,255,.96);
+  --bg-elevated:#d8edd9;
+
+  --primary:#16a34a;
+  --primary-dim:rgba(22,163,74,.10);
+  --primary-border:rgba(22,163,74,.28);
+  --accent-blue:#0284c7;
+  --accent-blue-dim:rgba(2,132,199,.09);
+  --accent-teal:#0d9488;
+  --accent-amber:#d97706;
+  --accent-amber-dim:rgba(217,119,6,.10);
+  --accent-orange:#ea580c;
+  --accent-red:#dc2626;
+  --accent-red-dim:rgba(220,38,38,.10);
+  --accent-purple:#7c3aed;
+
+  --text-primary:#0f2714;
+  --text-secondary:#1e3a28;
+  --text-muted:#4b7a5a;
+  --border:rgba(0,0,0,.09);
+  --border-strong:rgba(22,163,74,.30);
+  --glass-bg:rgba(0,0,0,.02);
+  --glass-border:rgba(0,0,0,.09);
+  --glass-blur:blur(12px);
+  --shadow-card:0 2px 16px rgba(0,0,0,.07);
+  --shadow-card-hover:0 6px 24px rgba(0,0,0,.13);
+
+  color:var(--text-secondary);
+  background:var(--bg-base);
+}
+
+/* ── Header ── */
+body.light-mode header {
+  background:linear-gradient(135deg,#eaf5ec 0%,#edf4ee 50%,#eaf2f8 100%);
+  border-bottom-color:rgba(0,0,0,.10);
+}
+body.light-mode .header-badge {
+  background:rgba(22,101,52,.12);
+  border-color:rgba(22,101,52,.32);
+  color:#14532d;
+}
+body.light-mode .header-dot { background:#16a34a; }
+body.light-mode .header-gradient {
+  background:linear-gradient(135deg,#16a34a 0%,#0284c7 50%,#7c3aed 100%);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+}
+
+/* ── Tabs ── */
+body.light-mode .tabs-container {
+  background:rgba(240,247,241,.94);
+  border-bottom-color:rgba(0,0,0,.09);
+}
+
+/* ── Select dropdown arrow ── */
+body.light-mode select {
+  background-image:url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2316a34a' stroke-width='2'%3e%3cpolyline points='6 9 12 15 18 9'/%3e%3c/svg%3e");
+  background-repeat:no-repeat;
+  background-position:right 12px center;
+}
+body.light-mode option { background:var(--bg-surface); color:var(--text-primary); }
+
+/* ── Range slider thumb border ── */
+body.light-mode input[type="range"]::-webkit-slider-thumb { border-color:var(--bg-base); }
+body.light-mode .utilization-slider::-webkit-slider-thumb { border-color:var(--bg-base); }
+body.light-mode .utilization-slider::-moz-range-thumb { border-color:var(--bg-base); }
+
+/* ── Tables ── */
+body.light-mode thead { background:rgba(0,0,0,.02); }
+body.light-mode tr:hover { background:rgba(22,163,74,.04); }
+
+/* ── Energy label ── */
+body.light-mode .energy-label-header {
+  background:linear-gradient(135deg,#dcf0e2 0%,#d4eada 100%);
+  color:var(--primary);
+}
+body.light-mode .energy-label { background:rgba(255,255,255,.9); }
+
+/* ── Energy label info section (Etiqueta tab) ── */
+body.light-mode .elabel-info-card {
+  background:rgba(255,255,255,.9);
+  border-color:rgba(0,0,0,.09);
+  box-shadow:0 2px 12px rgba(0,0,0,.07);
+}
+body.light-mode .elabel-info-title { color:var(--text-primary); }
+body.light-mode .elabel-info-text { color:var(--text-secondary); }
+body.light-mode .elabel-info-text strong { color:var(--text-primary); }
+body.light-mode .elabel-comparison-col {
+  background:rgba(255,255,255,.85);
+  border-color:rgba(0,0,0,.09);
+}
+body.light-mode .elabel-comparison-header {
+  background:linear-gradient(135deg,rgba(234,245,235,.95),rgba(228,239,248,.8));
+  color:var(--text-primary);
+  border-bottom-color:rgba(0,0,0,.08);
+}
+body.light-mode .elabel-metric-label { color:var(--text-muted); }
+body.light-mode .elabel-metric-value { color:var(--text-secondary); }
+body.light-mode .elabel-factor {
+  background:rgba(0,0,0,.03);
+  border-color:rgba(0,0,0,.07);
+}
+body.light-mode .elabel-factor-label { color:var(--text-primary); }
+body.light-mode .elabel-factor-sub { color:var(--text-muted); }
+
+/* ── Pareto config bar ── */
+body.light-mode .pareto-config-bar {
+  background:rgba(240,247,241,.95);
+  border-color:rgba(22,163,74,.18);
+}
+body.light-mode .pcfg-label { color:var(--primary); }
+body.light-mode .pcfg-wizard-btn {
+  border-color:rgba(2,132,199,.4);
+  background:rgba(2,132,199,.1);
+  color:#0369a1;
+}
+body.light-mode .pcfg-wizard-btn:hover {
+  background:rgba(2,132,199,.2);
+  box-shadow:0 0 12px rgba(2,132,199,.2);
+}
+body.light-mode .pcfg-select {
+  background:var(--bg-surface);
+  color:var(--text-primary);
+  border-color:var(--primary-border);
+}
+body.light-mode .pcfg-scale-btn { color:var(--text-muted); border-color:var(--primary-border); }
+body.light-mode .pcfg-scale-btn.active { background:var(--primary-dim);color:var(--primary); }
+body.light-mode .pcfg-toggle { color:var(--text-secondary); }
+
+/* ── Pareto side panel ── */
+body.light-mode .pareto-side-panel { background:var(--bg-card); border-color:var(--glass-border); }
+body.light-mode .pareto-tab { color:var(--text-muted); }
+body.light-mode .pareto-tab:hover { color:var(--text-primary);background:var(--primary-dim); }
+body.light-mode .pareto-tab.active { color:var(--primary);border-bottom-color:var(--primary);background:var(--primary-dim); }
+body.light-mode .pareto-tabs-header { border-bottom-color:var(--glass-border); }
+body.light-mode .ptab-header { color:var(--text-primary); }
+body.light-mode .ptab-desc,.ptab-dom { color:var(--text-muted); }
+body.light-mode .ptab-model { color:var(--text-primary); }
+body.light-mode .ptab-meta { color:var(--text-muted); }
+body.light-mode .ptab-item { background:rgba(0,0,0,.02); }
+body.light-mode .ptab-item:hover { background:var(--primary-dim);border-color:var(--primary-border); }
+
+/* ── Pareto tooltip ── */
+body.light-mode .pareto-tooltip {
+  background:#fff;
+  border-color:rgba(22,163,74,.25);
+  color:var(--text-secondary);
+}
+body.light-mode .pt-name { color:var(--text-primary); }
+body.light-mode .pt-org { color:var(--text-muted); }
+body.light-mode .pt-row { color:var(--text-secondary); }
+body.light-mode .pt-val { color:var(--text-primary); }
+
+/* ── Pareto dominance table ── */
+body.light-mode .dominance-table th,.dominance-table td { border-color:rgba(0,0,0,.06); }
+body.light-mode .dominance-table thead th { background:var(--primary-dim);color:var(--primary); }
+body.light-mode .dm-row-header { background:rgba(0,0,0,.02);color:var(--text-secondary); }
+body.light-mode .dm-trade { color:var(--text-muted); }
+
+/* ── Whatif bars ── */
+body.light-mode .whatif-bar-original { background:linear-gradient(90deg,rgba(80,100,120,.30),rgba(80,100,120,.18)); }
+body.light-mode .whatif-bar-alt.bar-better { background:linear-gradient(90deg,rgba(22,163,74,.65),rgba(22,163,74,.35)); }
+body.light-mode .whatif-bar-alt.bar-worse { background:linear-gradient(90deg,rgba(220,38,38,.6),rgba(220,38,38,.3)); }
+body.light-mode .whatif-bar-alt.bar-neutral { background:linear-gradient(90deg,rgba(2,132,199,.55),rgba(2,132,199,.25)); }
+body.light-mode .whatif-bar { color:#0f2714; }
+
+/* ── Wizard modal ── */
+body.light-mode .pareto-modal-overlay { background:rgba(0,0,0,.45); }
+body.light-mode .pareto-modal { background:#f0f7f1;border-color:var(--primary-border); }
+body.light-mode .wizard-question { color:var(--text-primary); }
+body.light-mode .wizard-desc { color:var(--text-secondary); }
+body.light-mode .wizard-option {
+  background:rgba(0,0,0,.03);
+  border-color:var(--glass-border);
+}
+body.light-mode .wizard-option:hover {
+  border-color:var(--primary-border);
+  background:var(--primary-dim);
+}
+body.light-mode .wizard-opt-label { color:var(--text-primary); }
+body.light-mode .wizard-opt-desc { color:var(--text-muted); }
+body.light-mode .wizard-rec-model { color:#d97706; }
+body.light-mode .wizard-rec-title,.wizard-rec-org,.wizard-weights { color:var(--text-muted); }
+body.light-mode .wizard-step-num { color:var(--text-muted); }
+body.light-mode .pareto-modal-close { color:var(--text-muted); }
+body.light-mode .pareto-modal-close:hover { color:var(--text-primary); }
+
+/* ── TOPSIS ── */
+body.light-mode .topsis-range::-webkit-slider-runnable-track { background:rgba(0,0,0,.12); }
+body.light-mode .topsis-range::-moz-range-track { background:rgba(0,0,0,.12); }
+body.light-mode .topsis-range::-webkit-slider-thumb { background:var(--primary);border-color:var(--bg-base); }
+body.light-mode .topsis-range::-moz-range-thumb { background:var(--primary);border-color:var(--bg-base); }
+body.light-mode .topsis-crown { background:rgba(217,119,6,.08);border-color:rgba(217,119,6,.2);color:#d97706; }
+body.light-mode .topsis-name { color:var(--text-secondary); }
+body.light-mode .topsis-pos { color:var(--text-muted); }
+body.light-mode .topsis-score { color:var(--text-muted); }
+body.light-mode .topsis-score-bar { background:rgba(0,0,0,.08); }
+body.light-mode .topsis-slider-group label { color:var(--text-secondary); }
+
+/* ── Map ── */
+body.light-mode .map-legend {
+  background:rgba(240,247,241,.97);
+  border-color:rgba(0,0,0,.10);
+  color:var(--text-secondary);
+}
+body.light-mode .map-legend h4 { color:var(--text-primary); }
+body.light-mode .map-legend-note { color:var(--text-muted); }
+body.light-mode .map-panel { background:var(--bg-card);border-color:var(--glass-border); }
+body.light-mode .map-explain { background:rgba(0,0,0,.03);border-color:var(--glass-border); }
+body.light-mode .map-explain-title { color:var(--text-primary); }
+body.light-mode .map-explain-item { color:var(--text-secondary); }
+body.light-mode .map-stat-value { color:var(--text-primary); }
+body.light-mode .map-rec { background:rgba(0,0,0,.02); }
+body.light-mode .map-rec:hover { background:var(--primary-dim); }
+
+/* ── Leaflet popup ── */
+body.light-mode .leaflet-popup-content-wrapper {
+  background:rgba(255,255,255,.97)!important;
+  color:var(--text-secondary)!important;
+  border-color:rgba(0,0,0,.10)!important;
+}
+body.light-mode .leaflet-popup-tip { background:rgba(255,255,255,.97)!important; }
+body.light-mode .popup-header .popup-name { color:var(--text-primary)!important; }
+body.light-mode .popup-header .popup-region { color:var(--text-muted)!important; }
+body.light-mode .popup-header { border-bottom-color:rgba(0,0,0,.07)!important; }
+body.light-mode .popup-row-label { color:var(--text-muted); }
+body.light-mode .choropleth-tooltip {
+  background:rgba(255,255,255,.97)!important;
+  color:var(--text-secondary)!important;
+  border-color:rgba(0,0,0,.10)!important;
+}
+body.light-mode .choropleth-tooltip strong { color:var(--text-primary); }
+
+/* ── Chip tooltip ── */
+body.light-mode .chip[data-tip]:hover::after {
+  background:rgba(240,247,241,.97);
+  color:var(--text-secondary);
+  border-color:var(--glass-border);
+}
+
+/* ── Skeleton ── */
+body.light-mode .skeleton {
+  background:linear-gradient(90deg,rgba(0,0,0,.04) 25%,rgba(0,0,0,.08) 50%,rgba(0,0,0,.04) 75%);
+  background-size:200px 100%;
+}
+
+/* ── Comparator note ── */
+body.light-mode .comp-methodology-note {
+  background:rgba(217,119,6,.05);
+  border-color:rgba(217,119,6,.2);
+}
+body.light-mode .comp-note-body { color:var(--text-secondary); }
+body.light-mode .comp-note-body strong { color:var(--text-primary); }
+
+/* ── GW explainer ── */
+body.light-mode .gw-explainer { border-color:var(--glass-border); }
+body.light-mode .gw-explainer summary { color:var(--text-secondary); }
+body.light-mode .gw-explainer-body { color:var(--text-secondary);border-top-color:var(--glass-border); }
+body.light-mode .gw-explainer-body strong { color:var(--text-primary); }
+body.light-mode .gw-explainer-body code { background:var(--primary-dim);color:var(--primary); }
+
+/* ── Formula steps ── */
+body.light-mode .fs-section-title { background:linear-gradient(90deg,var(--primary-dim),transparent);color:var(--text-primary); }
+body.light-mode .fs-step { background:var(--bg-surface);border-color:var(--glass-border); }
+body.light-mode .fs-step-label { color:var(--accent-teal); }
+body.light-mode .fs-formula,.fs-line,.fs-computed,.fs-note-line { color:var(--text-secondary); }
+
+/* ── Error msg ── */
+body.light-mode .error-msg {
+  background:rgba(220,38,38,.06);
+  border-color:rgba(220,38,38,.2);
+}
+
+/* ── Theme toggle button (calculator pages) ── */
+#calc-theme-toggle {
+  position:fixed; bottom:24px; right:24px; z-index:500;
+  width:44px; height:44px; border-radius:50%;
+  border:1px solid var(--primary-border);
+  background:var(--bg-card);
+  backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);
+  color:var(--primary);
+  cursor:pointer;
+  display:flex; align-items:center; justify-content:center;
+  transition:var(--transition);
+  box-shadow:var(--shadow-card);
+}
+#calc-theme-toggle:hover {
+  background:var(--primary-dim);
+  border-color:var(--border-strong);
+  transform:scale(1.1);
+}
+#calc-theme-toggle svg { pointer-events:none; }
+
 /* ── Estimated Fields Warning Banner ── */
 .estimated-banner{
   background:rgba(251,191,36,.08);

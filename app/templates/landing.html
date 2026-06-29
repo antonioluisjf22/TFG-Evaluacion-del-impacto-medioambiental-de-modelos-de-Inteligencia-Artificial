@@ -6,6 +6,8 @@
     <title>CarbonAI — Calculadora de Huella de Carbono para IA</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@600;700;800&display=swap" rel="stylesheet">
+    <!-- Anti-flash: apply saved theme before first paint -->
+    <script>(function(){try{if(localStorage.getItem('carbonai-theme')==='light')document.documentElement.classList.add('light-mode');}catch(_){}}());</script>
 
     <style>
         *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
@@ -16,6 +18,7 @@
             cursor: none;
             background: #060D0A;
         }
+        html.light-mode body { background: #EFF8F1; }
 
         body { font-family: 'Inter', -apple-system, sans-serif; }
 
@@ -323,6 +326,87 @@
             .stat-value { font-size: 20px; }
             .cta-button { padding: 15px 36px; font-size: 15px; }
         }
+
+        /* === Theme toggle button === */
+        #theme-toggle {
+            position: fixed;
+            bottom: 56px;
+            right: 24px;
+            z-index: 100;
+            width: 44px; height: 44px;
+            border-radius: 50%;
+            border: 1px solid rgba(76,175,80,0.35);
+            background: rgba(6,13,10,0.72);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            color: #4CAF50;
+            cursor: none;
+            display: flex; align-items: center; justify-content: center;
+            transition: background 0.3s, border-color 0.3s, color 0.3s, transform 0.2s;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.35);
+            opacity: 0;
+            animation: fadeUp 0.8s ease 1.8s forwards;
+        }
+        #theme-toggle:hover {
+            background: rgba(76,175,80,0.18);
+            border-color: rgba(76,175,80,0.65);
+            transform: scale(1.1);
+        }
+        #theme-toggle svg { pointer-events: none; }
+
+        /* === Light mode overrides === */
+        body.light-mode,
+        html.light-mode body {
+            background: #EFF8F1;
+        }
+        body.light-mode .bg-gradient {
+            background:
+                radial-gradient(ellipse 70% 60% at 15% 35%, rgba(76,175,80,0.18) 0%, transparent 65%),
+                radial-gradient(ellipse 55% 55% at 85% 65%, rgba(30,136,229,0.12) 0%, transparent 65%),
+                radial-gradient(ellipse 50% 50% at 50% 100%, rgba(64,224,208,0.08) 0%, transparent 60%),
+                linear-gradient(160deg, #EAF5EB 0%, #E4EFF8 55%, #EDF7EE 100%);
+        }
+        body.light-mode #particles-js { opacity: 0.35; }
+        body.light-mode .hero-title { color: #0C1F10; }
+        body.light-mode .hero-subtitle { color: rgba(12,31,16,0.65); }
+        body.light-mode .hero-subtitle em { color: #276B2E; }
+        body.light-mode .brand-badge {
+            background: rgba(39,107,46,0.1);
+            border-color: rgba(39,107,46,0.3);
+        }
+        body.light-mode .brand-text { color: rgba(39,107,46,0.9); }
+        body.light-mode .brand-dot { background: #276B2E; box-shadow: none; }
+        body.light-mode .stat-value { color: #276B2E; }
+        body.light-mode .stat-label { color: rgba(12,31,16,0.45); }
+        body.light-mode .stat-sep { background: rgba(12,31,16,0.12); }
+        body.light-mode .cta-button {
+            background: linear-gradient(135deg, #276B2E 0%, #388E3C 100%);
+            box-shadow: 0 0 36px rgba(56,142,60,0.28), 0 6px 24px rgba(0,0,0,0.2);
+        }
+        body.light-mode .cta-hint { color: rgba(12,31,16,0.38); }
+        body.light-mode .pulse-ring { border-color: rgba(39,107,46,0.3); }
+        body.light-mode .bottom-marquee {
+            background: rgba(234,245,235,0.88);
+            border-top-color: rgba(0,0,0,0.07);
+        }
+        body.light-mode .marquee-item { color: rgba(12,31,16,0.38); }
+        body.light-mode .marquee-item::before { color: rgba(39,107,46,0.55); }
+        body.light-mode #cursor-dot {
+            background: #276B2E;
+            box-shadow: 0 0 8px #276B2E, 0 0 16px rgba(39,107,46,0.35);
+        }
+        body.light-mode #cursor-ring { border-color: rgba(39,107,46,0.5); }
+        body.light-mode #theme-toggle {
+            background: rgba(234,245,235,0.88);
+            border-color: rgba(39,107,46,0.4);
+            color: #276B2E;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.12);
+        }
+        body.light-mode #theme-toggle:hover {
+            background: rgba(39,107,46,0.15);
+            border-color: rgba(39,107,46,0.7);
+        }
+        body.light-mode #transition-overlay { background: #EFF8F1; }
     </style>
 </head>
 <body>
@@ -390,6 +474,11 @@
     <div class="bottom-marquee">
         <div class="marquee-track" id="marquee-track"></div>
     </div>
+
+    <!-- Theme toggle button -->
+    <button id="theme-toggle" aria-label="Cambiar tema">
+        <!-- Icon injected by JS -->
+    </button>
 
     <div id="transition-overlay"></div>
 
@@ -526,6 +615,54 @@
             const overlay = document.getElementById("transition-overlay");
             overlay.classList.remove("active");
         }
+    });
+
+    // ============================================================
+    // THEME TOGGLE
+    // ============================================================
+    const themeBtn = document.getElementById("theme-toggle");
+
+    const SUN_ICON = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <circle cx="12" cy="12" r="5"/>
+        <line x1="12" y1="1" x2="12" y2="3"/>
+        <line x1="12" y1="21" x2="12" y2="23"/>
+        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+        <line x1="1" y1="12" x2="3" y2="12"/>
+        <line x1="21" y1="12" x2="23" y2="12"/>
+        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+    </svg>`;
+
+    const MOON_ICON = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+    </svg>`;
+
+    function applyTheme(mode) {
+        const isLight = mode === "light";
+        if (isLight) {
+            document.body.classList.add("light-mode");
+            document.documentElement.classList.add('light-mode');
+            themeBtn.innerHTML = MOON_ICON;
+            themeBtn.setAttribute('title', 'Cambiar a modo nocturno');
+            themeBtn.setAttribute('aria-label', 'Cambiar a modo nocturno');
+        } else {
+            document.body.classList.remove('light-mode');
+            document.documentElement.classList.remove('light-mode');
+            themeBtn.innerHTML = SUN_ICON;
+            themeBtn.setAttribute("title", "Cambiar a modo diurno");
+            themeBtn.setAttribute("aria-label", "Cambiar a modo diurno");
+        }
+        try { localStorage.setItem("carbonai-theme", mode); } catch (_) {}
+    }
+
+    // Apply saved preference immediately (before first paint if possible)
+    const savedTheme = (() => { try { return localStorage.getItem("carbonai-theme"); } catch(_) { return null; } })();
+    applyTheme(savedTheme === "light" ? "light" : "dark");
+
+    themeBtn.addEventListener("click", e => {
+        e.stopPropagation(); // prevent landing-content click from firing
+        applyTheme(document.body.classList.contains("light-mode") ? "dark" : "light");
     });
     </script>
 </body>

@@ -1063,9 +1063,9 @@
     "source": "hardcoded_fallback"
   },
   "ci_ES": {
-    "carbonIntensity": 150,
+    "carbonIntensity": 162,
     "zone": "ES",
-    "timestamp": "2026-05-06T20:13:28.544889",
+    "timestamp": "2026-05-14T21:48:16.101696",
     "source": "electricity_maps_api",
     "fossilFreePercentage": null,
     "renewablePercentage": null
@@ -1087,9 +1087,9 @@
     "renewablePercentage": null
   },
   "ci_DE": {
-    "carbonIntensity": 451,
+    "carbonIntensity": 534,
     "zone": "DE",
-    "timestamp": "2026-05-06T20:13:30.809776",
+    "timestamp": "2026-05-14T21:48:17.330002",
     "source": "electricity_maps_api",
     "fossilFreePercentage": null,
     "renewablePercentage": null

@@ -1284,6 +1284,10 @@
         const barCtx = document.getElementById("bar-chart")?.getContext("2d");
         if (!pieCtx || !barCtx) return;
 
+        const _lm = document.body.classList.contains('light-mode');
+        const _legendClr = _lm ? '#1e3a28' : '#86efac';
+        const _pieBorder = _lm ? 'rgba(240,247,241,0.9)' : 'rgba(255,255,255,0.25)';
+
         pieChart = new Chart(pieCtx, {
             type: 'doughnut',
             data: {
@@ -1291,7 +1295,7 @@
                 datasets: [{
                     data: [em.device, em.network, em.datacenter],
                     backgroundColor: ['#38bdf8', '#f97316', '#4ade80'],
-                    borderColor: 'rgba(6,13,10,0.8)',
+                    borderColor: _pieBorder,
                     borderWidth: 2,
                     hoverOffset: 8,
                 }]
@@ -1302,7 +1306,7 @@
                 cutout: '55%',
                 animation: { animateRotate: true, duration: 1200 },
                 plugins: {
-                    legend: { position: 'bottom', labels: { padding: 16 } },
+                    legend: { position: 'bottom', labels: { padding: 16, color: _legendClr } },
                     tooltip: {
                         callbacks: {
                             label: (ctx) => {
@@ -1318,6 +1322,10 @@
                 }
             }
         });
+
+        const _tickClr = _lm ? '#1e3a28' : '#94a3b1';
+        const _axisClr = _lm ? '#14532d' : '#7a9e88';
+        const _gridClr = _lm ? 'rgba(0,0,0,0.07)' : 'rgba(255,255,255,0.12)';
 
         barChart = new Chart(barCtx, {
             type: 'bar',
@@ -1340,11 +1348,11 @@
                     tooltip: {},
                 },
                 scales: {
-                    x: { grid: { display: false }, ticks: { color: '#94a3b1' } },
+                    x: { grid: { display: false }, ticks: { color: _tickClr } },
                     y: {
-                        grid: { color: 'rgba(255,255,255,0.04)' },
-                        ticks: { color: '#5a7a64' },
-                        title: { display: true, text: 'Wh', color: '#5a7a64' }
+                        grid: { color: _gridClr },
+                        ticks: { color: _axisClr },
+                        title: { display: true, text: 'Wh', color: _axisClr }
                     }
                 }
             },
@@ -1357,7 +1365,7 @@
                         meta.data.forEach((bar, j) => {
                             const val = ds.data[j];
                             ctx.save();
-                            ctx.fillStyle = '#e8f0eb';
+                            ctx.fillStyle = document.body.classList.contains('light-mode') ? '#0f2714' : '#e8f0eb';
                             ctx.font = '600 11px JetBrains Mono';
                             ctx.textAlign = 'center';
                             ctx.fillText(val != null ? formatNum(val) : '', bar.x, bar.y - 6);
@@ -2191,6 +2199,8 @@
             el.style.top = top + 'px';
         };
 
+        const _lm = document.body.classList.contains('light-mode');
+
         scatterChart = new Chart(ctx, {
             type: 'scatter',
             data: {
@@ -2232,15 +2242,15 @@
                 scales: {
                     x: {
                         type: PS.scaleLog ? 'logarithmic' : 'linear',
-                        title: { display: true, text: 'Velocidad (tokens/s)', color: '#5a7a64', font: { size: 11 } },
-                        grid: { color: 'rgba(255,255,255,0.06)' },
-                        ticks: { color: '#5a7a64' },
+                        title: { display: true, text: 'Velocidad (tokens/s)', color: _lm ? '#14532d' : '#7a9e88', font: { size: 11 } },
+                        grid: { color: _lm ? 'rgba(0,0,0,0.07)' : 'rgba(74,222,128,0.22)' },
+                        ticks: { color: _lm ? '#1e3a28' : '#86efac' },
                     },
                     y: {
                         type: PS.scaleLog ? 'logarithmic' : 'linear',
-                        title: { display: true, text: 'CO₂/query (gCO₂)', color: '#5a7a64', font: { size: 11 } },
-                        grid: { color: 'rgba(255,255,255,0.06)' },
-                        ticks: { color: '#5a7a64' },
+                        title: { display: true, text: 'CO₂/query (gCO₂)', color: _lm ? '#14532d' : '#7a9e88', font: { size: 11 } },
+                        grid: { color: _lm ? 'rgba(0,0,0,0.07)' : 'rgba(74,222,128,0.22)' },
+                        ticks: { color: _lm ? '#1e3a28' : '#86efac' },
                     }
                 }
             },
@@ -2929,9 +2939,9 @@
                 scales: {
                     y: {
                         type: 'logarithmic',
-                        grid: { color: 'rgba(255,255,255,0.04)' },
-                        ticks: { color: '#5a7a64', callback: (v) => formatNum(v) },
-                        title: { display: true, text: 'CO₂ total (gCO₂/query)', color: '#5a7a64' }
+                        grid: { color: 'rgba(255,255,255,0.12)' },
+                        ticks: { color: '#94a3b1', callback: (v) => formatNum(v) },
+                        title: { display: true, text: 'CO₂ total (gCO₂/query)', color: '#7a9e88' }
                     },
                     x: {
                         grid: { display: false },
@@ -4491,7 +4501,7 @@
                 scales: {
                     x: { grid: { display: false }, ticks: { color: '#94a3b1', font: { size: 12 } } },
                     y: {
-                        grid: { color: 'rgba(255,255,255,0.05)' },
+                        grid: { color: 'rgba(255,255,255,0.12)' },
                         ticks: { color: '#94a3b1', font: { size: 11 }, callback: v => v >= 1000 ? `${(v/1000).toFixed(1)}t` : v < 0.01 ? `${(v*1000).toFixed(0)}g` : `${v.toFixed(0)}kg` },
                         title: { display: true, text: 'CO₂ acumulado', color: '#94a3b1', font: { size: 11 } },
                     },
@@ -4560,7 +4570,7 @@
                 scales: {
                     x: { grid: { display: false }, ticks: { color: '#94a3b1', font: { size: 12 } } },
                     y: {
-                        grid: { color: 'rgba(255,255,255,0.05)' },
+                        grid: { color: 'rgba(255,255,255,0.12)' },
                         ticks: { color: '#94a3b1', font: { size: 11 }, callback: v => v >= 1000 ? `${(v/1000).toFixed(1)}t` : v < 0.01 ? `${(v*1000).toFixed(0)}g` : `${v.toFixed(0)}kg` },
                         title: { display: true, text: 'CO₂ acumulado', color: '#94a3b1', font: { size: 11 } },
                     },
@@ -4747,7 +4757,7 @@
                         },
                         scales: {
                             x: { grid: { display: false }, ticks: { color: '#94a3b1', font: { size: 10 }, maxTicksLimit: 8 } },
-                            y: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#94a3b1', font: { size: 10 }, callback: v => fmtUb(v) }, title: { display: true, text: 'CO₂ acumulado', color: '#94a3b1', font: { size: 10 } } },
+                            y: { grid: { color: 'rgba(255,255,255,0.12)' }, ticks: { color: '#94a3b1', font: { size: 10 }, callback: v => fmtUb(v) }, title: { display: true, text: 'CO₂ acumulado', color: '#94a3b1', font: { size: 10 } } },
                         },
                     },
                 });
@@ -4830,7 +4840,7 @@
                     },
                     scales: {
                         x: {
-                            grid: { color: 'rgba(255,255,255,0.05)' },
+                            grid: { color: 'rgba(255,255,255,0.12)' },
                             ticks: { color: '#94a3b1', font: { size: 11 }, callback: v => `${v}%` },
                             max: 100,
                         },
@@ -4961,7 +4971,7 @@
                     scales: {
                         x: { grid: { display: false }, ticks: { color: '#94a3b1', font: { size: 11 } } },
                         y: {
-                            grid: { color: 'rgba(255,255,255,0.05)' },
+                            grid: { color: 'rgba(255,255,255,0.12)' },
                             ticks: {
                                 color: '#94a3b1', font: { size: 10 },
                                 callback: v => v >= 1000 ? `${(v/1000).toFixed(1)}t` : v < 0.01 ? `${(v*1000).toFixed(0)}g` : `${v.toFixed(0)}kg`,
@@ -5119,6 +5129,12 @@
             const fmtKg = v => { if (v <= 0) return '0'; if (v >= 1000) return (v/1000).toFixed(2)+' t'; if (v >= 0.1) return v.toFixed(2)+' kg'; const g = v*1000; if (g >= 0.1) return g.toFixed(2)+' g'; const mg = g*1000; return mg >= 0.1 ? mg.toFixed(2)+' mg' : (mg*1000).toFixed(2)+' µg'; };
             const tickFmt = v => { if (v <= 0) return '0'; if (v >= 1000) return (v/1000).toFixed(1)+'t'; if (v >= 0.1) return v.toFixed(1)+'kg'; const g = v*1000; if (g >= 0.1) return g.toFixed(1)+'g'; const mg = g*1000; return mg >= 0.1 ? mg.toFixed(0)+'mg' : (mg*1000).toFixed(0)+'µg'; };
 
+            const _simLm = document.body.classList.contains('light-mode');
+            const _simTickX = _simLm ? '#1e3a28' : '#94a3b1';
+            const _simTitleX = _simLm ? '#14532d' : '#94a3b1';
+            const _simTickY = _simLm ? '#0f2714' : '#e8f0eb';
+            const _simGrid = _simLm ? 'rgba(0,0,0,.06)' : 'rgba(255,255,255,.12)';
+
             simImpactoChartInstance = new Chart(ctx, {
                 type: 'bar',
                 data: {
@@ -5132,21 +5148,21 @@
                     plugins: {
                         legend: { display: false },
                         tooltip: {
-                            backgroundColor: 'rgba(10,20,15,.92)',
-                            borderColor: 'rgba(74,222,128,.25)',
+                            backgroundColor: _simLm ? 'rgba(240,247,241,.97)' : 'rgba(10,20,15,.92)',
+                            borderColor: _simLm ? 'rgba(22,163,74,.3)' : 'rgba(74,222,128,.25)',
                             borderWidth: 1,
-                            titleColor: '#e8f0eb',
-                            bodyColor: '#94a3b1',
+                            titleColor: _simLm ? '#0f2714' : '#e8f0eb',
+                            bodyColor: _simLm ? '#1e3a28' : '#94a3b1',
                             callbacks: { label: c => ` ${fmtKg(c.parsed.x)} CO₂/año` }
                         },
                     },
                     scales: {
                         x: {
-                            grid: { color: 'rgba(255,255,255,.05)' },
-                            ticks: { color: '#94a3b1', font:{size:11}, callback: tickFmt, maxTicksLimit: 7 },
-                            title: { display: true, text: 'CO₂ / año', color: '#94a3b1', font:{size:11} },
+                            grid: { color: _simGrid },
+                            ticks: { color: _simTickX, font:{size:11}, callback: tickFmt, maxTicksLimit: 7 },
+                            title: { display: true, text: 'CO₂ / año', color: _simTitleX, font:{size:11} },
                         },
-                        y: { grid: { display: false }, ticks: { color: '#e8f0eb', font:{size:12}, autoSkip: false } },
+                        y: { grid: { display: false }, ticks: { color: _simTickY, font:{size:12}, autoSkip: false } },
                     },
                 },
             });
