@@ -1,5 +1,5 @@
 /* ============================================================
-   Calculadora de Carbono de IA — Frontend v2
+   CarbonAI — Calculadora de Carbono para modelos de IA — Frontend v2
    Chart.js · CountUp · Lucide · Glassmorphism
    ============================================================ */
 
@@ -3147,7 +3147,7 @@
         doc.text('Evaluacion del impacto medioambiental en inferencia', ML + 2, 35);
         dc([147, 197, 253]); doc.setLineWidth(0.6); doc.line(ML + 2, 40, W - MR, 40);
         doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5); tc([186, 215, 254]);
-        doc.text('Calculadora de Carbono para IA  |  TFG  |  ' + dateHuman, ML + 2, 50);
+        doc.text('CarbonAI  |  Calculadora de Carbono para IA  |  ' + dateHuman, ML + 2, 50);
         doc.text('Antonio Luis Jimenez de la Fuente  |  Universidad de Sevilla', ML + 2, 58);
 
         let y = BANNER_H + 14;
@@ -3249,7 +3249,7 @@
         );
         y += 4;
         y = infoBox(
-            'Nota: la metodologia de calculo de emisiones con sus tres componentes (dispositivo de usuario, red de datos y data center) corresponde al flujo general de la Calculadora de Carbono para IA y no aplica directamente a este informe comparativo. En este analisis, todos los parametros del escenario permanecen fijos; la unica variable entre modelos es su consumo energetico por cada 1.000 tokens procesados (energy_wh_per_1k_tokens), lo que garantiza una comparacion equitativa y directa.',
+            'Nota: la metodologia de calculo de emisiones con sus tres componentes (dispositivo de usuario, red de datos y data center) corresponde al flujo general de CarbonAI y no aplica directamente a este informe comparativo. En este analisis, todos los parametros del escenario permanecen fijos; la unica variable entre modelos es su consumo energetico por cada 1.000 tokens procesados (energy_wh_per_1k_tokens), lo que garantiza una comparacion equitativa y directa.',
             ML, y, CW, C.accentBlue
         );
 

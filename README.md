@@ -1,4 +1,4 @@
-# Evaluación del Impacto Medioambiental de Modelos de IA
+# CarbonAI — Evaluación del Impacto Medioambiental de Modelos de IA
 
 [![Python](https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![Flask](https://img.shields.io/badge/Flask-3.1-000000?logo=flask&logoColor=white)](https://flask.palletsprojects.com/)
@@ -8,7 +8,7 @@
 
 > **Trabajo de Fin de Grado — Antonio Luis Jiménez de la Fuente · Mayo 2026**
 
-Herramienta web para cuantificar y comparar el impacto medioambiental de consultas a modelos de IA generativa, inspirada en el etiquetado europeo de eficiencia energética (A+++ – F). Descompone las emisiones de CO₂ en tres componentes —datacenter, dispositivo de usuario y red de comunicaciones— integrando datos de carbono en tiempo real de Electricity Maps API.
+**CarbonAI** es una herramienta web para cuantificar y comparar el impacto medioambiental de consultas a modelos de IA generativa, inspirada en el etiquetado europeo de eficiencia energética (A+++ – F). Descompone las emisiones de CO₂ en tres componentes —datacenter, dispositivo de usuario y red de comunicaciones— integrando datos de carbono en tiempo real de Electricity Maps API.
 
 **[→ Demo en producción](https://tfg-evaluacion-del-impacto.onrender.com)**
 

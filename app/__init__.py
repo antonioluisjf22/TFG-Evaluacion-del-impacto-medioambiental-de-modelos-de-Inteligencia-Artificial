@@ -1,5 +1,5 @@
 """
-Aplicación web Flask — Calculadora de Carbono para Inferencia de IA
+CarbonAI — Aplicación web Flask para la Calculadora de Carbono de Inferencia de IA
 """
 
 import math
