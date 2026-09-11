@@ -944,9 +944,6 @@
         household_year:       7500,
         european_year:        8000,
     };
-    // Water Usage Effectiveness medio de data centers (litros de agua por kWh IT) — Uptime Institute 2022.
-    const WATER_L_PER_KWH = 1.8;
-
     const EQUIV = {
         google_search_g: CO2_REF_KG.google_search * 1000,
         phone_charge_g: CO2_REF_KG.phone_charge * 1000,
@@ -4158,7 +4155,7 @@
         });
     }
 
-    // TAREA 2: 6 KPI Cards
+    // TAREA 2: 5 KPI Cards
     function renderTarea2KPIs() {
         const container = document.getElementById('tarea2-kpi-cards');
         if (!container) return;
@@ -4168,7 +4165,6 @@
         const co2_ano_t = co2_ano_kg / 1000;
         const energia_ano_kWh = SIM_STATE.queries_dia * 365 * SIM_STATE.energia_por_query;
         const energia_ano_MWh = energia_ano_kWh / 1000;
-        const agua_litros = energia_ano_kWh * WATER_L_PER_KWH;   // depende de la energía del modelo, no de un valor fijo/query
         const coste_euro = energia_ano_kWh * 0.12;
 
         const _fmtCo2 = (kg) => {
@@ -4187,12 +4183,6 @@
             return { val: (energia_ano_kWh * 1000).toLocaleString('es-ES', {maximumFractionDigits:3}), unit: 'Wh/año' };
         })();
 
-        const waterDisp = (() => {
-            if (agua_litros >= 1000) return { val: (agua_litros/1000).toLocaleString('es-ES', {maximumFractionDigits:2}), unit: 'mil litros/año' };
-            if (agua_litros >= 0.01) return { val: agua_litros.toLocaleString('es-ES', {maximumFractionDigits:2}), unit: 'litros/año' };
-            return { val: (agua_litros * 1000).toLocaleString('es-ES', {maximumFractionDigits:2}), unit: 'ml/año' };
-        })();
-
         const costDisp = (() => {
             if (coste_euro >= 0.01) return { val: coste_euro.toLocaleString('es-ES', {maximumFractionDigits:2}), unit: '€/año' };
             if (coste_euro >= 0.0001) return { val: (coste_euro*100).toLocaleString('es-ES', {maximumFractionDigits:4}), unit: 'céntimos/año' };
@@ -4203,7 +4193,6 @@
             { icon: 'hash',               label: 'Queries/día',       value: SIM_STATE.queries_dia.toLocaleString('es-ES'), unit: 'queries/día' },
             { icon: 'cloud',              label: 'CO₂ anual',         value: co2Disp.val,    unit: co2Disp.unit },
             { icon: 'zap',                label: 'Energía anual',     value: energyDisp.val, unit: energyDisp.unit },
-            { icon: 'droplets',           label: 'Agua estimada',     value: waterDisp.val,  unit: waterDisp.unit },
             { icon: 'circle-dollar-sign', label: 'Coste energético',  value: costDisp.val,   unit: costDisp.unit },
             { icon: 'trending-up',        label: 'Proyección 5 años', value: proj5Disp.val,  unit: proj5Disp.unit },
         ];
