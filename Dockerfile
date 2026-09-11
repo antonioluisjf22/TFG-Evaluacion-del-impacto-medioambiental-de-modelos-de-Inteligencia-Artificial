@@ -27,6 +27,14 @@ WORKDIR /app
 COPY --from=deps /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
 COPY --from=deps /usr/local/bin /usr/local/bin
 
+# pip no es necesario en runtime (la app arranca con `python -m gunicorn`).
+# Eliminarlo reduce la superficie de ataque y evita que el escaneo de Trivy
+# marque las copias vendorizadas que pip declara en su SBOM interno
+# (pip/_vendor/bom.cdx.json: msgpack, setuptools...), que la app nunca ejecuta.
+RUN rm -rf /usr/local/lib/python3.12/site-packages/pip \
+           /usr/local/lib/python3.12/site-packages/pip-*.dist-info \
+           /usr/local/bin/pip /usr/local/bin/pip3 /usr/local/bin/pip3.12
+
 # Copiar el código fuente
 COPY app/       ./app/
 COPY scripts/   ./scripts/
