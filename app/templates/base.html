@@ -110,6 +110,8 @@
             btn.title = label;
             btn.setAttribute('aria-label', label);
             try { localStorage.setItem('carbonai-theme', mode); } catch(_) {}
+            // Let app.js re-theme live charts / map (Chart.js reads colors only on update)
+            window.dispatchEvent(new CustomEvent('carbonai:theme', { detail: { light: isLight } }));
         }
         var saved;
         try { saved = localStorage.getItem('carbonai-theme'); } catch(_) {}

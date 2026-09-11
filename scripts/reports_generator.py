@@ -66,12 +66,13 @@ class ReportGenerator:
         }
         
         # Factores de equivalencia
+        # Mantener en sintonía con CO2_REF_KG en app/static/js/app.js (misma cifra en toda la app)
         self.equivalencies = {
-            "tree_kg_co2_per_year": 22.5,           # 1 árbol absorbe 22.5 kg CO2/año
-            "transatlantic_flight_kg_co2": 700,     # 1 vuelo ~700 kg
-            "car_annual_kg_co2": 474,               # 1 coche/año ~474 kg
+            "tree_kg_co2_per_year": 22,             # 1 árbol absorbe ~22 kg CO2/año (EPA)
+            "transatlantic_flight_kg_co2": 700,     # 1 vuelo NYC-LDN ~700 kg (ICAO, economy, ida)
+            "car_annual_kg_co2": 4600,              # 1 turismo/año ~4.6 t (EPA)
             "household_annual_kwh": 8760,           # Hogar promedio ~8.76 MWh/año
-            "household_annual_kg_co2": 4380         # ~4.38 toneladas CO2/año promedio
+            "household_annual_kg_co2": 7500         # ~7.5 toneladas CO2/año energía doméstica (EPA)
         }
     
     def generate_breakdown_data(self, result: Any) -> Dict[str, Any]:

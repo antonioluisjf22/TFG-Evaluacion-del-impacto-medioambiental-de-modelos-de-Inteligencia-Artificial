@@ -36,12 +36,33 @@
     // ------------------------------------------------------------------
     // Chart.js global config (lazy — Chart.js is deferred)
     // ------------------------------------------------------------------
+    // ── Theme-aware chart colors ────────────────────────────────────
+    // Chart.js "scriptable options": a function is re-evaluated on every
+    // chart.update(), so charts follow the theme toggle without being rebuilt.
+    const isLightMode = () => document.body.classList.contains('light-mode');
+    const themed = (dark, light) => () => (isLightMode() ? light : dark);
+    const CT = {
+        text:          themed('#e8f0eb', '#0f2714'),                       // primary text / value labels
+        tick:          themed('#94a3b1', '#1e3a28'),                       // axis ticks, legends
+        tickGreen:     themed('#86efac', '#1e3a28'),                       // green-tinted ticks (pareto)
+        axisTitle:     themed('#7a9e88', '#14532d'),
+        grid:          themed('rgba(255,255,255,0.12)', 'rgba(0,0,0,0.07)'),
+        gridSoft:      themed('rgba(255,255,255,0.08)', 'rgba(0,0,0,0.06)'),
+        gridGreen:     themed('rgba(74,222,128,0.22)', 'rgba(0,0,0,0.07)'),
+        legend:        themed('#c8d6cf', '#1e3a28'),
+        pieBorder:     themed('rgba(255,255,255,0.25)', 'rgba(240,247,241,0.9)'),
+        tooltipBg:     themed('rgba(10,20,15,0.92)', 'rgba(255,255,255,0.97)'),
+        tooltipBorder: themed('rgba(74,222,128,0.25)', 'rgba(22,163,74,0.3)'),
+        accentCyan:    themed('#00e5ff', '#0369a1'),                       // "current model" highlight
+        paretoLine:    themed('#00e676', '#15803d'),
+        paretoLabel:   themed('#ffe033', '#b45309'),
+        labelOutline:  themed('rgba(0,0,0,0.75)', 'rgba(255,255,255,0.85)'),
+        labelMuted:    themed('rgba(195,215,205,0.95)', 'rgba(15,39,20,0.85)'),
+    };
+
     function initChartDefaults() {
         if (!window.Chart) return;
-        Chart.defaults.color = '#94a3b1';
         Chart.defaults.font.family = "'Inter', sans-serif";
-        Chart.defaults.plugins.tooltip.backgroundColor = 'rgba(15, 23, 42, 0.92)';
-        Chart.defaults.plugins.tooltip.borderColor = 'rgba(255,255,255,0.1)';
         Chart.defaults.plugins.tooltip.borderWidth = 1;
         Chart.defaults.plugins.tooltip.cornerRadius = 8;
         Chart.defaults.plugins.tooltip.padding = 12;
@@ -49,6 +70,23 @@
         Chart.defaults.plugins.tooltip.bodyFont = { size: 12 };
         Chart.defaults.plugins.legend.labels.usePointStyle = true;
         Chart.defaults.plugins.legend.labels.pointStyle = 'circle';
+        applyChartTheme();
+        // base.html dispatches this event from the theme toggle
+        window.addEventListener('carbonai:theme', applyChartTheme);
+    }
+
+    // Global fallbacks (anything without an explicit color) + refresh of every live chart.
+    function applyChartTheme() {
+        if (!window.Chart) return;
+        const lm = isLightMode();
+        Chart.defaults.color = lm ? '#1e3a28' : '#94a3b1';
+        Chart.defaults.borderColor = lm ? 'rgba(0,0,0,0.07)' : 'rgba(255,255,255,0.1)';
+        Chart.defaults.plugins.tooltip.backgroundColor = lm ? 'rgba(255,255,255,0.97)' : 'rgba(15,23,42,0.92)';
+        Chart.defaults.plugins.tooltip.borderColor = lm ? 'rgba(22,163,74,0.3)' : 'rgba(255,255,255,0.1)';
+        Chart.defaults.plugins.tooltip.titleColor = lm ? '#0f2714' : '#ffffff';
+        Chart.defaults.plugins.tooltip.bodyColor = lm ? '#1e3a28' : '#ffffff';
+        Object.values(Chart.instances || {}).forEach(c => { try { c.update('none'); } catch (_) { /* chart being destroyed */ } });
+        if (typeof updateMapTheme === 'function') updateMapTheme();
     }
 
     // ------------------------------------------------------------------
@@ -342,7 +380,7 @@
         document.getElementById("model_id")?.addEventListener("change", e => {
             const m = (OPTIONS.models || []).find(x => x.model_id === e.target.value);
             showInfo("model-info", m ? [
-                `<strong>${fmtVal(m.num_parameters)}T params</strong>`,
+                `<strong>${formatParams(Number(m.num_parameters))} params</strong>`,
                 `${fmtVal(m.energy_wh_per_1k_tokens)} Wh/1k tokens`,
                 m.tokens_per_second ? `${fmtVal(m.tokens_per_second)} tok/s` : null,
                 m.context_window ? `Contexto: ${Number(m.context_window).toLocaleString("es-ES")} tokens` : null,
@@ -887,13 +925,35 @@
     // ------------------------------------------------------------------
     // Equivalencies — client-side computation
     // ------------------------------------------------------------------
+    // Fuente única de constantes de equivalencia (kg CO₂) — usada por la pestaña de
+    // resultados, la simulación y sus referencias, para que un mismo concepto muestre
+    // siempre la misma cifra. Mantener en sintonía con ReportGenerator.equivalencies.
+    // Fuentes: Google (búsqueda), EPA GHG Equivalencies (móvil, gasolina, árbol, coche/año,
+    // hogar/año), IEA 2020 (streaming), EEA (turismo medio g/km), ICAO (vuelos), Eurostat (per cápita).
+    const CO2_REF_KG = {
+        google_search:        0.0002,
+        phone_charge:         0.0082,
+        streaming_hour:       0.036,
+        car_km:               0.12,
+        gasoline_litre:       2.3,
+        tree_year:            22,
+        domestic_flight:      150,
+        transatlantic_flight: 700,
+        paris_per_capita:     2300,
+        car_year:             4600,
+        household_year:       7500,
+        european_year:        8000,
+    };
+    // Water Usage Effectiveness medio de data centers (litros de agua por kWh IT) — Uptime Institute 2022.
+    const WATER_L_PER_KWH = 1.8;
+
     const EQUIV = {
-        google_search_g: 0.2,
-        phone_charge_g: 8.0,
+        google_search_g: CO2_REF_KG.google_search * 1000,
+        phone_charge_g: CO2_REF_KG.phone_charge * 1000,
         led_9w_wh: 9.0,
-        flight_nyc_london_kg: 700,
-        car_km_g: 120,
-        household_day_kg: 12,
+        flight_nyc_london_kg: CO2_REF_KG.transatlantic_flight,
+        car_km_g: CO2_REF_KG.car_km * 1000,
+        household_day_kg: CO2_REF_KG.household_year / 365,
     };
 
     function renderEquivalencies(co2g, energyWh) {
@@ -969,11 +1029,14 @@
             if (Math.abs(val) < 10) return val.toFixed(4);
             return val.toFixed(2);
         }
+        function unitSpan(unit) {
+            return (typeof unit === "string" && unit) ? `<span class="fs-unit"> ${unit}</span>` : "";
+        }
         function hi(v, unit) {
-            return `<span class="fs-highlight">${fv(v)}</span><span class="fs-unit"> ${unit}</span>`;
+            return `<span class="fs-highlight">${fv(v)}</span>${unitSpan(unit)}`;
         }
         function hiRes(v, unit) {
-            return `<span class="fs-result">${fv(v)}</span><span class="fs-unit"> ${unit}</span>`;
+            return `<span class="fs-result">${fv(v)}</span>${unitSpan(unit)}`;
         }
 
         const procLabel = (d.processor || "cpu").toUpperCase();
@@ -1284,10 +1347,6 @@
         const barCtx = document.getElementById("bar-chart")?.getContext("2d");
         if (!pieCtx || !barCtx) return;
 
-        const _lm = document.body.classList.contains('light-mode');
-        const _legendClr = _lm ? '#1e3a28' : '#86efac';
-        const _pieBorder = _lm ? 'rgba(240,247,241,0.9)' : 'rgba(255,255,255,0.25)';
-
         pieChart = new Chart(pieCtx, {
             type: 'doughnut',
             data: {
@@ -1295,7 +1354,7 @@
                 datasets: [{
                     data: [em.device, em.network, em.datacenter],
                     backgroundColor: ['#38bdf8', '#f97316', '#4ade80'],
-                    borderColor: _pieBorder,
+                    borderColor: CT.pieBorder,
                     borderWidth: 2,
                     hoverOffset: 8,
                 }]
@@ -1306,7 +1365,7 @@
                 cutout: '55%',
                 animation: { animateRotate: true, duration: 1200 },
                 plugins: {
-                    legend: { position: 'bottom', labels: { padding: 16, color: _legendClr } },
+                    legend: { position: 'bottom', labels: { padding: 16, color: CT.tickGreen } },
                     tooltip: {
                         callbacks: {
                             label: (ctx) => {
@@ -1322,10 +1381,6 @@
                 }
             }
         });
-
-        const _tickClr = _lm ? '#1e3a28' : '#94a3b1';
-        const _axisClr = _lm ? '#14532d' : '#7a9e88';
-        const _gridClr = _lm ? 'rgba(0,0,0,0.07)' : 'rgba(255,255,255,0.12)';
 
         barChart = new Chart(barCtx, {
             type: 'bar',
@@ -1348,11 +1403,11 @@
                     tooltip: {},
                 },
                 scales: {
-                    x: { grid: { display: false }, ticks: { color: _tickClr } },
+                    x: { grid: { display: false }, ticks: { color: CT.tick } },
                     y: {
-                        grid: { color: _gridClr },
-                        ticks: { color: _axisClr },
-                        title: { display: true, text: 'Wh', color: _axisClr }
+                        grid: { color: CT.grid },
+                        ticks: { color: CT.axisTitle },
+                        title: { display: true, text: 'Wh', color: CT.axisTitle }
                     }
                 }
             },
@@ -1365,7 +1420,7 @@
                         meta.data.forEach((bar, j) => {
                             const val = ds.data[j];
                             ctx.save();
-                            ctx.fillStyle = document.body.classList.contains('light-mode') ? '#0f2714' : '#e8f0eb';
+                            ctx.fillStyle = CT.text();
                             ctx.font = '600 11px JetBrains Mono';
                             ctx.textAlign = 'center';
                             ctx.fillText(val != null ? formatNum(val) : '', bar.x, bar.y - 6);
@@ -1999,7 +2054,7 @@
 
                 // Step-after line
                 c.beginPath();
-                c.strokeStyle = '#00e676';
+                c.strokeStyle = CT.paretoLine();
                 c.lineWidth = 2;
                 c.setLineDash([8, 4]);
                 c.moveTo(area.left, paretoPts[0].py);
@@ -2088,19 +2143,32 @@
             afterDatasetsDraw(chart) {
                 const c = chart.ctx;
                 const meta = chart.getDatasetMeta(0);
+                // Simple collision avoidance: labels default above the point; if that box
+                // overlaps an already-placed label, drop it below the point instead.
+                const placed = [];
+                const overlaps = (a, b) => !(a.x2 < b.x1 || a.x1 > b.x2 || a.y2 < b.y1 || a.y1 > b.y2);
+                const LABEL_H = 11;
                 meta.data.forEach((el, i) => {
                     const p = chart.data.datasets[0].data[i];
                     c.save();
                     // Manual outline instead of shadowBlur (shadowBlur bleeds into dots on animation frames)
-                    const labelY = el.y - (p.isPareto || p.isCustom ? 13 : 8);
-                    const fgColor = p.isCustom ? '#00e5ff'
-                        : (p.isCurrent ? '#00e5ff'
-                        : (p.isPareto ? '#ffe033'
-                        : 'rgba(195,215,205,0.95)'));
                     c.font = (p.isCurrent || p.isCustom) ? '700 10px Inter' : '500 9px Inter';
+                    const w = c.measureText(p.model).width;
+                    const offset = p.isPareto || p.isCustom ? 13 : 8;
+                    // Candidate baselines: above, below, further above, further below
+                    const candidates = [el.y - offset, el.y + offset + LABEL_H, el.y - offset - LABEL_H - 2, el.y + offset + 2 * LABEL_H + 2];
+                    const boxFor = y => ({ x1: el.x - w / 2, x2: el.x + w / 2, y1: y - LABEL_H, y2: y });
+                    let labelY = candidates.find(y => !placed.some(b => overlaps(boxFor(y), b)));
+                    if (labelY === undefined) labelY = candidates[0];
+                    placed.push(boxFor(labelY));
+                    const outline = CT.labelOutline();
+                    const fgColor = p.isCustom ? CT.accentCyan()
+                        : (p.isCurrent ? CT.accentCyan()
+                        : (p.isPareto ? CT.paretoLabel()
+                        : CT.labelMuted()));
                     c.textAlign = 'center';
-                    // Dark stroke pass first (acts as outline/shadow without shadowBlur)
-                    c.strokeStyle = 'rgba(0,0,0,0.75)';
+                    // Contrasting stroke pass first (acts as outline/shadow without shadowBlur)
+                    c.strokeStyle = outline;
                     c.lineWidth = 3;
                     c.lineJoin = 'round';
                     c.strokeText(p.model, el.x, labelY);
@@ -2109,17 +2177,17 @@
                     c.fillText(p.model, el.x, labelY);
                     if (p.isCustom) {
                         c.font = '700 12px Inter';
-                        c.strokeStyle = 'rgba(0,0,0,0.75)';
+                        c.strokeStyle = outline;
                         c.lineWidth = 3;
                         c.strokeText('◆', el.x, el.y - 21);
-                        c.fillStyle = '#00e5ff';
+                        c.fillStyle = CT.accentCyan();
                         c.fillText('◆', el.x, el.y - 21);
                     } else if (p.isPareto && !p.isCurrent) {
                         c.font = '700 12px Inter';
-                        c.strokeStyle = 'rgba(0,0,0,0.75)';
+                        c.strokeStyle = outline;
                         c.lineWidth = 3;
                         c.strokeText('★', el.x, el.y - 21);
-                        c.fillStyle = '#00e676';
+                        c.fillStyle = CT.paretoLine();
                         c.fillText('★', el.x, el.y - 21);
                     }
                     c.restore();
@@ -2199,8 +2267,6 @@
             el.style.top = top + 'px';
         };
 
-        const _lm = document.body.classList.contains('light-mode');
-
         scatterChart = new Chart(ctx, {
             type: 'scatter',
             data: {
@@ -2242,15 +2308,15 @@
                 scales: {
                     x: {
                         type: PS.scaleLog ? 'logarithmic' : 'linear',
-                        title: { display: true, text: 'Velocidad (tokens/s)', color: _lm ? '#14532d' : '#7a9e88', font: { size: 11 } },
-                        grid: { color: _lm ? 'rgba(0,0,0,0.07)' : 'rgba(74,222,128,0.22)' },
-                        ticks: { color: _lm ? '#1e3a28' : '#86efac' },
+                        title: { display: true, text: 'Velocidad (tokens/s)', color: CT.axisTitle, font: { size: 11 } },
+                        grid: { color: CT.gridGreen },
+                        ticks: { color: CT.tickGreen },
                     },
                     y: {
                         type: PS.scaleLog ? 'logarithmic' : 'linear',
-                        title: { display: true, text: 'CO₂/query (gCO₂)', color: _lm ? '#14532d' : '#7a9e88', font: { size: 11 } },
-                        grid: { color: _lm ? 'rgba(0,0,0,0.07)' : 'rgba(74,222,128,0.22)' },
-                        ticks: { color: _lm ? '#1e3a28' : '#86efac' },
+                        title: { display: true, text: 'CO₂/query (gCO₂)', color: CT.axisTitle, font: { size: 11 } },
+                        grid: { color: CT.gridGreen },
+                        ticks: { color: CT.tickGreen },
                     }
                 }
             },
@@ -2581,7 +2647,7 @@
                     maintainAspectRatio: false,
                     plugins: {
                         legend: {
-                            labels: { color: '#c8d6cf', font: { size: 11 } },
+                            labels: { color: CT.legend, font: { size: 11 } },
                             onClick: (e, legendItem, legend) => {
                                 const idx = legendItem.datasetIndex;
                                 const meta = legend.chart.getDatasetMeta(idx);
@@ -2593,9 +2659,9 @@
                     scales: {
                         r: {
                             beginAtZero: true, max: 1,
-                            grid: { color: 'rgba(255,255,255,0.08)' },
-                            angleLines: { color: 'rgba(255,255,255,0.08)' },
-                            pointLabels: { color: '#94a3b1', font: { size: 10 } },
+                            grid: { color: CT.gridSoft },
+                            angleLines: { color: CT.gridSoft },
+                            pointLabels: { color: CT.tick, font: { size: 10 } },
                             ticks: { display: false },
                         }
                     }
@@ -2939,16 +3005,16 @@
                 scales: {
                     y: {
                         type: 'logarithmic',
-                        grid: { color: 'rgba(255,255,255,0.12)' },
-                        ticks: { color: '#94a3b1', callback: (v) => formatNum(v) },
-                        title: { display: true, text: 'CO₂ total (gCO₂/query)', color: '#7a9e88' }
+                        grid: { color: CT.grid },
+                        ticks: { color: CT.tick, callback: (v) => formatNum(v) },
+                        title: { display: true, text: 'CO₂ total (gCO₂/query)', color: CT.axisTitle }
                     },
                     x: {
                         grid: { display: false },
                         ticks: {
                             color: (ctx) => {
                                 const label = sorted[ctx.index]?.model;
-                                return label === currentModelName ? '#00e5ff' : '#94a3b1';
+                                return label === currentModelName ? CT.accentCyan() : CT.tick();
                             },
                             font: (ctx) => {
                                 const label = sorted[ctx.index]?.model;
@@ -2968,7 +3034,7 @@
                         const lbl = r.environmental_label?.label || '';
                         const isCurrent = r.model === currentModelName;
                         c.save();
-                        c.fillStyle = isCurrent ? '#00e5ff' : getBarColorSolid(lbl);
+                        c.fillStyle = isCurrent ? CT.accentCyan() : getBarColorSolid(lbl);
                         c.font = isCurrent ? '700 11px Inter' : '700 10px Inter';
                         c.textAlign = 'center';
                         // Label above bar + ACTUAL tag for selected model
@@ -3981,8 +4047,8 @@
     // Estado global para simulación
     let SIM_STATE = {
         queries_dia: 1000000,
-        co2_por_query: 0.00413,      // gCO2/query (actualizado al calcular)
-        energia_por_query: 0.00000185,  // kWh/query
+        co2_por_query: 0.00413,      // gCO2/query (se sobrescribe con el último cálculo)
+        energia_por_query: 0.00001,  // kWh/query (≈ 0.00413 g a ~400 gCO2/kWh; se sobrescribe con el último cálculo)
         modelo_eficiente: 'Phi-2',
         factor_eficiente: 0.05,
         horizonte_anos: 5,
@@ -4102,7 +4168,7 @@
         const co2_ano_t = co2_ano_kg / 1000;
         const energia_ano_kWh = SIM_STATE.queries_dia * 365 * SIM_STATE.energia_por_query;
         const energia_ano_MWh = energia_ano_kWh / 1000;
-        const agua_litros = SIM_STATE.queries_dia * 365 * 0.0000482;
+        const agua_litros = energia_ano_kWh * WATER_L_PER_KWH;   // depende de la energía del modelo, no de un valor fijo/query
         const coste_euro = energia_ano_kWh * 0.12;
 
         const _fmtCo2 = (kg) => {
@@ -4155,17 +4221,17 @@
 
     // Pool de equivalencias con divisores en kg CO₂
     const EQUIVALENCIAS_POOL = [
-        { icon: 'search',       label: 'Búsquedas en Google',     divisor: 0.0002, detailFn: n => `${fmtBigNum(n)} búsquedas en Google` },
-        { icon: 'smartphone',   label: 'Cargas de móvil',         divisor: 0.005,  detailFn: n => `${fmtBigNum(n)} cargas completas de smartphone` },
-        { icon: 'monitor-play', label: 'Horas de streaming',      divisor: 0.036,  detailFn: n => `${formatNum(n)} horas de Netflix` },
-        { icon: 'car',          label: 'Km en coche',             divisor: 0.12,   detailFn: n => `${formatNum(n)} km en coche` },
-        { icon: 'fuel',         label: 'Litros de gasolina',      divisor: 2.3,    detailFn: n => `${formatNum(n)} litros de gasolina quemada` },
-        { icon: 'tree-pine',    label: 'Árboles para compensar',  divisor: 21,     detailFn: n => `${formatNum(n)} árboles necesarios para absorber` },
-        { icon: 'plane',        label: 'Vuelos domésticos',       divisor: 150,    detailFn: n => `${formatNum(n)} vuelos nacionales` },
-        { icon: 'plane-takeoff',label: 'Vuelos transatlánticos',  divisor: 986,    detailFn: n => `${formatNum(n)} vuelos NYC–Londres` },
-        { icon: 'car',          label: 'Años conduciendo',        divisor: 4600,   detailFn: n => `${n.toFixed(2)} años con coche medio` },
-        { icon: 'home',         label: 'Años de hogar medio',     divisor: 7500,   detailFn: n => `${n.toFixed(2)} años de consumo doméstico` },
-        { icon: 'globe',        label: 'Personas europeas/año',   divisor: 8000,   detailFn: n => `Equivale a ${n.toFixed(2)} europeos durante 1 año` },
+        { icon: 'search',       label: 'Búsquedas en Google',     divisor: CO2_REF_KG.google_search,        detailFn: n => `${fmtBigNum(n)} búsquedas en Google` },
+        { icon: 'smartphone',   label: 'Cargas de móvil',         divisor: CO2_REF_KG.phone_charge,         detailFn: n => `${fmtBigNum(n)} cargas completas de smartphone` },
+        { icon: 'monitor-play', label: 'Horas de streaming',      divisor: CO2_REF_KG.streaming_hour,       detailFn: n => `${formatNum(n)} horas de Netflix` },
+        { icon: 'car',          label: 'Km en coche',             divisor: CO2_REF_KG.car_km,               detailFn: n => `${formatNum(n)} km en coche` },
+        { icon: 'fuel',         label: 'Litros de gasolina',      divisor: CO2_REF_KG.gasoline_litre,       detailFn: n => `${formatNum(n)} litros de gasolina quemada` },
+        { icon: 'tree-pine',    label: 'Árboles para compensar',  divisor: CO2_REF_KG.tree_year,            detailFn: n => `${formatNum(n)} árboles necesarios para absorber` },
+        { icon: 'plane',        label: 'Vuelos domésticos',       divisor: CO2_REF_KG.domestic_flight,      detailFn: n => `${formatNum(n)} vuelos nacionales` },
+        { icon: 'plane-takeoff',label: 'Vuelos transatlánticos',  divisor: CO2_REF_KG.transatlantic_flight, detailFn: n => `${formatNum(n)} vuelos NYC–Londres` },
+        { icon: 'car',          label: 'Años conduciendo',        divisor: CO2_REF_KG.car_year,             detailFn: n => `${n.toFixed(2)} años con coche medio` },
+        { icon: 'home',         label: 'Años de hogar medio',     divisor: CO2_REF_KG.household_year,       detailFn: n => `${n.toFixed(2)} años de consumo doméstico` },
+        { icon: 'globe',        label: 'Personas europeas/año',   divisor: CO2_REF_KG.european_year,        detailFn: n => `Equivale a ${n.toFixed(2)} europeos durante 1 año` },
     ];
 
     // Selecciona las 6 equivalencias más significativas para el volumen dado
@@ -4485,13 +4551,13 @@
                 interaction: { mode: 'index', intersect: false },
                 animation: { duration: 600 },
                 plugins: {
-                    legend: { display: true, labels: { color: '#94a3b1', font: { size: 12 }, usePointStyle: true, pointStyleWidth: 10 } },
+                    legend: { display: true, labels: { color: CT.tick, font: { size: 12 }, usePointStyle: true, pointStyleWidth: 10 } },
                     tooltip: {
-                        backgroundColor: 'rgba(10,20,15,0.92)',
-                        borderColor: 'rgba(74,222,128,0.25)',
+                        backgroundColor: CT.tooltipBg,
+                        borderColor: CT.tooltipBorder,
                         borderWidth: 1,
-                        titleColor: '#e8f0eb',
-                        bodyColor: '#94a3b1',
+                        titleColor: CT.text,
+                        bodyColor: CT.tick,
                         callbacks: {
                             label: c => ` ${c.dataset.label}: ${fmtU(c.parsed.y)} CO₂`,
                             afterBody: items => items.length >= 2 ? [`  Ahorro acumulado: ${fmtU(items[0].parsed.y - items[1].parsed.y)}`] : [],
@@ -4499,11 +4565,11 @@
                     },
                 },
                 scales: {
-                    x: { grid: { display: false }, ticks: { color: '#94a3b1', font: { size: 12 } } },
+                    x: { grid: { display: false }, ticks: { color: CT.tick, font: { size: 12 } } },
                     y: {
-                        grid: { color: 'rgba(255,255,255,0.12)' },
-                        ticks: { color: '#94a3b1', font: { size: 11 }, callback: v => v >= 1000 ? `${(v/1000).toFixed(1)}t` : v < 0.01 ? `${(v*1000).toFixed(0)}g` : `${v.toFixed(0)}kg` },
-                        title: { display: true, text: 'CO₂ acumulado', color: '#94a3b1', font: { size: 11 } },
+                        grid: { color: CT.grid },
+                        ticks: { color: CT.tick, font: { size: 11 }, callback: v => v >= 1000 ? `${(v/1000).toFixed(1)}t` : v < 0.01 ? `${(v*1000).toFixed(0)}g` : `${v.toFixed(0)}kg` },
+                        title: { display: true, text: 'CO₂ acumulado', color: CT.axisTitle, font: { size: 11 } },
                     },
                 },
             },
@@ -4557,22 +4623,22 @@
                 interaction: { mode: 'index', intersect: false },
                 animation: { duration: 600 },
                 plugins: {
-                    legend: { display: true, labels: { color: '#94a3b1', font: { size: 11 }, usePointStyle: true, pointStyleWidth: 8 } },
+                    legend: { display: true, labels: { color: CT.tick, font: { size: 11 }, usePointStyle: true, pointStyleWidth: 8 } },
                     tooltip: {
-                        backgroundColor: 'rgba(10,20,15,0.92)',
-                        borderColor: 'rgba(74,222,128,0.25)',
+                        backgroundColor: CT.tooltipBg,
+                        borderColor: CT.tooltipBorder,
                         borderWidth: 1,
-                        titleColor: '#e8f0eb',
-                        bodyColor: '#94a3b1',
+                        titleColor: CT.text,
+                        bodyColor: CT.tick,
                         callbacks: { label: c => ` ${c.dataset.label}: ${fmtU(c.parsed.y)} CO₂` },
                     },
                 },
                 scales: {
-                    x: { grid: { display: false }, ticks: { color: '#94a3b1', font: { size: 12 } } },
+                    x: { grid: { display: false }, ticks: { color: CT.tick, font: { size: 12 } } },
                     y: {
-                        grid: { color: 'rgba(255,255,255,0.12)' },
-                        ticks: { color: '#94a3b1', font: { size: 11 }, callback: v => v >= 1000 ? `${(v/1000).toFixed(1)}t` : v < 0.01 ? `${(v*1000).toFixed(0)}g` : `${v.toFixed(0)}kg` },
-                        title: { display: true, text: 'CO₂ acumulado', color: '#94a3b1', font: { size: 11 } },
+                        grid: { color: CT.grid },
+                        ticks: { color: CT.tick, font: { size: 11 }, callback: v => v >= 1000 ? `${(v/1000).toFixed(1)}t` : v < 0.01 ? `${(v*1000).toFixed(0)}g` : `${v.toFixed(0)}kg` },
+                        title: { display: true, text: 'CO₂ acumulado', color: CT.axisTitle, font: { size: 11 } },
                     },
                 },
             },
@@ -4752,12 +4818,12 @@
                         interaction: { mode: 'index', intersect: false },
                         animation: { duration: 500 },
                         plugins: {
-                            legend: { display: true, labels: { color: '#94a3b1', font: { size: 11 }, usePointStyle: true } },
-                            tooltip: { backgroundColor: 'rgba(10,20,15,0.92)', borderColor: 'rgba(74,222,128,0.25)', borderWidth: 1, titleColor: '#e8f0eb', bodyColor: '#94a3b1', callbacks: { label: c => ` ${c.dataset.label}: ${fmtUb(c.parsed.y)} CO₂` } },
+                            legend: { display: true, labels: { color: CT.tick, font: { size: 11 }, usePointStyle: true } },
+                            tooltip: { backgroundColor: CT.tooltipBg, borderColor: CT.tooltipBorder, borderWidth: 1, titleColor: CT.text, bodyColor: CT.tick, callbacks: { label: c => ` ${c.dataset.label}: ${fmtUb(c.parsed.y)} CO₂` } },
                         },
                         scales: {
-                            x: { grid: { display: false }, ticks: { color: '#94a3b1', font: { size: 10 }, maxTicksLimit: 8 } },
-                            y: { grid: { color: 'rgba(255,255,255,0.12)' }, ticks: { color: '#94a3b1', font: { size: 10 }, callback: v => fmtUb(v) }, title: { display: true, text: 'CO₂ acumulado', color: '#94a3b1', font: { size: 10 } } },
+                            x: { grid: { display: false }, ticks: { color: CT.tick, font: { size: 10 }, maxTicksLimit: 8 } },
+                            y: { grid: { color: CT.grid }, ticks: { color: CT.tick, font: { size: 10 }, callback: v => fmtUb(v) }, title: { display: true, text: 'CO₂ acumulado', color: CT.axisTitle, font: { size: 10 } } },
                         },
                     },
                 });
@@ -4825,11 +4891,11 @@
                     plugins: {
                         legend: { display: false },
                         tooltip: {
-                            backgroundColor: 'rgba(10,20,15,0.92)',
-                            borderColor: 'rgba(74,222,128,0.25)',
+                            backgroundColor: CT.tooltipBg,
+                            borderColor: CT.tooltipBorder,
                             borderWidth: 1,
-                            titleColor: '#e8f0eb',
-                            bodyColor: '#94a3b1',
+                            titleColor: CT.text,
+                            bodyColor: CT.tick,
                             callbacks: {
                                 label: c => {
                                     const s = strategies[c.dataIndex];
@@ -4840,13 +4906,13 @@
                     },
                     scales: {
                         x: {
-                            grid: { color: 'rgba(255,255,255,0.12)' },
-                            ticks: { color: '#94a3b1', font: { size: 11 }, callback: v => `${v}%` },
+                            grid: { color: CT.grid },
+                            ticks: { color: CT.tick, font: { size: 11 }, callback: v => `${v}%` },
                             max: 100,
                         },
                         y: {
                             grid: { display: false },
-                            ticks: { color: '#94a3b1', font: { size: 11 }, autoSkip: false },
+                            ticks: { color: CT.text, font: { size: 11 }, autoSkip: false },
                         },
                     },
                 },
@@ -4958,22 +5024,22 @@
                     maintainAspectRatio: false,
                     interaction: { mode: 'index', intersect: false },
                     plugins: {
-                        legend: { display: true, labels: { color: '#94a3b1', font: { size: 11 }, usePointStyle: true } },
+                        legend: { display: true, labels: { color: CT.tick, font: { size: 11 }, usePointStyle: true } },
                         tooltip: {
-                            backgroundColor: 'rgba(10,20,15,0.92)',
-                            borderColor: 'rgba(74,222,128,0.25)',
+                            backgroundColor: CT.tooltipBg,
+                            borderColor: CT.tooltipBorder,
                             borderWidth: 1,
-                            titleColor: '#e8f0eb',
-                            bodyColor: '#94a3b1',
+                            titleColor: CT.text,
+                            bodyColor: CT.tick,
                             callbacks: { label: c => ` ${c.dataset.label}: ${fmtU(c.parsed.y)} CO₂` },
                         },
                     },
                     scales: {
-                        x: { grid: { display: false }, ticks: { color: '#94a3b1', font: { size: 11 } } },
+                        x: { grid: { display: false }, ticks: { color: CT.tick, font: { size: 11 } } },
                         y: {
-                            grid: { color: 'rgba(255,255,255,0.12)' },
+                            grid: { color: CT.grid },
                             ticks: {
-                                color: '#94a3b1', font: { size: 10 },
+                                color: CT.tick, font: { size: 10 },
                                 callback: v => v >= 1000 ? `${(v/1000).toFixed(1)}t` : v < 0.01 ? `${(v*1000).toFixed(0)}g` : `${v.toFixed(0)}kg`,
                             },
                         },
@@ -5033,9 +5099,13 @@
     function renderSimulation(data, qpd) {
         // Actualizar estado con datos de la API
         if (data.production_impact && data.production_impact.emissions) {
-            const emitPerQuery = data.production_impact.emissions.g_co2_per_query || 0.00413;
-            const energyPerQuery = data.production_impact.energy?.kwh_per_query || 0.00000185;
-            SIM_STATE.co2_por_query = emitPerQuery / 1000;
+            // La API devuelve totales anuales (no valores por query): usar el resultado exacto
+            // del último cálculo (/api/calculate), que es el escenario que se está escalando.
+            const emitPerQuery = data.production_impact.emissions.g_co2_per_query
+                || LAST_RESULT?.emissions_gCO2?.total || 0.00413;                       // gCO₂/query
+            const energyPerQuery = data.production_impact.energy?.kwh_per_query
+                || (LAST_RESULT?.energy_Wh?.total != null ? LAST_RESULT.energy_Wh.total / 1000 : 0.00001); // kWh/query
+            SIM_STATE.co2_por_query = emitPerQuery;      // gCO₂/query (SIM_STATE trabaja en gramos)
             SIM_STATE.energia_por_query = energyPerQuery;
         }
         SIM_STATE.queries_dia = qpd;
@@ -5074,18 +5144,18 @@
 
     // Pool de referencias cotidianas con su CO₂ en kg
     const REFERENCIAS_CO2 = [
-        { label: '1 búsqueda Google',        value: 0.0002,  color: ['rgba(96,165,250,.65)','#60a5fa'] },
-        { label: '1 carga de móvil',         value: 0.005,   color: ['rgba(251,191,36,.65)','#fbbf24'] },
-        { label: '1 hora de streaming',      value: 0.036,   color: ['rgba(167,139,250,.65)','#a78bfa'] },
-        { label: '1 km en coche',            value: 0.12,    color: ['rgba(251,146,60,.65)','#fb923c'] },
-        { label: '1 litro de gasolina',      value: 2.3,     color: ['rgba(251,146,60,.65)','#fb923c'] },
-        { label: '1 árbol absorbe/año',      value: 21,      color: ['rgba(52,211,153,.65)','#34d399'] },
-        { label: '1 vuelo doméstico',        value: 150,     color: ['rgba(251,191,36,.65)','#fbbf24'] },
-        { label: '1 vuelo transatlántico',   value: 986,     color: ['rgba(251,191,36,.65)','#fbbf24'] },
-        { label: 'Límite París per cápita',  value: 2300,    color: ['rgba(248,113,113,.65)','#f87171'] },
-        { label: '1 coche medio/año',        value: 4600,    color: ['rgba(251,146,60,.65)','#fb923c'] },
-        { label: '1 hogar medio/año',        value: 7500,    color: ['rgba(167,139,250,.65)','#a78bfa'] },
-        { label: 'Europeo medio/año',        value: 8000,    color: ['rgba(167,139,250,.65)','#a78bfa'] },
+        { label: '1 búsqueda Google',        value: CO2_REF_KG.google_search,        color: ['rgba(96,165,250,.65)','#60a5fa'] },
+        { label: '1 carga de móvil',         value: CO2_REF_KG.phone_charge,         color: ['rgba(251,191,36,.65)','#fbbf24'] },
+        { label: '1 hora de streaming',      value: CO2_REF_KG.streaming_hour,       color: ['rgba(167,139,250,.65)','#a78bfa'] },
+        { label: '1 km en coche',            value: CO2_REF_KG.car_km,               color: ['rgba(251,146,60,.65)','#fb923c'] },
+        { label: '1 litro de gasolina',      value: CO2_REF_KG.gasoline_litre,       color: ['rgba(251,146,60,.65)','#fb923c'] },
+        { label: '1 árbol absorbe/año',      value: CO2_REF_KG.tree_year,            color: ['rgba(52,211,153,.65)','#34d399'] },
+        { label: '1 vuelo doméstico',        value: CO2_REF_KG.domestic_flight,      color: ['rgba(251,191,36,.65)','#fbbf24'] },
+        { label: '1 vuelo transatlántico',   value: CO2_REF_KG.transatlantic_flight, color: ['rgba(251,191,36,.65)','#fbbf24'] },
+        { label: 'Límite París per cápita',  value: CO2_REF_KG.paris_per_capita,     color: ['rgba(248,113,113,.65)','#f87171'] },
+        { label: '1 coche medio/año',        value: CO2_REF_KG.car_year,             color: ['rgba(251,146,60,.65)','#fb923c'] },
+        { label: '1 hogar medio/año',        value: CO2_REF_KG.household_year,       color: ['rgba(167,139,250,.65)','#a78bfa'] },
+        { label: 'Europeo medio/año',        value: CO2_REF_KG.european_year,        color: ['rgba(167,139,250,.65)','#a78bfa'] },
     ];
 
     // Selecciona las N referencias más adecuadas para un valor de CO₂
@@ -5129,12 +5199,6 @@
             const fmtKg = v => { if (v <= 0) return '0'; if (v >= 1000) return (v/1000).toFixed(2)+' t'; if (v >= 0.1) return v.toFixed(2)+' kg'; const g = v*1000; if (g >= 0.1) return g.toFixed(2)+' g'; const mg = g*1000; return mg >= 0.1 ? mg.toFixed(2)+' mg' : (mg*1000).toFixed(2)+' µg'; };
             const tickFmt = v => { if (v <= 0) return '0'; if (v >= 1000) return (v/1000).toFixed(1)+'t'; if (v >= 0.1) return v.toFixed(1)+'kg'; const g = v*1000; if (g >= 0.1) return g.toFixed(1)+'g'; const mg = g*1000; return mg >= 0.1 ? mg.toFixed(0)+'mg' : (mg*1000).toFixed(0)+'µg'; };
 
-            const _simLm = document.body.classList.contains('light-mode');
-            const _simTickX = _simLm ? '#1e3a28' : '#94a3b1';
-            const _simTitleX = _simLm ? '#14532d' : '#94a3b1';
-            const _simTickY = _simLm ? '#0f2714' : '#e8f0eb';
-            const _simGrid = _simLm ? 'rgba(0,0,0,.06)' : 'rgba(255,255,255,.12)';
-
             simImpactoChartInstance = new Chart(ctx, {
                 type: 'bar',
                 data: {
@@ -5148,21 +5212,21 @@
                     plugins: {
                         legend: { display: false },
                         tooltip: {
-                            backgroundColor: _simLm ? 'rgba(240,247,241,.97)' : 'rgba(10,20,15,.92)',
-                            borderColor: _simLm ? 'rgba(22,163,74,.3)' : 'rgba(74,222,128,.25)',
+                            backgroundColor: CT.tooltipBg,
+                            borderColor: CT.tooltipBorder,
                             borderWidth: 1,
-                            titleColor: _simLm ? '#0f2714' : '#e8f0eb',
-                            bodyColor: _simLm ? '#1e3a28' : '#94a3b1',
+                            titleColor: CT.text,
+                            bodyColor: CT.tick,
                             callbacks: { label: c => ` ${fmtKg(c.parsed.x)} CO₂/año` }
                         },
                     },
                     scales: {
                         x: {
-                            grid: { color: _simGrid },
-                            ticks: { color: _simTickX, font:{size:11}, callback: tickFmt, maxTicksLimit: 7 },
-                            title: { display: true, text: 'CO₂ / año', color: _simTitleX, font:{size:11} },
+                            grid: { color: CT.grid },
+                            ticks: { color: CT.tick, font:{size:11}, callback: tickFmt, maxTicksLimit: 7 },
+                            title: { display: true, text: 'CO₂ / año', color: CT.axisTitle, font:{size:11} },
                         },
-                        y: { grid: { display: false }, ticks: { color: _simTickY, font:{size:12}, autoSkip: false } },
+                        y: { grid: { display: false }, ticks: { color: CT.text, font:{size:12}, autoSkip: false } },
                     },
                 },
             });
@@ -5219,7 +5283,7 @@
                                     ${s.description || ""}
                                 </div>
                                 <div style="font-size:11px;color:#5a7a64;font-family:'JetBrains Mono',monospace;">
-                                    ${s.max_co2_g !== undefined ? "≤" + formatNum(s.max_co2_g) + "g" : ""}
+                                    ${s.max_co2_g != null ? "≤" + formatNum(s.max_co2_g) + "g" : (s.min_co2_g != null ? ">" + formatNum(s.min_co2_g) + "g" : "")}
                                 </div>
                             </div>
                         `).join("")}
@@ -5328,6 +5392,7 @@
     // Map (Tab 7) — Choropleth + Data Centers
     // ------------------------------------------------------------------
     let map = null;
+    let mapBaseLayer = null;  // tile layer, swapped on theme change
     let mapMarkers = [];  // refs to DC markers for popup updates
     let mapDCData = [];   // DC data for popup regeneration
 
@@ -5426,15 +5491,26 @@
         });
     }
 
+    function updateMapTheme() {
+        if (!map || !window.L) return;
+        const basemap = isLightMode() ? 'World_Light_Gray_Base' : 'World_Dark_Gray_Base';
+        if (mapBaseLayer && mapBaseLayer._carbonaiBasemap === basemap) return;
+        if (mapBaseLayer) map.removeLayer(mapBaseLayer);
+        mapBaseLayer = L.tileLayer(`https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/${basemap}/MapServer/tile/{z}/{y}/{x}`, {
+            attribution: 'Tiles &copy; <a href="https://www.esri.com/">Esri</a> &mdash; Esri, HERE, Garmin, &copy; OpenStreetMap contributors',
+            maxZoom: 16,
+        });
+        mapBaseLayer._carbonaiBasemap = basemap;
+        mapBaseLayer.addTo(map);
+        mapBaseLayer.bringToBack();
+    }
+
     async function createMap() {
         map = L.map("map", { zoomControl: true }).setView([25, 0], 2);
 
-        // CARTO dark basemap
-        L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
-            attribution: '&copy; <a href="https://openstreetmap.org">OSM</a> &copy; <a href="https://carto.com/">CARTO</a>',
-            maxZoom: 18,
-            subdomains: 'abcd',
-        }).addTo(map);
+        // Esri gray canvas basemap (no API key required; CARTO basemaps now watermark anonymous requests).
+        // Dark or light variant depending on the active theme (see updateMapTheme).
+        updateMapTheme();
 
         // Legend (rectangles for CI, dots for providers)
         const legendDiv = document.createElement('div');
