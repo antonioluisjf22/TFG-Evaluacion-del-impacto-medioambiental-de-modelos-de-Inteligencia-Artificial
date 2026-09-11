@@ -7,6 +7,18 @@
     "use strict";
 
     // ------------------------------------------------------------------
+    // i18n — see static/js/i18n.js. t() translates every UI string (Spanish
+    // source text is the key); LOCALE drives number/date formatting.
+    // ------------------------------------------------------------------
+    const I18N = window.CARBONAI_I18N || {
+        lang: "es", locale: LOCALE, thousands: ".", decimal: ",",
+        t: (k, v) => (v ? String(k).replace(/\{(\w+)\}/g, (m, x) => (x in v ? String(v[x]) : m)) : k),
+        tBackend: m => m,
+    };
+    const t = I18N.t;
+    const LOCALE = I18N.locale;
+
+    // ------------------------------------------------------------------
     // Estado global
     // ------------------------------------------------------------------
     let OPTIONS = {};
@@ -26,7 +38,7 @@
         if (!el) return;
         const CU = getCountUp();
         if (CU) {
-            const cu = new CU(el, end, { duration: duration || 2, decimalPlaces: decimals || 0, separator: '.', decimal: ',' });
+            const cu = new CU(el, end, { duration: duration || 2, decimalPlaces: decimals || 0, separator: I18N.thousands, decimal: I18N.decimal });
             cu.start();
         } else {
             el.textContent = typeof end === 'number' ? end.toFixed(decimals || 0) : end;
@@ -63,6 +75,7 @@
     function initChartDefaults() {
         if (!window.Chart) return;
         Chart.defaults.font.family = "'Inter', sans-serif";
+        Chart.defaults.locale = LOCALE;
         Chart.defaults.plugins.tooltip.borderWidth = 1;
         Chart.defaults.plugins.tooltip.cornerRadius = 8;
         Chart.defaults.plugins.tooltip.padding = 12;
@@ -149,7 +162,7 @@
                 if (displayDiv) displayDiv.textContent = pct;
                 const formulaDiv = document.getElementById("utilization-formula");
                 if (formulaDiv) {
-                    formulaDiv.innerHTML = `U = ${pct}% — Fórmula: P_real = P_idle + (P_max - P_idle) × <strong>${pct / 100}</strong>`;
+                    formulaDiv.innerHTML = t('U = {pct}% — Fórmula: P_real = P_idle + (P_max - P_idle) × <strong>{u}</strong>', { pct, u: pct / 100 });
                 }
             });
         }
@@ -165,7 +178,7 @@
         if (qInput) {
             qInput.addEventListener("input", () => {
                 const raw = qInput.value.replace(/\./g, '').replace(/[^\d]/g, '');
-                if (raw) qInput.value = parseInt(raw).toLocaleString('es-ES');
+                if (raw) qInput.value = parseInt(raw).toLocaleString(LOCALE);
             });
         }
 
@@ -306,7 +319,7 @@
     // ------------------------------------------------------------------
     function loadExample() {
         if (!OPTIONS.models || !OPTIONS.models.length) {
-            showError("Espera a que carguen los catálogos antes de cargar el ejemplo.");
+            showError(t("Espera a que carguen los catálogos antes de cargar el ejemplo."));
             return;
         }
 
@@ -349,7 +362,7 @@
         const btn = document.getElementById('btn-load-example');
         if (btn) {
             btn.classList.add('loaded');
-            btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Ejemplo cargado';
+            btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> ' + t('Ejemplo cargado');
             btn.disabled = true;
         }
     }
@@ -368,7 +381,7 @@
             if (btn) btn.classList.remove("shimmer");
         } catch (err) {
             console.error("Error cargando opciones:", err);
-            showError("No se pudieron cargar los catálogos. ¿Está el servidor activo?");
+            showError(t("No se pudieron cargar los catálogos. ¿Está el servidor activo?"));
         }
     }
 
@@ -383,7 +396,7 @@
                 `<strong>${formatParams(Number(m.num_parameters))} params</strong>`,
                 `${fmtVal(m.energy_wh_per_1k_tokens)} Wh/1k tokens`,
                 m.tokens_per_second ? `${fmtVal(m.tokens_per_second)} tok/s` : null,
-                m.context_window ? `Contexto: ${Number(m.context_window).toLocaleString("es-ES")} tokens` : null,
+                m.context_window ? t('Contexto: {n} tokens', { n: Number(m.context_window).toLocaleString(LOCALE) }) : null,
             ] : null);
         });
 
@@ -408,8 +421,8 @@
             const dc = (OPTIONS.data_centers || []).find(x => x.dc_id === e.target.value);
             showInfo("dc-info", dc ? [
                 `PUE: <strong>${fmtVal(dc.pue)}</strong>`,
-                `Proveedor: ${dc.provider_name || "?"}`,
-                `País: ${dc.country_code || "?"}`,
+                t('Proveedor: {p}', { p: dc.provider_name || "?" }),
+                t('País: {c}', { c: dc.country_code || "?" }),
             ] : null);
         });
 
@@ -471,7 +484,7 @@
         );
 
         fillSelect("user_country", OPTIONS.countries || [], item =>
-            `${countryName(item.code)} — ${item.carbon_intensity != null ? item.carbon_intensity + ' gCO₂/kWh' : 'N/D'}`,
+            `${countryName(item.code)} — ${item.carbon_intensity != null ? item.carbon_intensity + ' gCO₂/kWh' : t('N/D')}`,
             item => item.code, true
         );
 
@@ -491,7 +504,7 @@
         if (dev.inference_cpu_watts) parts.push(`CPU: ${fmtVal(dev.inference_cpu_watts)}W`);
         if (dev.inference_gpu_watts) parts.push(`GPU: ${fmtVal(dev.inference_gpu_watts)}W`);
         if (dev.inference_npu_watts) parts.push(`NPU: ${fmtVal(dev.inference_npu_watts)}W`);
-        if (dev.primary_inference_target) parts.push(`Primario: <strong>${dev.primary_inference_target.toUpperCase()}</strong>`);
+        if (dev.primary_inference_target) parts.push(t('Primario: <strong>{p}</strong>', { p: dev.primary_inference_target.toUpperCase() }));
         showInfo("device-info", parts.length ? parts : null);
         const target = procSel === "auto" ? (dev.primary_inference_target || "cpu") : procSel;
         const wattsMap = { cpu: dev.inference_cpu_watts, gpu: dev.inference_gpu_watts, npu: dev.inference_npu_watts };
@@ -501,8 +514,8 @@
         _resetProcSelectOptions();
         showInfo("proc-info", [
             isAuto
-                ? `Auto → <strong>${target.toUpperCase()}</strong> (${fmtVal(watts) || "?"}W, óptimo para este dispositivo)`
-                : `Usando <strong>${target.toUpperCase()}</strong>: ${fmtVal(watts) || "?"}W`,
+                ? t('Auto → <strong>{p}</strong> ({w}W, óptimo para este dispositivo)', { p: target.toUpperCase(), w: fmtVal(watts) || "?" })
+                : t('Usando <strong>{p}</strong>: {w}W', { p: target.toUpperCase(), w: fmtVal(watts) || "?" }),
         ]);
     }
 
@@ -553,27 +566,27 @@
         if (hintEl) {
             if (!primaryRaw) {
                 // Paso 4 aún no tiene procesador seleccionado
-                hintEl.innerHTML = `<span class="proc-hint-pending">↑ Selecciona el procesador principal en el Paso 4.</span>`;
+                hintEl.innerHTML = `<span class="proc-hint-pending">${t('↑ Selecciona el procesador principal en el Paso 4.')}</span>`;
                 hintEl.style.display = "block";
             } else {
                 // Paso 4 ya tiene procesador – el select queda oculto
-                hintEl.innerHTML = `<span class="proc-hint-ok">✓ Procesador definido en el Paso 4: <strong>${primary.toUpperCase()}</strong>. El modo «Auto» lo respetará.</span>`;
+                hintEl.innerHTML = `<span class="proc-hint-ok">${t('✓ Procesador definido en el Paso 4: <strong>{p}</strong>. El modo «Auto» lo respetará.', { p: primary.toUpperCase() })}</span>`;
                 hintEl.style.display = "block";
             }
         }
 
         if (procSel === "auto") {
             showInfo("proc-info", primary
-                ? [`Auto → <strong>${effective.toUpperCase()}</strong> (${watts ? fmtVal(watts) + "W" : "?W"}, procesador principal del dispositivo personalizado)`]
+                ? [t('Auto → <strong>{p}</strong> ({w}, procesador principal del dispositivo personalizado)', { p: effective.toUpperCase(), w: watts ? fmtVal(watts) + "W" : "?W" })]
                 : null
             );
         } else if (!available.includes(effective)) {
             showInfo("proc-info", [
-                `<span style="color:var(--secondary)">⚠ ${effective.toUpperCase()} no disponible: TDP = 0 W. Introduce los watios de ${effective.toUpperCase()} o selecciona otro procesador.</span>`,
+                `<span style="color:var(--secondary)">${t('⚠ {p} no disponible: TDP = 0 W. Introduce los watios de {p} o selecciona otro procesador.', { p: effective.toUpperCase() })}</span>`,
             ]);
         } else {
             showInfo("proc-info", [
-                `Usando <strong>${effective.toUpperCase()}</strong>: ${watts ? fmtVal(watts) + "W" : "?W"}`,
+                t('Usando <strong>{p}</strong>: {w}', { p: effective.toUpperCase(), w: watts ? fmtVal(watts) + "W" : "?W" }),
             ]);
         }
     }
@@ -600,8 +613,8 @@
         if (ctxEl) {
             const dailyG = co2 * 100; // ~100 queries/day typical user
             const yearlyKg = (dailyG * 365 / 1000);
-            ctxEl.innerHTML = `Con un uso típico de <strong>100 queries/día</strong>, supondría ~<strong>${yearlyKg.toFixed(2)} kg CO₂/año</strong>. `
-                + `Equivale a ${(yearlyKg / 0.21).toFixed(0)} km en coche o ${(yearlyKg * 5.7).toFixed(0)} horas de bombilla LED.`;
+            ctxEl.innerHTML = t('Con un uso típico de <strong>100 queries/día</strong>, supondría ~<strong>{kg} kg CO₂/año</strong>. Equivale a {km} km en coche o {h} horas de bombilla LED.',
+                { kg: yearlyKg.toFixed(2), km: (yearlyKg / 0.21).toFixed(0), h: (yearlyKg * 5.7).toFixed(0) });
         }
         panel.style.display = "block";
     }
@@ -622,14 +635,14 @@
             banner.style.display = "none";
             return;
         }
-        const items = fields.map(f => `<li>${f}</li>`).join("");
+        const items = fields.map(f => `<li>${I18N.tBackend(f)}</li>`).join("");
         banner.innerHTML = `
             <div class="estimated-banner-header">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-                <strong>Datos incompletos</strong> — Este cálculo incluye valores genéricos estimados que pueden diferir significativamente de la realidad.
+                ${t('<strong>Datos incompletos</strong> — Este cálculo incluye valores genéricos estimados que pueden diferir significativamente de la realidad.')}
             </div>
             <ul class="estimated-banner-list">${items}</ul>
-            <p class="estimated-banner-tip">Para mayor precisión, rellena estos campos en el panel personalizado del formulario.</p>
+            <p class="estimated-banner-tip">${t('Para mayor precisión, rellena estos campos en el panel personalizado del formulario.')}</p>
         `;
         banner.style.display = "block";
     }
@@ -644,7 +657,7 @@
             sel.appendChild(placeholder);
         } else {
             const opt = document.createElement("option");
-            opt.value = ""; opt.textContent = "— Selecciona —";
+            opt.value = ""; opt.textContent = t("— Selecciona —");
             sel.appendChild(opt);
         }
         items.forEach(item => {
@@ -676,7 +689,7 @@
             image_analysis: "Análisis de imagen",
             embedding: "Embedding",
         };
-        return names[id] || id;
+        return names[id] ? t(names[id]) : id;
     }
 
     function countryName(code) {
@@ -691,7 +704,7 @@
             US: "EEUU",
         };
         const prefix = code.split("-")[0];
-        const country = countries[prefix] || prefix;
+        const country = countries[prefix] ? t(countries[prefix]) : prefix;
         if (code === prefix) return country;
         return `${country} · ${code.substring(prefix.length + 1)}`;
     }
@@ -702,7 +715,7 @@
     async function doCalculate() {
         const btn = document.getElementById("btn-calculate");
         btn.disabled = true;
-        btn.innerHTML = '<svg class="spin" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10" stroke-dasharray="32" stroke-dashoffset="12"/></svg> Calculando…';
+        btn.innerHTML = '<svg class="spin" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10" stroke-dasharray="32" stroke-dashoffset="12"/></svg> ' + t('Calculando…');
 
         // Validación cruzada Paso 4 (dispositivo custom) ↔ Paso 5 (procesador)
         if (CUSTOM_ACTIVE.device) {
@@ -711,15 +724,15 @@
                 const gpuTdp = parseFloat(document.getElementById("custom_device_gpu_tdp_watts")?.value) || 0;
                 const npuTdp = parseFloat(document.getElementById("custom_device_npu_tdp_watts")?.value) || 0;
                 if (procSel === "gpu" && gpuTdp <= 0) {
-                    showError("GPU no disponible en el dispositivo personalizado: el campo «GPU TDP (W)» está a 0. Introduce los watios de GPU o cambia el procesador del Paso 5.");
+                    showError(t("GPU no disponible en el dispositivo personalizado: el campo «GPU TDP (W)» está a 0. Introduce los watios de GPU o cambia el procesador del Paso 5."));
                     btn.disabled = false;
-                    btn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 8 16 12 12 16"/><line x1="8" y1="12" x2="16" y2="12"/></svg> Calcular emisiones';
+                    btn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 8 16 12 12 16"/><line x1="8" y1="12" x2="16" y2="12"/></svg> ' + t('Calcular emisiones');
                     return;
                 }
                 if (procSel === "npu" && npuTdp <= 0) {
-                    showError("NPU no disponible en el dispositivo personalizado: el campo «NPU TDP (W)» está a 0. Introduce los watios de NPU o cambia el procesador del Paso 5.");
+                    showError(t("NPU no disponible en el dispositivo personalizado: el campo «NPU TDP (W)» está a 0. Introduce los watios de NPU o cambia el procesador del Paso 5."));
                     btn.disabled = false;
-                    btn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 8 16 12 12 16"/><line x1="8" y1="12" x2="16" y2="12"/></svg> Calcular emisiones';
+                    btn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 8 16 12 12 16"/><line x1="8" y1="12" x2="16" y2="12"/></svg> ' + t('Calcular emisiones');
                     return;
                 }
             }
@@ -736,7 +749,7 @@
             });
             if (!resp.ok) {
                 const err = await resp.json();
-                throw new Error(err.error || "Error en el cálculo");
+                throw new Error(err.error || t("Error en el cálculo"));
             }
             LAST_RESULT = await resp.json();
             renderResults(LAST_RESULT);
@@ -745,7 +758,7 @@
             showError(err.message);
         } finally {
             btn.disabled = false;
-            btn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 8 16 12 12 16"/><line x1="8" y1="12" x2="16" y2="12"/></svg> Calcular emisiones';
+            btn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 8 16 12 12 16"/><line x1="8" y1="12" x2="16" y2="12"/></svg> ' + t('Calcular emisiones');
         }
     }
 
@@ -828,7 +841,7 @@
         const ts = new Date();
 
         // Timestamp
-        const formattedDate = new Intl.DateTimeFormat('es-ES', {
+        const formattedDate = new Intl.DateTimeFormat(LOCALE, {
             day: 'numeric', month: 'short', year: 'numeric',
             hour: '2-digit', minute: '2-digit'
         }).format(ts);
@@ -836,9 +849,9 @@
         // Metrics with countup (3 boxes — no percentil)
         const metricsGrid = document.getElementById("results-metrics");
         metricsGrid.innerHTML = `
-            ${metricBox("leaf", "CO₂ Total", em.total, "gCO₂", "co2-counter")}
-            ${metricBox("zap", "Energía Total", en.total, "Wh", "energy-counter")}
-            ${metricBox("tag", "Etiqueta", null, labelInfo.label?.description || "", null, labelInfo.label?.label || "?")}
+            ${metricBox("leaf", t("CO₂ Total"), em.total, "gCO₂", "co2-counter")}
+            ${metricBox("zap", t("Energía Total"), en.total, "Wh", "energy-counter")}
+            ${metricBox("tag", t("Etiqueta"), null, t(labelInfo.label?.description || ""), null, labelInfo.label?.label || "?")}
         `;
 
         // Animate counters
@@ -853,9 +866,9 @@
         const breakdown = document.getElementById("results-breakdown");
         const total = em.total || 1;
         breakdown.innerHTML = `
-            ${breakdownCard("monitor", "Dispositivo", em.device, total)}
-            ${breakdownCard("wifi", "Red", em.network, total)}
-            ${breakdownCard("server", "Data Center", em.datacenter, total)}
+            ${breakdownCard("monitor", t("Dispositivo"), em.device, total)}
+            ${breakdownCard("wifi", t("Red"), em.network, total)}
+            ${breakdownCard("server", t("Data Center"), em.datacenter, total)}
         `;
 
         // Animate progress bars
@@ -967,12 +980,12 @@
         const queriesPerHouseholdDay = co2g > 0 ? (EQUIV.household_day_kg * 1000) / co2g : Infinity;
 
         const cards = [
-            { icon: "search", label: "Búsquedas Google", value: fmtEquiv(googleSearches), detail: `Equivale a ${fmtEquiv(googleSearches)} búsquedas en Google` },
-            { icon: "smartphone", label: "Carga de móvil", value: fmtEquiv(phonePct) + "%", detail: `${fmtEquiv(phonePct)}% de una carga completa` },
-            { icon: "lightbulb", label: "Bombilla LED (9W)", value: fmtEquiv(ledMinutes) + " min", detail: `${fmtEquiv(ledMinutes)} minutos encendida` },
-            { icon: "plane", label: "Vuelo NYC–Londres", value: fmtBigNum(queriesPerFlight) + " queries", detail: `Necesitarías ${fmtBigNum(queriesPerFlight)} queries para igualar 1 vuelo` },
-            { icon: "car", label: "1 km en coche", value: fmtBigNum(queriesPerCarKm) + " queries", detail: `${fmtBigNum(queriesPerCarKm)} queries = 1 km en coche` },
-            { icon: "home", label: "1 día de hogar", value: fmtBigNum(queriesPerHouseholdDay) + " queries", detail: `${fmtBigNum(queriesPerHouseholdDay)} queries = 1 día de consumo doméstico` },
+            { icon: "search", label: t("Búsquedas Google"), value: fmtEquiv(googleSearches), detail: t('Equivale a {n} búsquedas en Google', { n: fmtEquiv(googleSearches) }) },
+            { icon: "smartphone", label: t("Carga de móvil"), value: fmtEquiv(phonePct) + "%", detail: t('{n}% de una carga completa', { n: fmtEquiv(phonePct) }) },
+            { icon: "lightbulb", label: t("Bombilla LED (9W)"), value: fmtEquiv(ledMinutes) + " min", detail: t('{n} minutos encendida', { n: fmtEquiv(ledMinutes) }) },
+            { icon: "plane", label: t("Vuelo NYC–Londres"), value: fmtBigNum(queriesPerFlight) + " queries", detail: t('Necesitarías {n} queries para igualar 1 vuelo', { n: fmtBigNum(queriesPerFlight) }) },
+            { icon: "car", label: t("1 km en coche"), value: fmtBigNum(queriesPerCarKm) + " queries", detail: t('{n} queries = 1 km en coche', { n: fmtBigNum(queriesPerCarKm) }) },
+            { icon: "home", label: t("1 día de hogar"), value: fmtBigNum(queriesPerHouseholdDay) + " queries", detail: t('{n} queries = 1 día de consumo doméstico', { n: fmtBigNum(queriesPerHouseholdDay) }) },
         ];
 
         div.innerHTML = cards.map(c => `
@@ -989,7 +1002,7 @@
 
     function fmtEquiv(n) {
         if (!isFinite(n) || isNaN(n)) return "∞";
-        if (n >= 1000) return Math.round(n).toLocaleString("es-ES");
+        if (n >= 1000) return Math.round(n).toLocaleString(LOCALE);
         if (n >= 10) return n.toFixed(1);
         if (n >= 1) return n.toFixed(2);
         return n.toFixed(4);
@@ -1000,7 +1013,7 @@
         if (n >= 1e9) return (n / 1e9).toFixed(1) + "B";
         if (n >= 1e6) return (n / 1e6).toFixed(1) + "M";
         if (n >= 1e3) return (n / 1e3).toFixed(1) + "K";
-        return Math.round(n).toLocaleString("es-ES");
+        return Math.round(n).toLocaleString(LOCALE);
     }
 
     // ------------------------------------------------------------------
@@ -1010,7 +1023,7 @@
         const container = document.getElementById("results-formula");
         if (!container) return;
         const fs = data.formula_steps;
-        if (!fs) { container.innerHTML = '<p style="color:var(--text-muted);font-size:13px;">No hay datos de fórmula disponibles.</p>'; return; }
+        if (!fs) { container.innerHTML = `<p style="color:var(--text-muted);font-size:13px;">${t('No hay datos de fórmula disponibles.')}</p>`; return; }
 
         const d = fs.device || {};
         const n = fs.network || {};
@@ -1039,79 +1052,80 @@
         const procLabel = (d.processor || "cpu").toUpperCase();
         const isAuto = meta.device_processor === d.processor;
 
+        const carbonPerGb = fv(n.energy_kWh_per_gb * n.ci_gCO2_kWh / 1000, 6);
         const sections = [
             {
-                title: "Sección 2.1.1 — Emisiones del Dispositivo",
+                title: t("Sección 2.1.1 — Emisiones del Dispositivo"),
                 steps: [
                     {
-                        label: "Paso 1: Selección de procesador",
+                        label: t("Paso 1: Selección de procesador"),
                         lines: [
-                            `Procesador seleccionado: <span class="fs-highlight">${procLabel}</span>${isAuto ? ' <span class="fs-note">(óptimo para este dispositivo)</span>' : ''}`,
-                            `P<sub>idle</sub> (sistema en reposo) = ${hi(d.p_idle_w, "W")}`,
-                            `P<sub>max</sub> (inferencia ${procLabel}) = ${hi(d.p_max_w, "W")}`,
+                            `${t('Procesador seleccionado:')} <span class="fs-highlight">${procLabel}</span>${isAuto ? ` <span class="fs-note">${t('(óptimo para este dispositivo)')}</span>` : ''}`,
+                            `P<sub>idle</sub> (${t('sistema en reposo')}) = ${hi(d.p_idle_w, "W")}`,
+                            `P<sub>max</sub> (${t('inferencia')} ${procLabel}) = ${hi(d.p_max_w, "W")}`,
                         ]
                     },
                     {
-                        label: "Paso 2: Potencia real del dispositivo",
+                        label: t("Paso 2: Potencia real del dispositivo"),
                         formula: "P<sub>real</sub> = P<sub>idle</sub> + (P<sub>max</sub> − P<sub>idle</sub>) × U",
                         computed: `P<sub>real</sub> = ${fv(d.p_idle_w)} + (${fv(d.p_max_w)} − ${fv(d.p_idle_w)}) × ${fv(d.utilization, 2)} = ${hiRes(d.p_real_w, "W")}`
                     },
                     {
-                        label: "Paso 3: Energía del dispositivo",
-                        formula: "E<sub>disp</sub> = P<sub>real</sub> × t<sub>inferencia</sub> / 3600",
-                        computed: `E<sub>disp</sub> = ${fv(d.p_real_w)} × ${fv(d.inference_time_s, 3)} / 3600 = ${hiRes(d.energy_wh, "Wh")}`
+                        label: t("Paso 3: Energía del dispositivo"),
+                        formula: t("E<sub>disp</sub> = P<sub>real</sub> × t<sub>inferencia</sub> / 3600"),
+                        computed: t('E<sub>disp</sub> = {a} × {b} / 3600 = {r}', { a: fv(d.p_real_w), b: fv(d.inference_time_s, 3), r: hiRes(d.energy_wh, "Wh") })
                     },
                     {
-                        label: "Paso 4: CO₂ del dispositivo",
-                        formula: "CO₂<sub>disp</sub> = (E<sub>disp</sub> / 1000) × CI<sub>local</sub>",
-                        computed: `CO₂<sub>disp</sub> = (${fv(d.energy_wh)} / 1000) × ${fv(d.ci_gCO2_kWh, 0)} = ${hiRes(d.co2_g, "gCO₂")}`,
+                        label: t("Paso 4: CO₂ del dispositivo"),
+                        formula: t("CO₂<sub>disp</sub> = (E<sub>disp</sub> / 1000) × CI<sub>local</sub>"),
+                        computed: t('CO₂<sub>disp</sub> = ({a} / 1000) × {b} = {r}', { a: fv(d.energy_wh), b: fv(d.ci_gCO2_kWh, 0), r: hiRes(d.co2_g, "gCO₂") }),
                         note: `CI<sub>local</sub> = ${fv(d.ci_gCO2_kWh, 0)} gCO₂/kWh`
                     },
                 ]
             },
             {
-                title: "Sección 2.1.2 — Emisiones de la Red",
+                title: t("Sección 2.1.2 — Emisiones de la Red"),
                 steps: [
                     {
-                        label: "Paso 1: Datos transferidos",
-                        formula: "datos<sub>MB</sub> = (1200 + tokens × 5) / 1.000.000",
-                        computed: `datos<sub>MB</sub> = (1200 + ${n.tokens} × 5) / 1.000.000 = ${hiRes(n.data_mb, "MB")}`,
-                        note: "1200 bytes = overhead HTTP fijo &nbsp;|&nbsp; 5 bytes/token = payload UTF-8"
+                        label: t("Paso 1: Datos transferidos"),
+                        formula: t("datos<sub>MB</sub> = (1200 + tokens × 5) / 1.000.000"),
+                        computed: t('datos<sub>MB</sub> = (1200 + {tokens} × 5) / 1.000.000 = {r}', { tokens: n.tokens, r: hiRes(n.data_mb, "MB") }),
+                        note: t("1200 bytes = overhead HTTP fijo &nbsp;|&nbsp; 5 bytes/token = payload UTF-8")
                     },
                     {
-                        label: "Paso 2: Energía de la red",
-                        formula: "E<sub>red</sub> = energía<sub>kWh/MB</sub> × datos<sub>MB</sub> × 1000",
-                        computed: `E<sub>red</sub> = ${hi(n.energy_kWh_per_mb)} × ${fv(n.data_mb)} × 1000 = ${hiRes(n.energy_wh, "Wh")}`,
-                        note: `Red: ${meta.network} (${fv(n.energy_kWh_per_gb, 4)} kWh/GB)`
+                        label: t("Paso 2: Energía de la red"),
+                        formula: t("E<sub>red</sub> = energía<sub>kWh/MB</sub> × datos<sub>MB</sub> × 1000"),
+                        computed: t('E<sub>red</sub> = {a} × {b} × 1000 = {r}', { a: hi(n.energy_kWh_per_mb), b: fv(n.data_mb), r: hiRes(n.energy_wh, "Wh") }),
+                        note: t('Red: {net} ({e} kWh/GB)', { net: meta.network, e: fv(n.energy_kWh_per_gb, 4) })
                     },
                     {
-                        label: "Paso 3: CO₂ de la red",
-                        formula: "CO₂<sub>red</sub> = (energy<sub>kWh/GB</sub> × CI<sub>local</sub> / 1000) × datos<sub>GB</sub> × 1000",
-                        computed: `carbon/GB = ${fv(n.energy_kWh_per_gb)} × ${fv(n.ci_gCO2_kWh, 0)} / 1000 = ${fv(n.energy_kWh_per_gb * n.ci_gCO2_kWh / 1000, 6)} kg CO₂/GB<br>
-                                   CO₂<sub>red</sub> = ${fv(n.data_mb / 1000, 9)} GB × ${fv(n.energy_kWh_per_gb * n.ci_gCO2_kWh / 1000, 6)} × 1000 = ${hiRes(n.co2_g, "gCO₂")}`,
+                        label: t("Paso 3: CO₂ de la red"),
+                        formula: t("CO₂<sub>red</sub> = (energy<sub>kWh/GB</sub> × CI<sub>local</sub> / 1000) × datos<sub>GB</sub> × 1000"),
+                        computed: t('carbon/GB = {a} × {b} / 1000 = {c} kg CO₂/GB<br>CO₂<sub>red</sub> = {d} GB × {c} × 1000 = {r}',
+                            { a: fv(n.energy_kWh_per_gb), b: fv(n.ci_gCO2_kWh, 0), c: carbonPerGb, d: fv(n.data_mb / 1000, 9), r: hiRes(n.co2_g, "gCO₂") }),
                     },
                 ]
             },
             {
-                title: "Sección 2.2 — Emisiones del Data Center",
+                title: t("Sección 2.2 — Emisiones del Data Center"),
                 steps: [
                     {
-                        label: "Paso 1: Energía de cómputo (vía energy_wh_per_1k_tokens)",
+                        label: t("Paso 1: Energía de cómputo (vía energy_wh_per_1k_tokens)"),
                         formula: "E<sub>compute</sub> = (tokens / 1000) × energy<sub>wh_per_1k</sub>",
                         computed: `E<sub>compute</sub> = (${dc.tokens} / 1000) × ${hi(dc.model_wh_per_1k)} = ${hiRes(dc.energy_compute_wh, "Wh")}`,
-                        note: `Metodología: energy_wh_per_1k_tokens del modelo`
+                        note: t("Metodología: energy_wh_per_1k_tokens del modelo")
                     },
                     {
-                        label: "Paso 2: Energía total del Data Center (con PUE)",
+                        label: t("Paso 2: Energía total del Data Center (con PUE)"),
                         formula: "E<sub>dc</sub> = E<sub>compute</sub> × PUE",
                         computed: `E<sub>dc</sub> = ${fv(dc.energy_compute_wh)} × ${hi(dc.pue)} = ${hiRes(dc.energy_dc_wh, "Wh")}`,
-                        note: `PUE = ${fv(dc.pue)} (${meta.data_center}). PUE=1.0 sería perfecto.`
+                        note: t('PUE = {pue} ({dc}). PUE=1.0 sería perfecto.', { pue: fv(dc.pue), dc: meta.data_center })
                     },
                     {
-                        label: "Paso 3: CO₂ del Data Center",
+                        label: t("Paso 3: CO₂ del Data Center"),
                         formula: "CO₂<sub>dc</sub> = (E<sub>dc</sub> / 1000) × CI<sub>datacenter</sub>",
                         computed: `CO₂<sub>dc</sub> = (${fv(dc.energy_dc_wh)} / 1000) × ${hi(dc.ci_gCO2_kWh, 0)} = ${hiRes(dc.co2_g, "gCO₂")}`,
-                        note: `CI del data center = ${fv(dc.ci_gCO2_kWh, 0)} gCO₂/kWh`
+                        note: t('CI del data center = {ci} gCO₂/kWh', { ci: fv(dc.ci_gCO2_kWh, 0) })
                     },
                 ]
             }
@@ -1152,7 +1166,7 @@
         // Alternative model
         if (opts.models?.length > 1) {
             selectors.push({
-                id: "whatif-model", label: "Otro modelo", param: "model_id",
+                id: "whatif-model", label: t("Otro modelo"), param: "model_id",
                 icon: "cpu",
                 options: opts.models.map(m => ({ value: m.model_id, label: m.model_name || m.model_id })),
                 current: currentParams.model_id
@@ -1166,7 +1180,7 @@
             { value: "npu", label: "NPU" },
         ];
         selectors.push({
-            id: "whatif-proc", label: "Otro procesador", param: "inference_processor",
+            id: "whatif-proc", label: t("Otro procesador"), param: "inference_processor",
             icon: "cpu",
             options: procOptions,
             current: currentParams.inference_processor || "auto"
@@ -1175,7 +1189,7 @@
         // Alternative network
         if (opts.networks?.length > 1) {
             selectors.push({
-                id: "whatif-network", label: "Otra red", param: "network_id",
+                id: "whatif-network", label: t("Otra red"), param: "network_id",
                 icon: "wifi",
                 options: opts.networks.map(n => ({ value: n.network_type, label: n.network_type })),
                 current: currentParams.network_id
@@ -1185,7 +1199,7 @@
         // Alternative data center
         if (opts.data_centers?.length > 1) {
             selectors.push({
-                id: "whatif-dc", label: "Otro data center", param: "data_center_id",
+                id: "whatif-dc", label: t("Otro data center"), param: "data_center_id",
                 icon: "server",
                 options: opts.data_centers.map(d => ({ value: d.dc_id, label: `${d.provider_name} — ${d.region}` })),
                 current: currentParams.data_center_id
@@ -1196,7 +1210,7 @@
             <div class="whatif-control">
                 <label for="${s.id}"><i data-lucide="${s.icon}" style="width:14px;height:14px;"></i> ${s.label}</label>
                 <select id="${s.id}" class="whatif-select" data-param="${s.param}">
-                    <option value="">— Sin cambio —</option>
+                    <option value="">${t('— Sin cambio —')}</option>
                     ${s.options.map(o => `<option value="${o.value}" ${o.value === s.current ? 'disabled' : ''}>${o.label}</option>`).join("")}
                 </select>
             </div>
@@ -1205,7 +1219,7 @@
         // Show current baseline
         results.innerHTML = `
             <div class="whatif-baseline">
-                <div class="whatif-baseline-label">Resultado actual</div>
+                <div class="whatif-baseline-label">${t('Resultado actual')}</div>
                 <div class="whatif-baseline-value">${formatNum(data.emissions_gCO2?.total)} gCO₂</div>
             </div>
             <div id="whatif-scenarios"></div>
@@ -1242,7 +1256,7 @@
         });
 
         if (scenarios.length === 0) {
-            container.innerHTML = '<p style="text-align:center;color:var(--text-muted);font-size:13px;padding:20px;">Selecciona una alternativa arriba para comparar.</p>';
+            container.innerHTML = `<p style="text-align:center;color:var(--text-muted);font-size:13px;padding:20px;">${t('Selecciona una alternativa arriba para comparar.')}</p>`;
             return;
         }
 
@@ -1295,7 +1309,7 @@
             const isWorse = diff > 0.5;
             const badge = isBetter ? "badge-better" : isWorse ? "badge-worse" : "badge-neutral";
             const arrow = isBetter ? "↓" : isWorse ? "↑" : "≈";
-            const badgeText = isBetter ? `${arrow} ${Math.abs(diff).toFixed(1)}% menos` : isWorse ? `${arrow} ${Math.abs(diff).toFixed(1)}% más` : "≈ Similar";
+            const badgeText = isBetter ? t('{arrow} {pct}% menos', { arrow, pct: Math.abs(diff).toFixed(1) }) : isWorse ? t('{arrow} {pct}% más', { arrow, pct: Math.abs(diff).toFixed(1) }) : "≈ Similar";
 
             return `<div class="whatif-scenario-card ${isBetter ? 'better' : isWorse ? 'worse' : 'neutral'}">
                 <div class="whatif-scenario-header">
@@ -1347,7 +1361,7 @@
         pieChart = new Chart(pieCtx, {
             type: 'doughnut',
             data: {
-                labels: ['Dispositivo', 'Red', 'Data Center'],
+                labels: [t('Dispositivo'), t('Red'), t('Data Center')],
                 datasets: [{
                     data: [em.device, em.network, em.datacenter],
                     backgroundColor: ['#38bdf8', '#f97316', '#4ade80'],
@@ -1382,7 +1396,7 @@
         barChart = new Chart(barCtx, {
             type: 'bar',
             data: {
-                labels: ['Dispositivo', 'Red', 'Data Center'],
+                labels: [t('Dispositivo'), t('Red'), t('Data Center')],
                 datasets: [{
                     label: 'Wh',
                     data: [en.device, en.network, en.datacenter],
@@ -1439,21 +1453,21 @@
             const dcName = meta.data_center || '';
 
             const rows = [
-                { label: 'Dispositivo', energy: en.device, ci: ciLocal, co2: em.device, pct: (em.device / (em.total||1) * 100) },
-                { label: 'Red',         energy: en.network, ci: ciLocal, co2: em.network, pct: (em.network / (em.total||1) * 100) },
-                { label: 'Data Center', energy: en.datacenter, ci: ciDC, co2: em.datacenter, pct: (em.datacenter / (em.total||1) * 100) },
+                { label: t('Dispositivo'), energy: en.device, ci: ciLocal, co2: em.device, pct: (em.device / (em.total||1) * 100) },
+                { label: t('Red'),         energy: en.network, ci: ciLocal, co2: em.network, pct: (em.network / (em.total||1) * 100) },
+                { label: t('Data Center'), energy: en.datacenter, ci: ciDC, co2: em.datacenter, pct: (em.datacenter / (em.total||1) * 100) },
             ];
 
             detailCards.innerHTML = `
-                <div class="card-title"><i data-lucide="table-2"></i> Datos técnicos detallados</div>
+                <div class="card-title"><i data-lucide="table-2"></i> ${t('Datos técnicos detallados')}</div>
                 <div class="table-responsive">
                     <table class="data-table">
                         <thead><tr>
-                            <th>Componente</th>
-                            <th>Energía (Wh)</th>
+                            <th>${t('Componente')}</th>
+                            <th>${t('Energía (Wh)')}</th>
                             <th>CI (gCO₂/kWh)</th>
                             <th>CO₂ (gCO₂)</th>
-                            <th>% del Total</th>
+                            <th>${t('% del Total')}</th>
                         </tr></thead>
                         <tbody>
                             ${rows.map(r => `<tr>
@@ -1474,10 +1488,10 @@
                     </table>
                 </div>
                 <div class="dash-kpi-grid">
-                    ${dashKpi('CI local (' + (LAST_PARAMS?.user_country || 'ES') + ')', Math.round(ciLocal), 'gCO₂/kWh', 'zap')}
-                    ${dashKpi('CI Data Center', Math.round(ciDC), 'gCO₂/kWh', 'server')}
+                    ${dashKpi(t('CI local ({c})', { c: LAST_PARAMS?.user_country || 'ES' }), Math.round(ciLocal), 'gCO₂/kWh', 'zap')}
+                    ${dashKpi(t('CI Data Center'), Math.round(ciDC), 'gCO₂/kWh', 'server')}
                     ${dashKpi('PUE', pue.toFixed(4), dcName, 'activity')}
-                    ${dashKpi('Latencia total', latencyMs, 'ms (' + tokensOut + ' tokens output)', 'timer')}
+                    ${dashKpi(t('Latencia total'), latencyMs, t('ms ({n} tokens output)', { n: tokensOut }), 'timer')}
                 </div>
             `;
             if (window.lucide) setTimeout(() => lucide.createIcons(), 50);
@@ -1494,56 +1508,39 @@
 
             const gwAlert = isGW
                 ? `<div class="gw-alert gw-alert-warn">
-                    <strong>Posible greenwashing:</strong> El proveedor declara <strong>${claimPct}% renovables</strong> (vía PPAs y certificados),
-                    pero la red eléctrica real de la zona solo tiene <strong>${gridPct}% renovables</strong>.
-                    La diferencia de <strong>${gap} puntos porcentuales</strong> se cubre con certificados de energía renovable,
-                    no con energía verde real en la red.
+                    ${t('<strong>Posible greenwashing:</strong> El proveedor declara <strong>{claim}% renovables</strong> (vía PPAs y certificados), pero la red eléctrica real de la zona solo tiene <strong>{grid}% renovables</strong>. La diferencia de <strong>{gap} puntos porcentuales</strong> se cubre con certificados de energía renovable, no con energía verde real en la red.', { claim: claimPct, grid: gridPct, gap })}
                    </div>`
                 : gridPct != null
-                    ? `<div class="gw-alert gw-alert-ok">Los datos del proveedor son coherentes con el mix real de la red eléctrica.</div>`
+                    ? `<div class="gw-alert gw-alert-ok">${t('Los datos del proveedor son coherentes con el mix real de la red eléctrica.')}</div>`
                     : '';
 
             const barsHtml = hasBoth ? `
                 <div class="gw-bars">
-                    <div class="gw-bar-label">Renovables reales en la red <span class="gw-tag gw-tag-grid">(renewable_grid_pct)</span></div>
+                    <div class="gw-bar-label">${t('Renovables reales en la red')} <span class="gw-tag gw-tag-grid">(renewable_grid_pct)</span></div>
                     <div class="gw-bar-track"><div class="gw-bar-fill gw-bar-grid" style="width:${gridPct}%"></div></div>
                     <div class="gw-bar-pct">${gridPct}%</div>
-                    <div class="gw-bar-label" style="margin-top:10px">Declarado por proveedor <span class="gw-tag gw-tag-claim">(provider_renewable_pct)</span></div>
+                    <div class="gw-bar-label" style="margin-top:10px">${t('Declarado por proveedor')} <span class="gw-tag gw-tag-claim">(provider_renewable_pct)</span></div>
                     <div class="gw-bar-track"><div class="gw-bar-fill gw-bar-claim" style="width:${claimPct}%"></div></div>
                     <div class="gw-bar-pct gw-pct-claim">${claimPct}%</div>
-                </div>` : `<p class="gw-na">No hay datos de renovables disponibles para este data center.</p>`;
+                </div>` : `<p class="gw-na">${t('No hay datos de renovables disponibles para este data center.')}</p>`;
 
             gwDiv.innerHTML = `
-                <div class="card-title"><i data-lucide="leaf"></i> Renovables reales vs. declaradas — Greenwashing</div>
-                <p class="gw-intro">Diferencia entre el porcentaje de renovables en la red eléctrica real de la zona
-                    (<code>renewable_grid_pct</code>) y el porcentaje declarado por el proveedor mediante PPAs y certificados
-                    (<code>provider_renewable_pct</code>).</p>
+                <div class="card-title"><i data-lucide="leaf"></i> ${t('Renovables reales vs. declaradas — Greenwashing')}</div>
+                <p class="gw-intro">${t('Diferencia entre el porcentaje de renovables en la red eléctrica real de la zona (<code>renewable_grid_pct</code>) y el porcentaje declarado por el proveedor mediante PPAs y certificados (<code>provider_renewable_pct</code>).')}</p>
 
                 ${barsHtml}
                 ${gwAlert}
 
                 <details class="gw-explainer">
-                    <summary><strong>¿Qué es el greenwashing energético?</strong></summary>
+                    <summary><strong>${t('¿Qué es el greenwashing energético?')}</strong></summary>
                     <div class="gw-explainer-body">
-                        <p>El <strong>greenwashing energético</strong> ocurre cuando una empresa declara consumir más energía
-                        renovable de la que realmente existe en la red eléctrica que alimenta sus instalaciones.
-                        Esto se logra mediante tres mecanismos principales:</p>
+                        <p>${t('El <strong>greenwashing energético</strong> ocurre cuando una empresa declara consumir más energía renovable de la que realmente existe en la red eléctrica que alimenta sus instalaciones. Esto se logra mediante tres mecanismos principales:')}</p>
                         <ol>
-                            <li><strong>PPAs (Power Purchase Agreements):</strong> contratos a largo plazo con productores
-                            de energía renovable que permiten "reclamar" esa energía aunque físicamente fluya por la red
-                            general, no directamente hacia el data center.</li>
-                            <li><strong>RECs / GOs (Renewable Energy Certificates / Garantías de Origen):</strong> certificados
-                            negociables que acreditan que un MWh fue generado de forma renovable. Un proveedor compra estos
-                            certificados de otro país o región con más solar/eólica, sin que su mix local cambie en absoluto.</li>
-                            <li><strong>Additionality gap:</strong> la energía renovable contratada puede ser de instalaciones
-                            ya existentes, por lo que no supone nueva capacidad verde añadida a la red ni reduce las emisiones
-                            reales del sistema eléctrico.</li>
+                            <li>${t('<strong>PPAs (Power Purchase Agreements):</strong> contratos a largo plazo con productores de energía renovable que permiten "reclamar" esa energía aunque físicamente fluya por la red general, no directamente hacia el data center.')}</li>
+                            <li>${t('<strong>RECs / GOs (Renewable Energy Certificates / Garantías de Origen):</strong> certificados negociables que acreditan que un MWh fue generado de forma renovable. Un proveedor compra estos certificados de otro país o región con más solar/eólica, sin que su mix local cambie en absoluto.')}</li>
+                            <li>${t('<strong>Additionality gap:</strong> la energía renovable contratada puede ser de instalaciones ya existentes, por lo que no supone nueva capacidad verde añadida a la red ni reduce las emisiones reales del sistema eléctrico.')}</li>
                         </ol>
-                        <p>El indicador clave es la diferencia entre <code>renewable_grid_pct</code> (mix real de la red
-                        según Electricity Maps) y <code>provider_renewable_pct</code> (declarado en la web del proveedor).
-                        Una diferencia elevada no implica fraude, pero sí que <em>el carbono real emitido
-                        por la red</em> que alimenta al data center es mayor que el que se contabiliza en las
-                        declaraciones de sostenibilidad del proveedor.</p>
+                        <p>${t('El indicador clave es la diferencia entre <code>renewable_grid_pct</code> (mix real de la red según Electricity Maps) y <code>provider_renewable_pct</code> (declarado en la web del proveedor). Una diferencia elevada no implica fraude, pero sí que <em>el carbono real emitido por la red</em> que alimenta al data center es mayor que el que se contabiliza en las declaraciones de sostenibilidad del proveedor.')}</p>
                     </div>
                 </details>
             `;
@@ -1676,7 +1673,7 @@
         if (n >= 1e12) return (n / 1e12).toFixed(1) + 'T';
         if (n >= 1e9) return (n / 1e9).toFixed(0) + 'B';
         if (n >= 1e6) return (n / 1e6).toFixed(0) + 'M';
-        return n.toLocaleString('es-ES');
+        return n.toLocaleString(LOCALE);
     }
 
     // ── Flexible Pareto detection (multi-criteria) ──
@@ -1844,17 +1841,17 @@
 
         bar.innerHTML = `
             <div class="comp-config-chips">
-                <span class="comp-config-label">CONFIGURACIÓN ACTIVA</span>
+                <span class="comp-config-label">${t('CONFIGURACIÓN ACTIVA')}</span>
                 <span class="comp-chip"><strong>${formatRequestType(p.request_type || 'chat_simple')}</strong> ${p.tokens_input || '—'}+${p.tokens_output || '—'} tok</span>
-                <span class="comp-chip" title="Modelo seleccionado">${modelName}</span>
-                <span class="comp-chip" title="Data Center">${dcLabel}</span>
-                <span class="comp-chip" title="Dispositivo">${deviceName}</span>
-                <span class="comp-chip" title="Red">${p.network_id || '—'}</span>
-                <span class="comp-chip" title="País">${p.user_country || 'ES'}</span>
-                <span class="comp-chip" title="Procesador">${(p.inference_processor || 'auto').toUpperCase()}</span>
-                <span class="comp-chip" title="Utilización">${p.utilization != null ? Math.round(p.utilization * 100) + '%' : '70%'}</span>
+                <span class="comp-chip" title="${t('Modelo seleccionado')}">${modelName}</span>
+                <span class="comp-chip" title="${t('Data Center')}">${dcLabel}</span>
+                <span class="comp-chip" title="${t('Dispositivo')}">${deviceName}</span>
+                <span class="comp-chip" title="${t('Red')}">${p.network_id || '—'}</span>
+                <span class="comp-chip" title="${t('País')}">${p.user_country || 'ES'}</span>
+                <span class="comp-chip" title="${t('Procesador')}">${(p.inference_processor || 'auto').toUpperCase()}</span>
+                <span class="comp-chip" title="${t('Utilización')}">${p.utilization != null ? Math.round(p.utilization * 100) + '%' : '70%'}</span>
             </div>
-            <button class="comp-btn-pdf" id="btn-comp-pdf" title="Descargar informe PDF">
+            <button class="comp-btn-pdf" id="btn-comp-pdf" title="${t('Descargar informe PDF')}">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                 PDF
             </button>`;
@@ -1873,26 +1870,26 @@
 
         bar.innerHTML = `
             <div class="pcfg-group">
-                <span class="pcfg-label">CRITERIOS PARETO</span>
+                <span class="pcfg-label">${t('CRITERIOS PARETO')}</span>
                 <label class="pcfg-toggle"><input type="checkbox" id="pcrit-co2" ${PS.criteria.co2 ? 'checked' : ''}><span class="pcfg-check"></span> CO₂</label>
-                <label class="pcfg-toggle"><input type="checkbox" id="pcrit-speed" ${PS.criteria.speed ? 'checked' : ''}><span class="pcfg-check"></span> Velocidad</label>
-                <label class="pcfg-toggle"><input type="checkbox" id="pcrit-latency" ${PS.criteria.latency ? 'checked' : ''}><span class="pcfg-check"></span> Latencia</label>
-                <label class="pcfg-toggle"><input type="checkbox" id="pcrit-params" ${PS.criteria.params ? 'checked' : ''}><span class="pcfg-check"></span> Tamaño modelo</label>
-                <label class="pcfg-toggle"><input type="checkbox" id="pcrit-quality" ${PS.criteria.quality ? 'checked' : ''}><span class="pcfg-check"></span> Calidad</label>
+                <label class="pcfg-toggle"><input type="checkbox" id="pcrit-speed" ${PS.criteria.speed ? 'checked' : ''}><span class="pcfg-check"></span> ${t('Velocidad')}</label>
+                <label class="pcfg-toggle"><input type="checkbox" id="pcrit-latency" ${PS.criteria.latency ? 'checked' : ''}><span class="pcfg-check"></span> ${t('Latencia')}</label>
+                <label class="pcfg-toggle"><input type="checkbox" id="pcrit-params" ${PS.criteria.params ? 'checked' : ''}><span class="pcfg-check"></span> ${t('Tamaño modelo')}</label>
+                <label class="pcfg-toggle"><input type="checkbox" id="pcrit-quality" ${PS.criteria.quality ? 'checked' : ''}><span class="pcfg-check"></span> ${t('Calidad')}</label>
             </div>
             <div class="pcfg-group">
-                <span class="pcfg-label">ESCALA</span>
+                <span class="pcfg-label">${t('ESCALA')}</span>
                 <button class="pcfg-scale-btn ${PS.scaleLog ? 'active' : ''}" id="pcfg-log">Log</button>
                 <button class="pcfg-scale-btn ${!PS.scaleLog ? 'active' : ''}" id="pcfg-lin">Linear</button>
             </div>
             <div class="pcfg-group">
-                <span class="pcfg-label">REFERENCIA</span>
+                <span class="pcfg-label">${t('REFERENCIA')}</span>
                 <select class="pcfg-select" id="pcfg-ref">
-                    <option value="">— Ninguno —</option>
+                    <option value="">${t('— Ninguno —')}</option>
                     ${models.map(m => `<option value="${m.model}" ${m.model === currentModelName ? 'selected' : ''}>${m.model}</option>`).join('')}
                 </select>
             </div>
-            <button class="pcfg-wizard-btn" id="pcfg-wizard">🧭 ¿Qué modelo me conviene?</button>
+            <button class="pcfg-wizard-btn" id="pcfg-wizard">${t('🧭 ¿Qué modelo me conviene?')}</button>
         `;
 
         // Criteria toggles
@@ -1935,27 +1932,30 @@
         if (!el) return;
         const names = [];
         if (PS.criteria.co2) names.push('CO₂');
-        if (PS.criteria.speed) names.push('Velocidad');
-        if (PS.criteria.latency) names.push('Latencia');
-        if (PS.criteria.params) names.push('Tamaño modelo');
-        if (PS.criteria.quality) names.push('Calidad (MMLU)');
+        if (PS.criteria.speed) names.push(t('Velocidad'));
+        if (PS.criteria.latency) names.push(t('Latencia'));
+        if (PS.criteria.params) names.push(t('Tamaño modelo'));
+        if (PS.criteria.quality) names.push(t('Calidad (MMLU)'));
         const n = names.length;
         const criteriaHtml = n > 0
-            ? ` <span class="desc-dynamic"><strong>Criterios activos:</strong> ${names.join(', ')}. Un modelo ★ debe ser mejor en ${n === 1 ? 'ese criterio' : `esos ${n} criterios`} simultáneamente que cualquier otro. El tamaño del frente depende de los trade-offs reales del conjunto de datos.</span>`
+            ? ` <span class="desc-dynamic">${t('<strong>Criterios activos:</strong> {names}. Un modelo ★ debe ser mejor en {which} simultáneamente que cualquier otro. El tamaño del frente depende de los trade-offs reales del conjunto de datos.', { names: names.join(', '), which: n === 1 ? t('ese criterio') : t('esos {n} criterios', { n }) })}</span>`
             : '';
         const refHtml = PS.referenceModel
-            ? ` <span class="desc-dynamic desc-dynamic--ref"><strong>Referencia activa: ${PS.referenceModel}.</strong> Las flechas cian parten de ese modelo hacia cada Pareto-óptimo, mostrando qué alternativas lo mejoran objetivamente en los criterios seleccionados.</span>`
+            ? ` <span class="desc-dynamic desc-dynamic--ref">${t('<strong>Referencia activa: {ref}.</strong> Las flechas cian parten de ese modelo hacia cada Pareto-óptimo, mostrando qué alternativas lo mejoran objetivamente en los criterios seleccionados.', { ref: PS.referenceModel })}</span>`
             : '';
         const axesCriteria = PS.criteria.co2 && PS.criteria.speed;
         const extraCriteria = (PS.criteria.latency || PS.criteria.params) && !axesCriteria;
         const projNote = (!axesCriteria && (PS.criteria.co2 || PS.criteria.speed || PS.criteria.latency || PS.criteria.params))
-            ? ' <em>Nota: los criterios activos no coinciden con los ejes del gráfico; la frontera step-after no se dibuja, pero los modelos ★ son correctamente Pareto-óptimos en las dimensiones seleccionadas.</em>'
+            ? ' ' + t('<em>Nota: los criterios activos no coinciden con los ejes del gráfico; la frontera step-after no se dibuja, pero los modelos ★ son correctamente Pareto-óptimos en las dimensiones seleccionadas.</em>')
             : '';
         const noCriteria = !PS.criteria.co2 && !PS.criteria.speed && !PS.criteria.latency && !PS.criteria.params && !PS.criteria.quality;
         const noCriteriaNote = noCriteria
-            ? ' <em>Sin criterios activos, ningún modelo puede dominar a otro (no hay dimensiones de comparación), por lo que todos se consideran Pareto-óptimos. Activa al menos un criterio para obtener un frente significativo.</em>'
+            ? ' ' + t('<em>Sin criterios activos, ningún modelo puede dominar a otro (no hay dimensiones de comparación), por lo que todos se consideran Pareto-óptimos. Activa al menos un criterio para obtener un frente significativo.</em>')
             : '';
-        el.innerHTML = `Eje X: velocidad de inferencia (tokens/s). Eje Y: huella de CO₂ por consulta (gCO₂). El modelo ideal se sitúa abajo-derecha (rápido y limpio). Los modelos ★ son <strong>Pareto-óptimos</strong>: ningún otro modelo los supera simultáneamente en todos los criterios activos.${axesCriteria ? ' La zona sombreada en verde representa el <strong>frente de Pareto eficiente</strong>.' : ''} Arrastra sobre el gráfico para seleccionar múltiples modelos.${criteriaHtml}${projNote}${noCriteriaNote}${refHtml}`;
+        el.innerHTML = t('Eje X: velocidad de inferencia (tokens/s). Eje Y: huella de CO₂ por consulta (gCO₂). El modelo ideal se sitúa abajo-derecha (rápido y limpio). Los modelos ★ son <strong>Pareto-óptimos</strong>: ningún otro modelo los supera simultáneamente en todos los criterios activos.')
+            + (axesCriteria ? ' ' + t('La zona sombreada en verde representa el <strong>frente de Pareto eficiente</strong>.') : '')
+            + ' ' + t('Arrastra sobre el gráfico para seleccionar múltiples modelos.')
+            + `${criteriaHtml}${projNote}${noCriteriaNote}${refHtml}`;
     }
 
     function renderParetoScatter() {
@@ -2228,14 +2228,14 @@
             const ec = ENERGY_CLASSES[raw.label] || {};
             el.innerHTML = `
                 <div class="pt-name">${raw.model}${raw.isCustom ? ' ◆' : ''}</div>
-                <div class="pt-org">${raw.org || (raw.isCustom ? 'Modelo personalizado' : '')}</div>
+                <div class="pt-org">${raw.org || (raw.isCustom ? t('Modelo personalizado') : '')}</div>
                 <div class="pt-row"><span>CO₂/query</span><span class="pt-val" style="color:#00e676">${sciNotation(raw.co2)} gCO₂</span></div>
-                <div class="pt-row"><span>Velocidad</span><span class="pt-val">${raw.tps} tok/s</span></div>
-                ${raw.latency ? `<div class="pt-row"><span>Latencia</span><span class="pt-val">${raw.latency.toFixed(1)} ms/tok</span></div>` : ''}
-                ${raw.benchmark_score != null ? `<div class="pt-row"><span>${MODEL_QUALITY_SCORES[raw.model] != null ? 'MMLU' : 'MMLU estimado'}</span><span class="pt-val" style="color:#ffd600">${(raw.benchmark_score * 100).toFixed(1)}%</span></div>` : ''}
-                <div class="pt-row"><span>Clase</span><span class="pt-badge" style="color:${ec.color || '#999'}">${raw.label}</span></div>
-                ${raw.isPareto ? '<div class="pt-pareto">★ Pareto-óptimo</div>' : ''}
-                ${raw.isCustom ? '<div class="pt-pareto" style="color:#00e5ff">◆ Tu modelo</div>' : ''}
+                <div class="pt-row"><span>${t('Velocidad')}</span><span class="pt-val">${raw.tps} tok/s</span></div>
+                ${raw.latency ? `<div class="pt-row"><span>${t('Latencia')}</span><span class="pt-val">${raw.latency.toFixed(1)} ms/tok</span></div>` : ''}
+                ${raw.benchmark_score != null ? `<div class="pt-row"><span>${MODEL_QUALITY_SCORES[raw.model] != null ? 'MMLU' : t('MMLU estimado')}</span><span class="pt-val" style="color:#ffd600">${(raw.benchmark_score * 100).toFixed(1)}%</span></div>` : ''}
+                <div class="pt-row"><span>${t('Clase')}</span><span class="pt-badge" style="color:${ec.color || '#999'}">${raw.label}</span></div>
+                ${raw.isPareto ? `<div class="pt-pareto">${t('★ Pareto-óptimo')}</div>` : ''}
+                ${raw.isCustom ? `<div class="pt-pareto" style="color:#00e5ff">${t('◆ Tu modelo')}</div>` : ''}
                 <div class="pt-minibar"><div class="pt-minibar-fill" style="width:${Math.min(100, (raw.co2 / Math.max(...points.map(p => p.co2))) * 100)}%"></div></div>
             `;
             el.style.display = 'block';
@@ -2268,7 +2268,7 @@
             type: 'scatter',
             data: {
                 datasets: [{
-                    label: 'Modelos',
+                    label: t('Modelos'),
                     data: points,
                     backgroundColor: bgColors.map((c, i) => {
                         const a = alphas[i];
@@ -2305,7 +2305,7 @@
                 scales: {
                     x: {
                         type: PS.scaleLog ? 'logarithmic' : 'linear',
-                        title: { display: true, text: 'Velocidad (tokens/s)', color: CT.axisTitle, font: { size: 11 } },
+                        title: { display: true, text: t('Velocidad (tokens/s)'), color: CT.axisTitle, font: { size: 11 } },
                         grid: { color: CT.gridGreen },
                         ticks: { color: CT.tickGreen },
                     },
@@ -2385,7 +2385,7 @@
             if (selected.length > 0) {
                 PS.selectedModels = selected.slice(0, 4);
                 info.style.display = 'flex';
-                info.innerHTML = `<span class="lasso-label">Seleccionados (${selected.length}): </span>` +
+                info.innerHTML = `<span class="lasso-label">${t('Seleccionados ({n}): ', { n: selected.length })}</span>` +
                     selected.map(m => `<span class="lasso-chip">${m}</span>`).join('') +
                     `<button class="lasso-clear" id="lasso-clear">✕</button>`;
                 document.getElementById('lasso-clear')?.addEventListener('click', () => {
@@ -2445,8 +2445,8 @@
         });
 
         el.innerHTML = `
-            <div class="ptab-header">🏆 Dominancia Pareto</div>
-            <div class="ptab-desc">Modelos del frente de Pareto ordenados por proximidad al punto utópico ideal (mín CO₂ + máx velocidad).</div>
+            <div class="ptab-header">${t('🏆 Dominancia Pareto')}</div>
+            <div class="ptab-desc">${t('Modelos del frente de Pareto ordenados por proximidad al punto utópico ideal (mín CO₂ + máx velocidad).')}</div>
             <div class="ptab-list">
                 ${distances.map((d, i) => {
                     const lbl = d.row.environmental_label?.label || '?';
@@ -2458,10 +2458,10 @@
                             <div class="ptab-model">${d.row.model} <span class="ptab-label-badge" style="color:${ec.color || '#999'}">${lbl}</span></div>
                             <div class="ptab-meta">${d.row.organization || ''} · ${sciNotation(d.row.co2_gCO2)} gCO₂ · ${d.row.tokens_per_second || 0} tok/s</div>
                             <div class="ptab-bars">
-                                <span class="ptab-bar-label">Dist. utópica: ${d.dist.toFixed(3)}</span>
+                                <span class="ptab-bar-label">${t('Dist. utópica: {d}', { d: d.dist.toFixed(3) })}</span>
                                 <div class="ptab-bar"><div class="ptab-bar-fill" style="width:${(1 - d.dist) * 100}%;background:${ec.color || '#00e676'}"></div></div>
                             </div>
-                            <div class="ptab-dom">Domina a <strong>${domCounts[d.row.model] || 0}</strong> modelos</div>
+                            <div class="ptab-dom">${t('Domina a <strong>{n}</strong> modelos', { n: domCounts[d.row.model] || 0 })}</div>
                         </div>
                     </div>`;
                 }).join('')}
@@ -2484,28 +2484,28 @@
         const best = ranked[0];
 
         el.innerHTML = `
-            <div class="ptab-header">⚖️ Análisis TOPSIS</div>
-            <div class="ptab-desc">Ranking multicriterio — ajusta los pesos para recalcular en tiempo real.</div>
+            <div class="ptab-header">${t('⚖️ Análisis TOPSIS')}</div>
+            <div class="ptab-desc">${t('Ranking multicriterio — ajusta los pesos para recalcular en tiempo real.')}</div>
             <div class="topsis-sliders">
                 <div class="topsis-slider-group">
                     <label>CO₂ <span class="topsis-w" id="tw-co2">${Math.round(weights.co2 * 100)}%</span></label>
                     <input type="range" min="0" max="100" value="${Math.round(weights.co2 * 100)}" class="topsis-range" data-tw="co2">
                 </div>
                 <div class="topsis-slider-group">
-                    <label>Velocidad <span class="topsis-w" id="tw-speed">${Math.round(weights.speed * 100)}%</span></label>
+                    <label>${t('Velocidad')} <span class="topsis-w" id="tw-speed">${Math.round(weights.speed * 100)}%</span></label>
                     <input type="range" min="0" max="100" value="${Math.round(weights.speed * 100)}" class="topsis-range" data-tw="speed">
                 </div>
                 <div class="topsis-slider-group">
-                    <label>Latencia <span class="topsis-w" id="tw-latency">${Math.round(weights.latency * 100)}%</span></label>
+                    <label>${t('Latencia')} <span class="topsis-w" id="tw-latency">${Math.round(weights.latency * 100)}%</span></label>
                     <input type="range" min="0" max="100" value="${Math.round(weights.latency * 100)}" class="topsis-range" data-tw="latency">
                 </div>
                 <div class="topsis-slider-group">
-                    <label>Calidad <span class="topsis-w" id="tw-quality">${Math.round((weights.quality || 0) * 100)}%</span></label>
+                    <label>${t('Calidad')} <span class="topsis-w" id="tw-quality">${Math.round((weights.quality || 0) * 100)}%</span></label>
                     <input type="range" min="0" max="100" value="${Math.round((weights.quality || 0) * 100)}" class="topsis-range" data-tw="quality">
                 </div>
             </div>
             <div class="topsis-crown">
-                🥇 Óptimo bajo tus preferencias: <strong>${best?.model || '—'}</strong> (score: ${best?.score.toFixed(3) || '—'})
+                ${t('🥇 Óptimo bajo tus preferencias: <strong>{m}</strong> (score: {s})', { m: best?.model || '—', s: best?.score.toFixed(3) || '—' })}
             </div>
             <div class="topsis-ranking" id="topsis-ranking">
                 ${ranked.map((r, i) => {
@@ -2541,7 +2541,7 @@
                 const newRanked = PS.table.map((r, i) => ({ ...r, score: newScores[i] }))
                     .sort((a, b) => b.score - a.score);
                 const crown = el.querySelector('.topsis-crown');
-                if (crown) crown.innerHTML = `🥇 Óptimo bajo tus preferencias: <strong>${newRanked[0]?.model || '—'}</strong> (score: ${newRanked[0]?.score.toFixed(3) || '—'})`;
+                if (crown) crown.innerHTML = t('🥇 Óptimo bajo tus preferencias: <strong>{m}</strong> (score: {s})', { m: newRanked[0]?.model || '—', s: newRanked[0]?.score.toFixed(3) || '—' });
                 const ranking = document.getElementById('topsis-ranking');
                 if (ranking) {
                     ranking.innerHTML = newRanked.map((r, i) => {
@@ -2574,7 +2574,7 @@
 
         // Model checkboxes
         selectEl.innerHTML = `
-            <div class="radar-select-label">Selecciona 2–4 modelos:</div>
+            <div class="radar-select-label">${t('Selecciona 2–4 modelos:')}</div>
             <div class="radar-checks">
                 ${table.map(r => `
                     <label class="radar-check ${PS.selectedModels.includes(r.model) ? 'checked' : ''}">
@@ -2636,7 +2636,7 @@
             radarChart = new Chart(ctx, {
                 type: 'radar',
                 data: {
-                    labels: ['CO₂ Eficiencia', 'Velocidad', 'Latencia Efic.', 'Energía Efic.', 'Eficiencia Params', 'Calidad (MMLU)'],
+                    labels: [t('CO₂ Eficiencia'), t('Velocidad'), t('Latencia Efic.'), t('Energía Efic.'), t('Eficiencia Params'), t('Calidad (MMLU)')],
                     datasets: datasets,
                 },
                 options: {
@@ -2693,7 +2693,7 @@
 
         const cellClass = { dom: 'dm-dom', sub: 'dm-sub', trade: 'dm-trade', self: 'dm-self' };
         const cellChar = { dom: '▼', sub: '▲', trade: '↔', self: '·' };
-        const cellTitle = { dom: 'Domina', sub: 'Dominado', trade: 'Trade-off', self: '' };
+        const cellTitle = { dom: t('Domina'), sub: t('Dominado'), trade: 'Trade-off', self: '' };
 
         let html = `<table class="dominance-table"><thead><tr><th></th>`;
         table.forEach(r => { html += `<th class="dm-header" title="${r.model}">${r.model.substring(0, 8)}</th>`; });
@@ -2751,28 +2751,28 @@
         function renderStep() {
             const steps = [
                 {
-                    q: '¿Cuál es tu prioridad principal?',
-                    desc: 'Elige qué aspecto valoras más al seleccionar un modelo de IA.',
+                    q: t('¿Cuál es tu prioridad principal?'),
+                    desc: t('Elige qué aspecto valoras más al seleccionar un modelo de IA.'),
                     options: [
-                        { val: 'sustainability', icon: '🌿', label: 'Sostenibilidad', desc: 'Minimizar emisiones de CO₂' },
-                        { val: 'speed', icon: '⚡', label: 'Velocidad', desc: 'Máxima rapidez de inferencia' },
-                        { val: 'balance', icon: '⚖️', label: 'Balance', desc: 'Compromiso entre ambos' },
+                        { val: 'sustainability', icon: '🌿', label: t('Sostenibilidad'), desc: t('Minimizar emisiones de CO₂') },
+                        { val: 'speed', icon: '⚡', label: t('Velocidad'), desc: t('Máxima rapidez de inferencia') },
+                        { val: 'balance', icon: '⚖️', label: 'Balance', desc: t('Compromiso entre ambos') },
                     ]
                 },
                 {
-                    q: '¿Necesitas baja latencia?',
-                    desc: 'Algunas aplicaciones (chatbots en tiempo real, APIs) requieren baja latencia.',
+                    q: t('¿Necesitas baja latencia?'),
+                    desc: t('Algunas aplicaciones (chatbots en tiempo real, APIs) requieren baja latencia.'),
                     options: [
-                        { val: 'yes', icon: '🏎️', label: 'Sí, es crítica', desc: '< 20ms por token' },
-                        { val: 'no', icon: '🐢', label: 'No es prioritaria', desc: 'Puedo tolerar latencia alta' },
+                        { val: 'yes', icon: '🏎️', label: t('Sí, es crítica'), desc: t('< 20ms por token') },
+                        { val: 'no', icon: '🐢', label: t('No es prioritaria'), desc: t('Puedo tolerar latencia alta') },
                     ]
                 },
                 {
-                    q: '¿Prefiere modelos con más parámetros?',
-                    desc: 'Modelos más grandes suelen ser más capaces, pero más costosos.',
+                    q: t('¿Prefiere modelos con más parámetros?'),
+                    desc: t('Modelos más grandes suelen ser más capaces, pero más costosos.'),
                     options: [
-                        { val: 'large', icon: '🧠', label: 'Sí, mayor capacidad', desc: 'Modelos >100B parámetros' },
-                        { val: 'small', icon: '💡', label: 'No, eficiencia primero', desc: 'Modelos compactos y eficientes' },
+                        { val: 'large', icon: '🧠', label: t('Sí, mayor capacidad'), desc: t('Modelos >100B parámetros') },
+                        { val: 'small', icon: '💡', label: t('No, eficiencia primero'), desc: t('Modelos compactos y eficientes') },
                     ]
                 }
             ];
@@ -2782,7 +2782,7 @@
                 content.innerHTML = `
                     <div class="wizard-step">
                         <div class="wizard-progress"><div class="wizard-progress-fill" style="width:${((step + 1) / 3) * 100}%"></div></div>
-                        <div class="wizard-step-num">Paso ${step + 1} de 3</div>
+                        <div class="wizard-step-num">${t('Paso {n} de 3', { n: step + 1 })}</div>
                         <h3 class="wizard-question">${s.q}</h3>
                         <p class="wizard-desc">${s.desc}</p>
                         <div class="wizard-options">
@@ -2825,20 +2825,20 @@
                     <div class="wizard-result">
                         <div class="wizard-progress"><div class="wizard-progress-fill" style="width:100%"></div></div>
                         <div class="wizard-crown">🏆</div>
-                        <h3 class="wizard-rec-title">Tu modelo recomendado</h3>
+                        <h3 class="wizard-rec-title">${t('Tu modelo recomendado')}</h3>
                         <div class="wizard-rec-model">${rec?.model || '—'}</div>
                         <div class="wizard-rec-org">${rec?.organization || ''}</div>
                         <div class="wizard-rec-stats">
                             <div class="wizard-stat"><span class="wizard-stat-val" style="color:#00e676">${sciNotation(rec?.co2_gCO2)}</span><span class="wizard-stat-label">gCO₂/query</span></div>
                             <div class="wizard-stat"><span class="wizard-stat-val" style="color:#00e5ff">${rec?.tokens_per_second || '—'}</span><span class="wizard-stat-label">tok/s</span></div>
-                            <div class="wizard-stat"><span class="wizard-stat-val" style="color:${ec.color || '#ffd600'}">${rec?.environmental_label?.label || '?'}</span><span class="wizard-stat-label">Clase</span></div>
+                            <div class="wizard-stat"><span class="wizard-stat-val" style="color:${ec.color || '#ffd600'}">${rec?.environmental_label?.label || '?'}</span><span class="wizard-stat-label">${t('Clase')}</span></div>
                         </div>
-                        <p class="wizard-rec-reason">Basado en tus preferencias: ${
-                            answers.priority === 'sustainability' ? 'prioridad en sostenibilidad' :
-                            answers.priority === 'speed' ? 'prioridad en velocidad' : 'balance equilibrado'
-                        }${answers.speed === 'yes' ? ', baja latencia requerida' : ''}${answers.budget === 'small' ? ', modelos eficientes preferidos' : ''}.</p>
-                        <div class="wizard-weights">Pesos TOPSIS: CO₂ ${Math.round(w.co2 * 100)}% · Velocidad ${Math.round(w.speed * 100)}% · Latencia ${Math.round(w.latency * 100)}%</div>
-                        <button class="wizard-restart" id="wizard-restart">Volver a empezar</button>
+                        <p class="wizard-rec-reason">${t('Basado en tus preferencias: {r}.', { r:
+                            (answers.priority === 'sustainability' ? t('prioridad en sostenibilidad') :
+                             answers.priority === 'speed' ? t('prioridad en velocidad') : t('balance equilibrado'))
+                            + (answers.speed === 'yes' ? t(', baja latencia requerida') : '') + (answers.budget === 'small' ? t(', modelos eficientes preferidos') : '') })}</p>
+                        <div class="wizard-weights">${t('Pesos TOPSIS: CO₂ {a}% · Velocidad {b}% · Latencia {c}%', { a: Math.round(w.co2 * 100), b: Math.round(w.speed * 100), c: Math.round(w.latency * 100) })}</div>
+                        <button class="wizard-restart" id="wizard-restart">${t('Volver a empezar')}</button>
                     </div>
                 `;
                 // Highlight in scatter
@@ -2885,7 +2885,7 @@
 
             return `<tr${isActive ? ' style="background:rgba(0,229,255,.04)"' : ''}>
                 <td style="font-weight:600;color:var(--text-primary);white-space:nowrap">
-                    ${r.model}${isActive ? ' <span class="comp-actual-badge">ACTUAL</span>' : ''}
+                    ${r.model}${isActive ? ` <span class="comp-actual-badge">${t('ACTUAL')}</span>` : ''}
                     ${r.environmental_label?.label?.includes('Pareto') ? ' ★' : ''}
                 </td>
                 <td style="color:var(--text-muted);font-size:12px">${r.organization || ''}</td>
@@ -2903,14 +2903,14 @@
         tableDiv.innerHTML = `
             <table id="detailed-comp-table">
                 <thead><tr>
-                    <th data-sort="model">Modelo ${arrowSvg}</th>
+                    <th data-sort="model">${t('Modelo')} ${arrowSvg}</th>
                     <th data-sort="organization">Org. ${arrowSvg}</th>
                     <th data-sort="co2_gCO2">CO₂/query (gCO₂) ${arrowSvg}</th>
-                    <th>Emisión relativa</th>
-                    <th data-sort="savings">Ahorro vs actual ${arrowSvg}</th>
+                    <th>${t('Emisión relativa')}</th>
+                    <th data-sort="savings">${t('Ahorro vs actual')} ${arrowSvg}</th>
                     <th data-sort="tokens_per_second">Tokens/s ${arrowSvg}</th>
-                    <th data-sort="latency">Latencia ${arrowSvg}</th>
-                    <th data-sort="label">Etiqueta ${arrowSvg}</th>
+                    <th data-sort="latency">${t('Latencia')} ${arrowSvg}</th>
+                    <th data-sort="label">${t('Etiqueta')} ${arrowSvg}</th>
                 </tr></thead>
                 <tbody>${renderRows(sorted)}</tbody>
             </table>
@@ -2992,8 +2992,8 @@
                                 const r = sorted[item.dataIndex];
                                 return [
                                     `Tokens/s: ${r.tokens_per_second || '—'}`,
-                                    r.latency_ms_per_token ? `Latencia: ${r.latency_ms_per_token.toFixed(1)} ms/tok` : '',
-                                    r.model === currentModelName ? '← Modelo seleccionado' : '',
+                                    r.latency_ms_per_token ? t('Latencia: {x} ms/tok', { x: r.latency_ms_per_token.toFixed(1) }) : '',
+                                    r.model === currentModelName ? t('← Modelo seleccionado') : '',
                                 ].filter(Boolean);
                             }
                         }
@@ -3004,7 +3004,7 @@
                         type: 'logarithmic',
                         grid: { color: CT.grid },
                         ticks: { color: CT.tick, callback: (v) => formatNum(v) },
-                        title: { display: true, text: 'CO₂ total (gCO₂/query)', color: CT.axisTitle }
+                        title: { display: true, text: t('CO₂ total (gCO₂/query)'), color: CT.axisTitle }
                     },
                     x: {
                         grid: { display: false },
@@ -3036,7 +3036,7 @@
                         c.textAlign = 'center';
                         // Label above bar + ACTUAL tag for selected model
                         if (isCurrent) {
-                            c.fillText('ACTUAL', bar.x, bar.y - 28);
+                            c.fillText(t('ACTUAL'), bar.x, bar.y - 28);
                             c.fillText(lbl, bar.x, bar.y - 14);
                         } else {
                             c.fillText(lbl, bar.x, bar.y - 8);
@@ -3052,7 +3052,7 @@
     // PDF export — Professional Consultancy Report using jsPDF
     // ──────────────────────────────────────────────────────────────────
     function exportComparatorPDF() {
-        if (!window.jspdf) { showError('jsPDF no está cargado todavía, inténtalo de nuevo.'); return; }
+        if (!window.jspdf) { showError(t('jsPDF no está cargado todavía, inténtalo de nuevo.')); return; }
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
         const W = 210, H = 297;
@@ -3161,7 +3161,7 @@
             const cells = Array.from(row.querySelectorAll('td'));
             if (cells.length >= 7) {
                 summaryData.push({
-                    model:   cells[0].textContent.replace('ACTUAL', '').trim(),
+                    model:   cells[0].textContent.replace(t('ACTUAL'), '').trim(),
                     org:     cells[1].textContent.trim(),
                     co2:     cells[2].textContent.trim(),
                     savings: cells[4].textContent.trim(),
@@ -3188,7 +3188,7 @@
 
         const now       = new Date();
         const dateStr   = now.toISOString().slice(0, 10);
-        const dateHuman = now.toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+        const dateHuman = now.toLocaleDateString(LOCALE, { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 
         // ═══════════════════════════════════════════════════════════════
         // PAGE 1 — COVER
@@ -3205,13 +3205,13 @@
         fc(C.accentTeal); doc.rect(0, 0, 5, BANNER_H, 'F');
 
         doc.setFont('helvetica', 'bold'); doc.setFontSize(22); tc(C.white);
-        doc.text('Informe Comparativo de Modelos de IA', ML + 2, 24);
+        doc.text(t('Informe Comparativo de Modelos de IA'), ML + 2, 24);
         doc.setFont('helvetica', 'normal'); doc.setFontSize(12); tc([147, 197, 253]);
-        doc.text('Evaluacion del impacto medioambiental en inferencia', ML + 2, 35);
+        doc.text(t('Evaluacion del impacto medioambiental en inferencia'), ML + 2, 35);
         dc([147, 197, 253]); doc.setLineWidth(0.6); doc.line(ML + 2, 40, W - MR, 40);
         doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5); tc([186, 215, 254]);
-        doc.text('CarbonAI  |  Calculadora de Carbono para IA  |  ' + dateHuman, ML + 2, 50);
-        doc.text('Antonio Luis Jimenez de la Fuente  |  Universidad de Sevilla', ML + 2, 58);
+        doc.text(t('CarbonAI  |  Calculadora de Carbono para IA  |  ') + dateHuman, ML + 2, 50);
+        doc.text(t('Antonio Luis Jimenez de la Fuente  |  Universidad de Sevilla'), ML + 2, 58);
 
         let y = BANNER_H + 14;
 
@@ -3219,23 +3219,23 @@
         fc(C.bgLight); doc.rect(ML, y, CW, 24, 'F');
         dc(C.separator); doc.setLineWidth(0.2); doc.rect(ML, y, CW, 24, 'S');
         doc.setFont('helvetica', 'bold');   doc.setFontSize(7.5); tc(C.accentBlue);
-        doc.text('PREPARADO POR', ML + 5, y + 7);
+        doc.text(t('PREPARADO POR'), ML + 5, y + 7);
         doc.setFont('helvetica', 'bold');   doc.setFontSize(11); tc(C.navy);
         doc.text('Antonio Luis Jimenez de la Fuente', ML + 5, y + 14);
         doc.setFont('helvetica', 'normal'); doc.setFontSize(9);  tc(C.textSub);
-        doc.text('TFG - Evaluacion del impacto medioambiental de modelos de Inteligencia Artificial', ML + 5, y + 20);
+        doc.text(t('TFG - Evaluacion del impacto medioambiental de modelos de Inteligencia Artificial'), ML + 5, y + 20);
 
         y += 32;
 
         // Executive summary box
         const sumLines = [
-            { label: 'Modelos analizados:',      val: String(summaryData.length) },
-            { label: 'Modelo mas eficiente:',    val: bestModel  ? `${bestModel.model}  (Clase ${bestModel.label})` : '-' },
-            { label: 'Modelo menos eficiente:',  val: worstModel ? `${worstModel.model}  (Clase ${worstModel.label})` : '-' },
-            { label: 'Diferencia maxima:',        val: spreadPct !== '-' ? `${spreadPct}% mas emisiones (peor vs mejor)` : '-' },
-            { label: 'Modelo de referencia:',    val: `${currentModelName}  (posicion ${currentRank} de ${summaryData.length})` },
-            { label: 'Emisiones referencia:',    val: currentCO2 > 0 ? `${currentCO2.toFixed(4)} gCO2/query` : '-' },
-            { label: 'Media del conjunto:',      val: avgCO2val > 0 ? `${avgCO2val.toFixed(4)} gCO2/query` : '-' },
+            { label: t('Modelos analizados:'),      val: String(summaryData.length) },
+            { label: t('Modelo mas eficiente:'),    val: bestModel  ? t('{m}  (Clase {l})', { m: bestModel.model, l: bestModel.label }) : '-' },
+            { label: t('Modelo menos eficiente:'),  val: worstModel ? t('{m}  (Clase {l})', { m: worstModel.model, l: worstModel.label }) : '-' },
+            { label: t('Diferencia maxima:'),        val: spreadPct !== '-' ? t('{p}% mas emisiones (peor vs mejor)', { p: spreadPct }) : '-' },
+            { label: t('Modelo de referencia:'),    val: t('{m}  (posicion {r} de {n})', { m: currentModelName, r: currentRank, n: summaryData.length }) },
+            { label: t('Emisiones referencia:'),    val: currentCO2 > 0 ? `${currentCO2.toFixed(4)} gCO2/query` : '-' },
+            { label: t('Media del conjunto:'),      val: avgCO2val > 0 ? `${avgCO2val.toFixed(4)} gCO2/query` : '-' },
         ];
         const LINE_H = 6.8;
         const BOX_H  = 13 + sumLines.length * LINE_H;
@@ -3243,7 +3243,7 @@
         fc(C.navyMid);  doc.rect(ML, y, 4, BOX_H, 'F');
         dc(C.separator); doc.setLineWidth(0.2); doc.rect(ML, y, CW, BOX_H, 'S');
         doc.setFont('helvetica', 'bold'); doc.setFontSize(8); tc(C.accentBlue);
-        doc.text('RESUMEN EJECUTIVO', ML + 8, y + 7);
+        doc.text(t('RESUMEN EJECUTIVO'), ML + 8, y + 7);
         let by = y + 7 + LINE_H;
         sumLines.forEach(sl => {
             doc.setFont('helvetica', 'bold');   doc.setFontSize(8.5); tc(C.navy);    doc.text(sl.label, ML + 8, by);
@@ -3254,8 +3254,7 @@
 
         // Scope note at bottom of cover
         doc.setFont('helvetica', 'italic'); doc.setFontSize(8); tc(C.textLight);
-        const scopeNote = 'ALCANCE: Este informe cubre exclusivamente las emisiones de CO2 en la fase de inferencia de los modelos. ' +
-            'No incluye emisiones de entrenamiento, fabricacion de hardware ni ciclo de vida completo.';
+        const scopeNote = t('ALCANCE: Este informe cubre exclusivamente las emisiones de CO2 en la fase de inferencia de los modelos. No incluye emisiones de entrenamiento, fabricacion de hardware ni ciclo de vida completo.');
         const scopeLines = doc.splitTextToSize(scopeNote, CW);
         doc.text(scopeLines, ML, y);
 
@@ -3264,27 +3263,27 @@
         // ═══════════════════════════════════════════════════════════════
         doc.addPage(); whitePage();
         y = 22;
-        y = sectionHeader('1. Configuracion del escenario de evaluacion', y);
+        y = sectionHeader(t('1. Configuracion del escenario de evaluacion'), y);
         y += 2;
         y = bodyText(
-            'Los parametros de la siguiente tabla definen el escenario de inferencia fijo bajo el cual se han calculado las emisiones de todos los modelos comparados. Estos valores permanecen constantes entre modelos, de modo que la unica variable es el consumo energetico propio de cada modelo (energy_wh_per_1k_tokens).',
+            t('Los parametros de la siguiente tabla definen el escenario de inferencia fijo bajo el cual se han calculado las emisiones de todos los modelos comparados. Estos valores permanecen constantes entre modelos, de modo que la unica variable es el consumo energetico propio de cada modelo (energy_wh_per_1k_tokens).'),
             ML, y, CW
         );
         y += 5;
 
         const configRows = [
-            ['Modelo de referencia',       currentModelName],
-            ['Tipo de peticion',           formatRequestType(p.request_type || 'chat_simple')],
-            ['Tokens entrada / salida',    `${p.tokens_input ?? '-'} / ${p.tokens_output ?? '-'}`],
-            ['Data Center',                dcObj ? `${dcObj.provider_name} - ${dcObj.region || ''} (${dcObj.country_code || ''})` : (p.data_center_id || '-')],
-            ['PUE del Data Center',        String(dcObj?.pue ?? '-')],
-            ['Energia renovable DC',       dcObj?.renewable_pct != null ? `${dcObj.renewable_pct}%` : '-'],
-            ['Intensidad carbono DC',      dcObj?.carbon_intensity_gco2_kwh != null ? `${dcObj.carbon_intensity_gco2_kwh} gCO2/kWh` : '-'],
-            ['Dispositivo del usuario',    deviceObj?.device_name || p.device_id || '-'],
-            ['Tipo de red',                p.network_id || '-'],
-            ['Pais del usuario',           p.user_country || 'ES'],
-            ['Procesador de inferencia',   (p.inference_processor || 'auto').toUpperCase()],
-            ['Utilizacion del procesador', `${p.utilization != null ? Math.round(p.utilization * 100) : 70}%`],
+            [t('Modelo de referencia'),       currentModelName],
+            [t('Tipo de peticion'),           formatRequestType(p.request_type || 'chat_simple')],
+            [t('Tokens entrada / salida'),    `${p.tokens_input ?? '-'} / ${p.tokens_output ?? '-'}`],
+            [t('Data Center'),                dcObj ? `${dcObj.provider_name} - ${dcObj.region || ''} (${dcObj.country_code || ''})` : (p.data_center_id || '-')],
+            [t('PUE del Data Center'),        String(dcObj?.pue ?? '-')],
+            [t('Energia renovable DC'),       dcObj?.renewable_pct != null ? `${dcObj.renewable_pct}%` : '-'],
+            [t('Intensidad carbono DC'),      dcObj?.carbon_intensity_gco2_kwh != null ? `${dcObj.carbon_intensity_gco2_kwh} gCO2/kWh` : '-'],
+            [t('Dispositivo del usuario'),    deviceObj?.device_name || p.device_id || '-'],
+            [t('Tipo de red'),                p.network_id || '-'],
+            [t('Pais del usuario'),           p.user_country || 'ES'],
+            [t('Procesador de inferencia'),   (p.inference_processor || 'auto').toUpperCase()],
+            [t('Utilizacion del procesador'), `${p.utilization != null ? Math.round(p.utilization * 100) : 70}%`],
         ];
         const COL2 = ML + 72, ROW_H = 7.2;
         configRows.forEach((row, i) => {
@@ -3296,23 +3295,20 @@
         });
         y += 10;
 
-        y = sectionHeader('2. Nota metodologica y alcance', y);
+        y = sectionHeader(t('2. Nota metodologica y alcance'), y);
         y += 2;
         y = infoBox(
-            'Este comparador evalua exclusivamente las emisiones de CO2 asociadas a los modelos de IA durante el periodo de inferencia. ' +
-            'El resto de parametros (dispositivo del usuario, red de datos y data center) se mantienen fijos segun la configuracion indicada, ' +
-            'de modo que la unica variable entre modelos es su consumo energetico por cada 1.000 tokens procesados (energy_wh_per_1k_tokens). ' +
-            'Esto permite una comparacion directa, equitativa y bajo condiciones identicas.',
+            t('Este comparador evalua exclusivamente las emisiones de CO2 asociadas a los modelos de IA durante el periodo de inferencia. El resto de parametros (dispositivo del usuario, red de datos y data center) se mantienen fijos segun la configuracion indicada, de modo que la unica variable entre modelos es su consumo energetico por cada 1.000 tokens procesados (energy_wh_per_1k_tokens). Esto permite una comparacion directa, equitativa y bajo condiciones identicas.'),
             ML, y, CW, C.accentBlue
         );
         y += 6;
         y = bodyText(
-            'Las etiquetas de eficiencia energetica (A+++ hasta F) se asignan en base a la distribucion de percentiles de emisiones del dataset completo de modelos analizados (~693.000 combinaciones de configuraciones), por lo que representan la posicion relativa de cada modelo frente al universo de uso real.',
+            t('Las etiquetas de eficiencia energetica (A+++ hasta F) se asignan en base a la distribucion de percentiles de emisiones del dataset completo de modelos analizados (~639.000 combinaciones de configuraciones), por lo que representan la posicion relativa de cada modelo frente al universo de uso real.'),
             ML, y, CW
         );
         y += 4;
         y = infoBox(
-            'Nota: la metodologia de calculo de emisiones con sus tres componentes (dispositivo de usuario, red de datos y data center) corresponde al flujo general de CarbonAI y no aplica directamente a este informe comparativo. En este analisis, todos los parametros del escenario permanecen fijos; la unica variable entre modelos es su consumo energetico por cada 1.000 tokens procesados (energy_wh_per_1k_tokens), lo que garantiza una comparacion equitativa y directa.',
+            t('Nota: la metodologia de calculo de emisiones con sus tres componentes (dispositivo de usuario, red de datos y data center) corresponde al flujo general de CarbonAI y no aplica directamente a este informe comparativo. En este analisis, todos los parametros del escenario permanecen fijos; la unica variable entre modelos es su consumo energetico por cada 1.000 tokens procesados (energy_wh_per_1k_tokens), lo que garantiza una comparacion equitativa y directa.'),
             ML, y, CW, C.accentBlue
         );
 
@@ -3321,27 +3317,23 @@
         // ═══════════════════════════════════════════════════════════════
         doc.addPage(); whitePage();
         y = 22;
-        y = sectionHeader('3. Tabla comparativa detallada de modelos', y);
+        y = sectionHeader(t('3. Tabla comparativa detallada de modelos'), y);
         y += 2;
         y = bodyText(
-            'La siguiente tabla compara los ' + summaryData.length + ' modelos disponibles bajo el mismo escenario de inferencia. ' +
-            'Los modelos se ordenan de menor a mayor emision de CO2 por consulta. ' +
-            'La columna "Ahorro vs ref." refleja la diferencia porcentual entre cada modelo y el modelo de referencia (marcado con [ref]): ' +
-            'un valor negativo indica que ese modelo emite menos CO2 que la referencia (es decir, es mas eficiente), mientras que un valor positivo indica que emite mas. ' +
-            'Las etiquetas energeticas (A+++ a D) reflejan la posicion percentil del modelo frente al dataset completo.',
+            t('La siguiente tabla compara los {n} modelos disponibles bajo el mismo escenario de inferencia. Los modelos se ordenan de menor a mayor emision de CO2 por consulta. La columna "Ahorro vs ref." refleja la diferencia porcentual entre cada modelo y el modelo de referencia (marcado con [ref]): un valor negativo indica que ese modelo emite menos CO2 que la referencia (es decir, es mas eficiente), mientras que un valor positivo indica que emite mas. Las etiquetas energeticas (A+++ a D) reflejan la posicion percentil del modelo frente al dataset completo.', { n: summaryData.length }),
             ML, y, CW
         );
         y += 5;
 
         const tCols = [
             { label: '#',             x: ML,       w: 8  },
-            { label: 'Modelo',        x: ML + 8,   w: 36 },
-            { label: 'Org.',          x: ML + 44,  w: 24 },
-            { label: 'CO2 (gCO2)',    x: ML + 68,  w: 24 },
-            { label: 'Ahorro vs ref.',x: ML + 92,  w: 22 },
-            { label: 'Tok/s',         x: ML + 114, w: 16 },
-            { label: 'Latencia',      x: ML + 130, w: 22 },
-            { label: 'Etiqueta',      x: ML + 152, w: 22 },
+            { label: t('Modelo'),        x: ML + 8,   w: 36 },
+            { label: 'Org.',             x: ML + 44,  w: 24 },
+            { label: 'CO2 (gCO2)',       x: ML + 68,  w: 24 },
+            { label: t('Ahorro vs ref.'),x: ML + 92,  w: 22 },
+            { label: 'Tok/s',            x: ML + 114, w: 16 },
+            { label: t('Latencia'),      x: ML + 130, w: 22 },
+            { label: t('Etiqueta'),      x: ML + 152, w: 22 },
         ];
         const T_ROW_H = 7;
 
@@ -3421,11 +3413,11 @@
         const avgCO2 = avgCO2val > 0 ? avgCO2val.toFixed(4) : '-';
         fc(C.bgLight); doc.rect(ML, y - 4.5, CW, T_ROW_H + 1, 'F');
         dc(C.navyMid); doc.setLineWidth(0.4); doc.line(ML, y - 4.5, W - MR, y - 4.5);
-        doc.setFont('helvetica', 'bold');   doc.setFontSize(7.2); tc(C.navy);    doc.text('Estadisticas del conjunto:', ML + 2, y);
+        doc.setFont('helvetica', 'bold');   doc.setFontSize(7.2); tc(C.navy);    doc.text(t('Estadisticas del conjunto:'), ML + 2, y);
         doc.setFont('helvetica', 'normal'); tc(C.textSub);
         doc.text(`Min: ${co2Min.toFixed(4)} gCO2`, ML + 48, y);
         doc.text(`Max: ${co2Max.toFixed(4)} gCO2`, ML + 92, y);
-        doc.text(`Media: ${avgCO2} gCO2`,           ML + 136, y);
+        doc.text(t('Media: {v} gCO2', { v: avgCO2 }),  ML + 136, y);
         y += T_ROW_H + 2;
 
         // ═══════════════════════════════════════════════════════════════
@@ -3433,53 +3425,49 @@
         // ═══════════════════════════════════════════════════════════════
         doc.addPage(); whitePage();
         y = 22;
-        y = sectionHeader('4. Analisis e interpretacion de resultados', y);
+        y = sectionHeader(t('4. Analisis e interpretacion de resultados'), y);
         y += 3;
 
         // Insight 1: efficiency ratio
-        y = subHeader('4.1 Rango de eficiencia del conjunto', y);
+        y = subHeader(t('4.1 Rango de eficiencia del conjunto'), y);
         const rangeText = spreadPct !== '-'
-            ? `El modelo mas eficiente (${bestModel?.model || '-'}, Clase ${bestModel?.label || '-'}) emite ` +
-              `${bco2.toFixed(4)} gCO2/query, mientras que el menos eficiente (${worstModel?.model || '-'}, Clase ${worstModel?.label || '-'}) ` +
-              `emite ${wco2.toFixed(4)} gCO2/query. Esto supone una diferencia de ${spreadPct}x entre extremos, ` +
-              `lo que evidencia la enorme variabilidad de huella de carbono segun el modelo elegido para una misma tarea de inferencia.`
-            : 'No hay datos suficientes para calcular el rango de eficiencia.';
+            ? t('El modelo mas eficiente ({bm}, Clase {bl}) emite {bco2} gCO2/query, mientras que el menos eficiente ({wm}, Clase {wl}) emite {wco2} gCO2/query. Esto supone una diferencia de {spread}x entre extremos, lo que evidencia la enorme variabilidad de huella de carbono segun el modelo elegido para una misma tarea de inferencia.',
+                { bm: bestModel?.model || '-', bl: bestModel?.label || '-', bco2: bco2.toFixed(4), wm: worstModel?.model || '-', wl: worstModel?.label || '-', wco2: wco2.toFixed(4), spread: spreadPct })
+            : t('No hay datos suficientes para calcular el rango de eficiencia.');
         y = bodyText(rangeText, ML, y, CW);
         y += 5;
 
         // Insight 2: reference model position
-        y = subHeader('4.2 Posicion del modelo de referencia', y);
+        y = subHeader(t('4.2 Posicion del modelo de referencia'), y);
         if (currentRow && currentRank > 0) {
             const pctBetter   = ((currentRank - 1) / Math.max(summaryData.length - 1, 1) * 100).toFixed(0);
             const isTopThird  = currentRank <= Math.ceil(summaryData.length / 3);
             const isLastThird = currentRank > Math.floor(summaryData.length * 2 / 3);
             const rankAssess  = isTopThird
-                ? 'posicionandose entre los modelos mas eficientes del conjunto analizado — una opcion sostenible destacada'
+                ? t('posicionandose entre los modelos mas eficientes del conjunto analizado — una opcion sostenible destacada')
                 : isLastThird
-                ? 'situandose entre los modelos con mayor impacto medioambiental del conjunto. Existen alternativas significativamente mas eficientes disponibles en este analisis que podrian reducir la huella de carbono considerablemente'
-                : 'situandose en la franja intermedia del conjunto en cuanto a eficiencia energetica, con margen de mejora frente a los modelos de la zona superior';
+                ? t('situandose entre los modelos con mayor impacto medioambiental del conjunto. Existen alternativas significativamente mas eficientes disponibles en este analisis que podrian reducir la huella de carbono considerablemente')
+                : t('situandose en la franja intermedia del conjunto en cuanto a eficiencia energetica, con margen de mejora frente a los modelos de la zona superior');
             const aboveBelowAvg = currentCO2 > avgCO2val
-                ? `Sus emisiones superan la media del conjunto en un ${((currentCO2 / avgCO2val - 1) * 100).toFixed(0)}% (media: ${avgCO2} gCO2/query), lo que representa una penalizacion ambiental notable frente a la mayoria de alternativas disponibles en este analisis.`
-                : `Sus emisiones se situan un ${((1 - currentCO2 / avgCO2val) * 100).toFixed(0)}% por debajo de la media del conjunto (media: ${avgCO2} gCO2/query), lo que confirma su buen posicionamiento ambiental dentro del universo de modelos analizado.`;
-            const refText = `El modelo de referencia seleccionado (${currentModelName}) ocupa la posicion ${currentRank} de ${summaryData.length} ` +
-                `con ${currentCO2.toFixed(4)} gCO2/query (Clase ${currentRow.label}), ${rankAssess}. ` +
-                `Supera en eficiencia al ${pctBetter}% de los modelos analizados. ` +
-                aboveBelowAvg;
+                ? t('Sus emisiones superan la media del conjunto en un {p}% (media: {avg} gCO2/query), lo que representa una penalizacion ambiental notable frente a la mayoria de alternativas disponibles en este analisis.', { p: ((currentCO2 / avgCO2val - 1) * 100).toFixed(0), avg: avgCO2 })
+                : t('Sus emisiones se situan un {p}% por debajo de la media del conjunto (media: {avg} gCO2/query), lo que confirma su buen posicionamiento ambiental dentro del universo de modelos analizado.', { p: ((1 - currentCO2 / avgCO2val) * 100).toFixed(0), avg: avgCO2 });
+            const refText = t('El modelo de referencia seleccionado ({m}) ocupa la posicion {r} de {n} con {co2} gCO2/query (Clase {l}), {assess}. Supera en eficiencia al {p}% de los modelos analizados. {avg}',
+                { m: currentModelName, r: currentRank, n: summaryData.length, co2: currentCO2.toFixed(4), l: currentRow.label, assess: rankAssess, p: pctBetter, avg: aboveBelowAvg });
             y = bodyText(refText, ML, y, CW);
         } else {
-            y = bodyText('No se pudo determinar la posicion del modelo de referencia.', ML, y, CW);
+            y = bodyText(t('No se pudo determinar la posicion del modelo de referencia.'), ML, y, CW);
         }
         y += 5;
 
         // Insight 3: top 3 alternatives
-        y = subHeader('4.3 Alternativas mas eficientes al modelo de referencia', y);
+        y = subHeader(t('4.3 Alternativas mas eficientes al modelo de referencia'), y);
         const alternatives = summaryData.filter(r => {
             const isCurr = r.model === currentModelName || r.model.startsWith(currentModelName.substring(0, 8));
             return !isCurr && parseFloat(r.co2) < currentCO2;
         }).slice(0, 3);
         if (alternatives.length > 0) {
             y = bodyText(
-                'Los siguientes modelos presentan menor huella de carbono que el modelo de referencia y podrian considerarse como alternativas sostenibles:',
+                t('Los siguientes modelos presentan menor huella de carbono que el modelo de referencia y podrian considerarse como alternativas sostenibles:'),
                 ML, y, CW
             );
             y += 3;
@@ -3491,25 +3479,22 @@
                 fc(C.green);   doc.rect(ML, y - 4, 3, 10, 'F');
                 doc.setFont('helvetica', 'bold');   doc.setFontSize(9);   tc(C.navy);    doc.text(`${i + 1}. ${alt.model}`, ML + 6, y);
                 doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5); tc(C.textSub);
-                doc.text(`${alt.co2} gCO2/query  |  Clase ${alt.label}  |  ${alt.tps} tok/s  |  Ahorro: ${saving}%`, ML + 6, y + 5.5);
+                doc.text(t('{co2} gCO2/query  |  Clase {l}  |  {tps} tok/s  |  Ahorro: {s}%', { co2: alt.co2, l: alt.label, tps: alt.tps, s: saving }), ML + 6, y + 5.5);
                 y += 13;
             });
         } else {
-            y = infoBox('El modelo de referencia ya es el mas eficiente del conjunto o no hay alternativas con menor emision disponibles.', ML, y, CW, C.green);
+            y = infoBox(t('El modelo de referencia ya es el mas eficiente del conjunto o no hay alternativas con menor emision disponibles.'), ML, y, CW, C.green);
         }
         y += 5;
 
         // Insight 4: scale impact
         y = checkPage(y, 40);
-        y = subHeader('4.4 Impacto a escala productiva', y);
+        y = subHeader(t('4.4 Impacto a escala productiva'), y);
         const scaleText = currentCO2 > 0
-            ? `A modo de referencia, si el modelo de referencia (${currentModelName}) procesase 1 millon de consultas diarias, ` +
-              `generaria aproximadamente ${(currentCO2 * 1e6 / 1000).toFixed(1)} kg de CO2 al dia ` +
-              `(${(currentCO2 * 1e6 * 365 / 1e6).toFixed(1)} toneladas al año). ` +
-              `El modelo mas eficiente (${bestModel?.model}) reduciria esa cifra a ` +
-              `${(bco2 * 1e6 / 1000).toFixed(1)} kg/dia (${(bco2 * 1e6 * 365 / 1e6).toFixed(1)} t/año), ` +
-              `un ahorro de ${((1 - bco2 / currentCO2) * 100).toFixed(0)}%.`
-            : 'No hay datos de emision del modelo de referencia para calcular el impacto a escala.';
+            ? t('A modo de referencia, si el modelo de referencia ({m}) procesase 1 millon de consultas diarias, generaria aproximadamente {kgd} kg de CO2 al dia ({ty} toneladas al año). El modelo mas eficiente ({bm}) reduciria esa cifra a {bkgd} kg/dia ({bty} t/año), un ahorro de {s}%.',
+                { m: currentModelName, kgd: (currentCO2 * 1e6 / 1000).toFixed(1), ty: (currentCO2 * 1e6 * 365 / 1e6).toFixed(1), bm: bestModel?.model,
+                  bkgd: (bco2 * 1e6 / 1000).toFixed(1), bty: (bco2 * 1e6 * 365 / 1e6).toFixed(1), s: ((1 - bco2 / currentCO2) * 100).toFixed(0) })
+            : t('No hay datos de emision del modelo de referencia para calcular el impacto a escala.');
         y = bodyText(scaleText, ML, y, CW);
 
         // ═══════════════════════════════════════════════════════════════
@@ -3517,15 +3502,15 @@
         // ═══════════════════════════════════════════════════════════════
         doc.addPage(); whitePage();
         y = 22;
-        y = sectionHeader('5. Modelos Pareto-optimos', y);
+        y = sectionHeader(t('5. Modelos Pareto-optimos'), y);
         y += 3;
         y = bodyText(
-            'La frontera de Pareto identifica los modelos que ofrecen el mejor equilibrio posible entre los criterios activos (emisiones de CO2, velocidad en tokens/s y latencia). Un modelo es Pareto-optimo si ningun otro modelo lo supera en todos los criterios simultaneamente. Son la mejor eleccion objetiva cuando no se quiere sacrificar ningun aspecto del rendimiento o la sostenibilidad.',
+            t('La frontera de Pareto identifica los modelos que ofrecen el mejor equilibrio posible entre los criterios activos (emisiones de CO2, velocidad en tokens/s y latencia). Un modelo es Pareto-optimo si ningun otro modelo lo supera en todos los criterios simultaneamente. Son la mejor eleccion objetiva cuando no se quiere sacrificar ningun aspecto del rendimiento o la sostenibilidad.'),
             ML, y, CW
         );
         y += 5;
         y = bodyText(
-            'A diferencia de simplemente elegir el modelo mas rapido o el de menor CO2, la seleccion Pareto incorpora trade-offs multidimensionales. Los modelos aqui listados representan puntos de la frontera eficiente del espacio de decision.',
+            t('A diferencia de simplemente elegir el modelo mas rapido o el de menor CO2, la seleccion Pareto incorpora trade-offs multidimensionales. Los modelos aqui listados representan puntos de la frontera eficiente del espacio de decision.'),
             ML, y, CW
         );
         y += 8;
@@ -3553,7 +3538,7 @@
                 const lblColor = labelColor(lbl);
                 fc(lblColor); doc.roundedRect(W - MR - 22, y + 5, 18, 7, 1, 1, 'F');
                 doc.setFont('helvetica', 'bold'); doc.setFontSize(7.5); tc(C.white);
-                doc.text(`Clase ${lbl}`, W - MR - 20, y + 10);
+                doc.text(t('Clase {l}', { l: lbl }), W - MR - 20, y + 10);
 
                 doc.setFont('helvetica', 'bold');   doc.setFontSize(12); tc(C.navy);
                 doc.text(m.model, ML + 8, y + 22);
@@ -3563,8 +3548,8 @@
                 // Metrics row
                 const metrics = [
                     `CO2: ${co2Str} gCO2/query`,
-                    `Velocidad: ${(m.tokens_per_second || 0).toFixed(1)} tok/s`,
-                    `Latencia: ${m.latency_ms != null ? m.latency_ms + ' ms' : '-'}`,
+                    t('Velocidad: {v} tok/s', { v: (m.tokens_per_second || 0).toFixed(1) }),
+                    t('Latencia: {v}', { v: m.latency_ms != null ? m.latency_ms + ' ms' : '-' }),
                 ];
                 doc.setFont('helvetica', 'bold'); doc.setFontSize(8); tc(C.navyLt);
                 let mx = ML + 8;
@@ -3575,7 +3560,7 @@
                 y += CARD_H + 6;
             });
         } else {
-            y = infoBox('No se identificaron modelos Pareto-optimos con los criterios activos actuales. Prueba a ajustar los pesos de los criterios en la interfaz del comparador.', ML, y, CW, C.accentTeal);
+            y = infoBox(t('No se identificaron modelos Pareto-optimos con los criterios activos actuales. Prueba a ajustar los pesos de los criterios en la interfaz del comparador.'), ML, y, CW, C.accentTeal);
             y += 5;
         }
 
@@ -3586,44 +3571,40 @@
             const topNames    = paretoList.slice(0, 3).join(', ');
             const zone = !currentRow ? '' :
                 currentRank <= Math.ceil(summaryData.length / 3)
-                    ? 'zona eficiente (esquina inferior derecha: baja emision y alta velocidad)'
+                    ? t('zona eficiente (esquina inferior derecha: baja emision y alta velocidad)')
                     : currentRank <= Math.ceil(summaryData.length * 2 / 3)
-                    ? 'zona intermedia del grafico'
-                    : 'zona de alta emision (esquina superior izquierda)';
+                    ? t('zona intermedia del grafico')
+                    : t('zona de alta emision (esquina superior izquierda)');
             const refTps = (PS.table || []).find(r => r.model === currentModelName)?.tokens_per_second || 0;
             return (
-                `Los ${summaryData.length} modelos evaluados bajo el mismo escenario presentan una dispersion de ${spreadPct}x entre el mas eficiente y el menos eficiente. ` +
+                t('Los {n} modelos evaluados bajo el mismo escenario presentan una dispersion de {spread}x entre el mas eficiente y el menos eficiente. ', { n: summaryData.length, spread: spreadPct }) +
                 (paretoCount > 0
-                    ? `Se identificaron ${paretoCount} modelo${paretoCount > 1 ? 's' : ''} en la frontera de Pareto — ${topNames}${paretoCount > 3 ? ' entre otros' : ''} —, que representan los mejores equilibrios posibles entre emision de CO2 y velocidad de inferencia: ningun otro modelo del conjunto los supera simultaneamente en ambos criterios. `
-                    : `No se identificaron modelos Pareto-optimos con los criterios activos actuales, lo que indica que todos los modelos presentan algun trade-off entre emision y velocidad. `) +
-                `El modelo mas sostenible es ${bestModel?.model || '-'} (${bestModel?.co2 || '-'} gCO2/query), ` +
-                `mientras que ${worstModel?.model || '-'} registra la mayor huella de carbono con ${wco2.toFixed(4)} gCO2/query. ` +
+                    ? t('Se identificaron {c} {models} en la frontera de Pareto — {names}{more} —, que representan los mejores equilibrios posibles entre emision de CO2 y velocidad de inferencia: ningun otro modelo del conjunto los supera simultaneamente en ambos criterios. ',
+                        { c: paretoCount, models: paretoCount > 1 ? t('modelos') : t('modelo'), names: topNames, more: paretoCount > 3 ? t(' entre otros') : '' })
+                    : t('No se identificaron modelos Pareto-optimos con los criterios activos actuales, lo que indica que todos los modelos presentan algun trade-off entre emision y velocidad. ')) +
+                t('El modelo mas sostenible es {bm} ({bco2} gCO2/query), mientras que {wm} registra la mayor huella de carbono con {wco2} gCO2/query. ',
+                    { bm: bestModel?.model || '-', bco2: bestModel?.co2 || '-', wm: worstModel?.model || '-', wco2: wco2.toFixed(4) }) +
                 (currentRow && zone
-                    ? `El modelo de referencia seleccionado, ${currentModelName}, se situa en la ${zone} con ${currentCO2.toFixed(4)} gCO2/query ` +
-                      `y ${refTps > 0 ? refTps.toFixed(0) + ' tok/s' : 'velocidad no disponible'}.`
+                    ? t('El modelo de referencia seleccionado, {m}, se situa en la {zone} con {co2} gCO2/query y {tps}.',
+                        { m: currentModelName, zone, co2: currentCO2.toFixed(4), tps: refTps > 0 ? refTps.toFixed(0) + ' tok/s' : t('velocidad no disponible') })
                     : '')
             );
         })();
         const barInterpDyn = (() => {
             const aboveAvg = summaryData.filter(r => (parseFloat(r.co2) || 0) > avgCO2val).length;
             const belowAvg = summaryData.length - aboveAvg;
+            const avgStr = avgCO2val.toFixed(4);
             return (
-                `De los ${summaryData.length} modelos analizados, ${belowAvg} presentan emisiones por debajo de la media del conjunto ` +
-                `(${avgCO2val.toFixed(4)} gCO2/query) y ${aboveAvg} la superan. ` +
-                `${bestModel?.model || '-'} destaca como la opcion mas sostenible ` +
-                `(${bestModel?.co2 || '-'} gCO2/query, Clase ${bestModel?.label || '-'}), ` +
-                `mientras que ${worstModel?.model || '-'} representa el mayor impacto ambiental ` +
-                `(${wco2.toFixed(4)} gCO2/query, Clase ${worstModel?.label || '-'}), ` +
-                `con una diferencia de ${spreadPct}x entre ambos extremos. ` +
+                t('De los {n} modelos analizados, {below} presentan emisiones por debajo de la media del conjunto ({avg} gCO2/query) y {above} la superan. ',
+                    { n: summaryData.length, below: belowAvg, avg: avgStr, above: aboveAvg }) +
+                t('{bm} destaca como la opcion mas sostenible ({bco2} gCO2/query, Clase {bl}), mientras que {wm} representa el mayor impacto ambiental ({wco2} gCO2/query, Clase {wl}), con una diferencia de {spread}x entre ambos extremos. ',
+                    { bm: bestModel?.model || '-', bco2: bestModel?.co2 || '-', bl: bestModel?.label || '-', wm: worstModel?.model || '-', wco2: wco2.toFixed(4), wl: worstModel?.label || '-', spread: spreadPct }) +
                 (currentRow
                     ? (currentCO2 > avgCO2val
-                        ? `El modelo de referencia, ${currentModelName}, ocupa la posicion ${currentRank} de ${summaryData.length} en este analisis ` +
-                          `y tiene una huella de carbono por encima de la media del conjunto (${avgCO2val.toFixed(4)} gCO2/query), ` +
-                          `lo que lo situa como uno de los modelos menos eficientes del conjunto. ` +
-                          `Existen ${currentRank - 1} alternativa${currentRank - 1 !== 1 ? 's' : ''} con menor impacto ambiental disponibles en este comparador.`
-                        : `El modelo de referencia, ${currentModelName}, ocupa la posicion ${currentRank} de ${summaryData.length} en este analisis ` +
-                          `y tiene una huella de carbono por debajo de la media del conjunto (${avgCO2val.toFixed(4)} gCO2/query), ` +
-                          `siendo una opcion eficiente dentro del universo de modelos comparados.`)
+                        ? t('El modelo de referencia, {m}, ocupa la posicion {r} de {n} en este analisis y tiene una huella de carbono por encima de la media del conjunto ({avg} gCO2/query), lo que lo situa como uno de los modelos menos eficientes del conjunto. Existen {k} {alts} con menor impacto ambiental disponibles en este comparador.',
+                            { m: currentModelName, r: currentRank, n: summaryData.length, avg: avgStr, k: currentRank - 1, alts: currentRank - 1 !== 1 ? t('alternativas') : t('alternativa') })
+                        : t('El modelo de referencia, {m}, ocupa la posicion {r} de {n} en este analisis y tiene una huella de carbono por debajo de la media del conjunto ({avg} gCO2/query), siendo una opcion eficiente dentro del universo de modelos comparados.',
+                            { m: currentModelName, r: currentRank, n: summaryData.length, avg: avgStr }))
                     : '')
             );
         })();
@@ -3634,14 +3615,14 @@
         const charts = [
             { id: 'scatter-chart',
               num: '6',
-              title: 'Grafico 6: Rendimiento vs Sostenibilidad',
-              desc: 'Diagrama de dispersion (Scatter Plot) con escala logaritmica en ambos ejes. El eje X representa la velocidad de inferencia (tokens/s) y el eje Y las emisiones de CO2 por consulta. Los modelos situados en la esquina inferior derecha combinan alta velocidad y baja emision, siendo los mas deseables. Los puntos con anillo de pulso destacan los modelos Pareto-optimos.',
+              title: t('Grafico 6: Rendimiento vs Sostenibilidad'),
+              desc: t('Diagrama de dispersion (Scatter Plot) con escala logaritmica en ambos ejes. El eje X representa la velocidad de inferencia (tokens/s) y el eje Y las emisiones de CO2 por consulta. Los modelos situados en la esquina inferior derecha combinan alta velocidad y baja emision, siendo los mas deseables. Los puntos con anillo de pulso destacan los modelos Pareto-optimos.'),
               interp: scatterInterpDyn },
-            { type: 'matrix', num: '7', title: '7. Matriz de dominancia cruzada' },
+            { type: 'matrix', num: '7', title: t('7. Matriz de dominancia cruzada') },
             { id: 'vertical-bar-chart',
               num: '8',
-              title: 'Grafico 8: Comparativa de emisiones CO2/query',
-              desc: 'Grafico de barras con escala logaritmica en el eje Y. Cada barra representa las emisiones de CO2 por consulta de un modelo, coloreada segun su etiqueta de eficiencia energetica (verde = clase A, rojo = clase D). El modelo de referencia aparece resaltado.',
+              title: t('Grafico 8: Comparativa de emisiones CO2/query'),
+              desc: t('Grafico de barras con escala logaritmica en el eje Y. Cada barra representa las emisiones de CO2 por consulta de un modelo, coloreada segun su etiqueta de eficiencia energetica (verde = clase A, rojo = clase D). El modelo de referencia aparece resaltado.'),
               interp: barInterpDyn },
         ];
 
@@ -3651,13 +3632,10 @@
             if (ch.type === 'matrix') {
                 doc.addPage(); whitePage();
                 y = 22;
-                y = sectionHeader('7. Matriz de dominancia cruzada', y);
+                y = sectionHeader(t('7. Matriz de dominancia cruzada'), y);
                 y += 2;
                 y = bodyText(
-                    'La siguiente matriz compara cada par de modelos de forma bilateral en tres criterios: emisiones CO2 por consulta, velocidad de inferencia (tokens/s) y latencia. ' +
-                    'Para cada combinacion (fila i vs. columna j) se contabilizan los criterios ganados por cada modelo, mostrando el resultado como i:j. ' +
-                    'Las celdas en verde intenso reflejan una ventaja clara o total del modelo de la fila; las rojas indican lo contrario; las grises, un empate. ' +
-                    'Esta representacion permite identificar rapidamente que modelos dominan al conjunto y cuales presentan trade-offs segun el criterio priorizado.',
+                    t('La siguiente matriz compara cada par de modelos de forma bilateral en tres criterios: emisiones CO2 por consulta, velocidad de inferencia (tokens/s) y latencia. Para cada combinacion (fila i vs. columna j) se contabilizan los criterios ganados por cada modelo, mostrando el resultado como i:j. Las celdas en verde intenso reflejan una ventaja clara o total del modelo de la fila; las rojas indican lo contrario; las grises, un empate. Esta representacion permite identificar rapidamente que modelos dominan al conjunto y cuales presentan trade-offs segun el criterio priorizado.'),
                     ML, y, CW
                 );
                 y += 6;
@@ -3692,7 +3670,7 @@
                 // ── Header row ──
                 fc(C.navyMid); doc.rect(ML, matTopY, CW, DOM_ROW_H, 'F');
                 doc.setFont('helvetica', 'bold'); doc.setFontSize(5.5); tc(C.white);
-                doc.text('Fila vs Columna >', ML + 1, matTopY + 6.5);
+                doc.text(t('Fila vs Columna >'), ML + 1, matTopY + 6.5);
                 domData.forEach((m, j) => {
                     const cx = ML + LABEL_W + j * CELL_W + CELL_W / 2;
                     doc.text(abbrevN(m.model, 8), cx, matTopY + 6.5, { align: 'center' });
@@ -3754,15 +3732,15 @@
                 // ── Legend ──
                 y = checkPage(y, 50);
                 doc.setFont('helvetica', 'bold'); doc.setFontSize(8.5); tc(C.navy);
-                doc.text('Leyenda de colores:', ML, y);
+                doc.text(t('Leyenda de colores:'), ML, y);
                 y += 5;
                 const domLegend = [
-                    { bg: [187, 247, 208], fg: C.green,    txt: '3:0  Dominancia estricta: la fila supera a la columna en TODOS los criterios (CO2 + velocidad + latencia)' },
-                    { bg: [209, 250, 229], fg: C.greenMid, txt: '2:0  Ventaja clara: la fila gana en 2 criterios sin perder ninguno' },
-                    { bg: [240, 253, 244], fg: C.greenMid, txt: '2:1  Ventaja relativa: la fila gana en la mayoria de criterios' },
-                    { bg: [241, 245, 249], fg: C.textSub,  txt: '1:1  Empate: misma cantidad de criterios ganados por cada modelo' },
-                    { bg: [254, 226, 226], fg: C.red,      txt: '1:2  Desventaja relativa: la columna gana en la mayoria de criterios' },
-                    { bg: [252, 192, 192], fg: C.red,      txt: '0:3  Dominancia estricta inversa: la columna supera en TODOS los criterios' },
+                    { bg: [187, 247, 208], fg: C.green,    txt: t('3:0  Dominancia estricta: la fila supera a la columna en TODOS los criterios (CO2 + velocidad + latencia)') },
+                    { bg: [209, 250, 229], fg: C.greenMid, txt: t('2:0  Ventaja clara: la fila gana en 2 criterios sin perder ninguno') },
+                    { bg: [240, 253, 244], fg: C.greenMid, txt: t('2:1  Ventaja relativa: la fila gana en la mayoria de criterios') },
+                    { bg: [241, 245, 249], fg: C.textSub,  txt: t('1:1  Empate: misma cantidad de criterios ganados por cada modelo') },
+                    { bg: [254, 226, 226], fg: C.red,      txt: t('1:2  Desventaja relativa: la columna gana en la mayoria de criterios') },
+                    { bg: [252, 192, 192], fg: C.red,      txt: t('0:3  Dominancia estricta inversa: la columna supera en TODOS los criterios') },
                 ];
                 domLegend.forEach(li => {
                     fc(li.bg); doc.rect(ML, y - 3.5, 8, 5, 'F');
@@ -3787,17 +3765,13 @@
                     if (wins > mostDomWins)  { mostDomWins  = wins; mostDomModel  = rowM.model; }
                     if (wins < leastDomWins) { leastDomWins = wins; leastDomModel = rowM.model; }
                 });
-                const exA = domData[0]?.model || 'Modelo A';
-                const exB = domData[domData.length - 1]?.model || 'Modelo B';
+                const exA = domData[0]?.model || t('Modelo A');
+                const exB = domData[domData.length - 1]?.model || t('Modelo B');
                 const exResult = compareForDom(domData[0], domData[domData.length - 1]);
                 y = infoBox(
-                    `C\u00f3mo leer la matriz: cada fila es el modelo "atacante" y cada columna el "defensor". ` +
-                    `Por ejemplo, la celda (${exA} vs. ${exB}) muestra ${exResult.aW}:${exResult.bW}, ` +
-                    `lo que significa que ${exA} gana en ${exResult.aW} de los tres criterios frente a ${exB}. ` +
-                    `Segun este analisis, ${mostDomModel} acumula el mayor numero de victorias frente al resto de modelos, ` +
-                    `posicionandose como el mas dominante del subconjunto comparado. ` +
-                    `${leastDomModel !== mostDomModel ? leastDomModel + ' presenta el mayor numero de desventajas. ' : ''}` +
-                    `La matriz es asimetrica: si la celda (i, j) = 2:1, necesariamente la celda (j, i) = 1:2.`,
+                    t('Cómo leer la matriz: cada fila es el modelo "atacante" y cada columna el "defensor". Por ejemplo, la celda ({a} vs. {b}) muestra {aw}:{bw}, lo que significa que {a} gana en {aw} de los tres criterios frente a {b}. Segun este analisis, {most} acumula el mayor numero de victorias frente al resto de modelos, posicionandose como el mas dominante del subconjunto comparado. {least}La matriz es asimetrica: si la celda (i, j) = 2:1, necesariamente la celda (j, i) = 1:2.',
+                        { a: exA, b: exB, aw: exResult.aW, bw: exResult.bW, most: mostDomModel,
+                          least: leastDomModel !== mostDomModel ? t('{m} presenta el mayor numero de desventajas. ', { m: leastDomModel }) : '' }),
                     ML, y, CW, C.accentTeal
                 );
                 return; // exit this forEach iteration, skip canvas code below
@@ -3834,16 +3808,16 @@
                     const ref = allRows[0];
 
                     const ptCols = [
-                        { label: 'Modelo',           w: 54 },
-                        { label: 'Clase',            w: 14 },
+                        { label: t('Modelo'),        w: 54 },
+                        { label: t('Clase'),         w: 14 },
                         { label: 'CO2/query (gCO2)', w: 38 },
                         { label: 'vs. ref. CO2',     w: 22 },
-                        { label: 'Vel. (tok/s)',      w: 24 },
-                        { label: 'vs. ref. Vel.',     w: 22 },
+                        { label: t('Vel. (tok/s)'),  w: 24 },
+                        { label: t('vs. ref. Vel.'), w: 22 },
                     ];
                     if (PS.criteria.latency) {
                         ptCols.push({ label: 'Lat. (ms/tok)', w: 26 });
-                        ptCols.push({ label: 'vs. ref. Lat.', w: 22 });
+                        ptCols.push({ label: t('vs. ref. Lat.'), w: 22 });
                     }
 
                     const ptW  = ptCols.reduce((s, c) => s + c.w, 0);
@@ -3855,10 +3829,10 @@
                     y += 8;
 
                     doc.setFont('helvetica', 'bold'); doc.setFontSize(10); tc(C.navy);
-                    doc.text('Tabla de valores exactos — Todos los modelos (criterios activos del frente de Pareto)', ML, y);
+                    doc.text(t('Tabla de valores exactos — Todos los modelos (criterios activos del frente de Pareto)'), ML, y);
                     y += 4;
                     doc.setFont('helvetica', 'normal'); doc.setFontSize(8); tc(C.textSub);
-                    doc.text('Diferencia % respecto al modelo de menor CO2/query (referencia = ' + ref.model + '). Estrella = Pareto-optimo.', ML, y);
+                    doc.text(t('Diferencia % respecto al modelo de menor CO2/query (referencia = {ref}). Estrella = Pareto-optimo.', { ref: ref.model }), ML, y);
                     y += 5;
 
                     // Header
@@ -3874,7 +3848,7 @@
                     function ptPctStr(a, b, higherBetter) {
                         if (!b || isNaN(a) || isNaN(b)) return '\u2014';
                         const pct = ((a - b) / Math.abs(b)) * 100;
-                        if (Math.abs(pct) < 0.1) return '= igual';
+                        if (Math.abs(pct) < 0.1) return t('= igual');
                         const sign = pct > 0 ? '+' : '';
                         return sign + pct.toFixed(1) + '%';
                     }
@@ -3925,7 +3899,7 @@
                         doc.text(ptCO2Str(co2), ptcx + 2, y + 4.8);
                         ptcx += ptCols[2].w;
 
-                        const co2Diff = isRef ? 'referencia' : ptPctStr(co2, ref.co2_gCO2, false);
+                        const co2Diff = isRef ? t('referencia') : ptPctStr(co2, ref.co2_gCO2, false);
                         tc(isRef ? C.textSub : ptPctColor(co2, ref.co2_gCO2, false));
                         doc.setFont('helvetica', isRef ? 'italic' : 'bold'); doc.setFontSize(6.5);
                         doc.text(co2Diff, ptcx + 2, y + 4.8);
@@ -3935,7 +3909,7 @@
                         doc.text(tps > 0 ? tps.toFixed(1) : '\u2014', ptcx + 2, y + 4.8);
                         ptcx += ptCols[4].w;
 
-                        const tpsDiff = isRef ? 'referencia' : ptPctStr(tps, ref.tokens_per_second || 0, true);
+                        const tpsDiff = isRef ? t('referencia') : ptPctStr(tps, ref.tokens_per_second || 0, true);
                         tc(isRef ? C.textSub : ptPctColor(tps, ref.tokens_per_second || 0, true));
                         doc.setFont('helvetica', isRef ? 'italic' : 'bold'); doc.setFontSize(6.5);
                         doc.text(tpsDiff, ptcx + 2, y + 4.8);
@@ -3945,7 +3919,7 @@
                             doc.setFont('helvetica', 'normal'); doc.setFontSize(7); tc(C.textMain);
                             doc.text(lat != null ? lat.toFixed(2) : '\u2014', ptcx + 2, y + 4.8);
                             ptcx += ptCols[6].w;
-                            const latDiff = isRef ? 'referencia' : ptPctStr(lat, ref.latency_ms_per_token, false);
+                            const latDiff = isRef ? t('referencia') : ptPctStr(lat, ref.latency_ms_per_token, false);
                             tc(isRef ? C.textSub : ptPctColor(lat, ref.latency_ms_per_token, false));
                             doc.setFont('helvetica', isRef ? 'italic' : 'bold'); doc.setFontSize(6.5);
                             doc.text(latDiff, ptcx + 2, y + 4.8);
@@ -3958,9 +3932,9 @@
                     y += 3;
                     doc.setFont('helvetica', 'italic'); doc.setFontSize(7); tc(C.textSub);
                     const ftLines = doc.splitTextToSize(
-                        '(P) = Modelo Pareto-optimo (fondo verde). ' +
-                        (currentRow ? '[*] = Modelo de referencia seleccionado en el formulario (fondo azul, borde derecho navy). ' : '') +
-                        'La columna vs. ref. CO2 y vs. ref. Vel. muestra la diferencia porcentual respecto al modelo de menor CO2/query. Verde = mejor que la referencia; Rojo = peor.',
+                        t('(P) = Modelo Pareto-optimo (fondo verde). ') +
+                        (currentRow ? t('[*] = Modelo de referencia seleccionado en el formulario (fondo azul, borde derecho navy). ') : '') +
+                        t('La columna vs. ref. CO2 y vs. ref. Vel. muestra la diferencia porcentual respecto al modelo de menor CO2/query. Verde = mejor que la referencia; Rojo = peor.'),
                         CW
                     );
                     doc.text(ftLines, ML, y);
@@ -3969,7 +3943,7 @@
                 doc.addPage(); whitePage();
                 y = 22;
                 y = sectionHeader(ch.title, y);
-                y = bodyText('No se pudo exportar el grafico (canvas inaccesible).', ML, y, CW);
+                y = bodyText(t('No se pudo exportar el grafico (canvas inaccesible).'), ML, y, CW);
             }
         });
 
@@ -3978,33 +3952,33 @@
         // ═══════════════════════════════════════════════════════════════
         doc.addPage(); whitePage();
         y = 22;
-        y = sectionHeader('9. Glosario de terminos', y);
+        y = sectionHeader(t('9. Glosario de terminos'), y);
         y += 3;
         y = bodyText(
-            'Este glosario define los terminos tecnicos utilizados en este informe comparativo de modelos de IA.',
+            t('Este glosario define los terminos tecnicos utilizados en este informe comparativo de modelos de IA.'),
             ML, y, CW
         );
         y += 5;
 
         const glossary = [
             ['CO2/query (gCO2)',
-             'Gramos de CO2 equivalente emitidos por una sola consulta al modelo de IA, considerando exclusivamente la fase de inferencia bajo el escenario configurado. Es la metrica principal de comparacion entre modelos en este informe.'],
+             t('Gramos de CO2 equivalente emitidos por una sola consulta al modelo de IA, considerando exclusivamente la fase de inferencia bajo el escenario configurado. Es la metrica principal de comparacion entre modelos en este informe.')],
             ['energy_wh_per_1k_tokens',
-             'Consumo energetico del modelo por cada 1.000 tokens procesados (entrada + salida). Es el unico parametro que diferencia a los modelos en este comparador: todos los demas factores del escenario permanecen fijos. A mayor valor, mayor huella de carbono por consulta.'],
-            ['Etiqueta energetica',
-             'Clasificacion de eficiencia basada en percentiles calculados sobre el dataset completo (~693.000 combinaciones). A+++ = top 5% mas eficiente; A++ = 5-15%; A+ = 15-30%; A = 30-50%; B = 50-70%; C = 70-85%; D = 85-95%. Permite ubicar cada modelo en el universo de referencia.'],
-            ['Tokens/s (velocidad de inferencia)',
-             'Numero de tokens generados por segundo por el modelo. Un valor mas alto indica mayor rapidez de respuesta. Junto con el CO2/query, define el perfil de eficiencia de cada modelo en el grafico de dispersion.'],
-            ['Latencia (ms)',
-             'Tiempo total estimado de respuesta desde el envio de la consulta hasta la recepcion completa de la respuesta. Depende principalmente de la velocidad del modelo y del numero de tokens de salida.'],
-            ['Ahorro vs. referencia',
-             'Diferencia porcentual de emisiones entre cada modelo y el modelo de referencia seleccionado. Un valor negativo indica que ese modelo emite menos CO2 (es mas eficiente que la referencia). Un valor positivo indica mayor emision. Se calcula como: (CO2_modelo - CO2_ref) / CO2_ref x 100.'],
-            ['Pareto-optimo',
-             'Un modelo es Pareto-optimo si ningun otro modelo del conjunto lo supera simultaneamente en todos los criterios activos (CO2, velocidad, latencia). La frontera de Pareto representa el subconjunto de modelos que ofrecen los mejores trade-offs posibles: elegir uno de estos modelos garantiza que no existe ninguna alternativa mejor en todos los criterios a la vez.'],
-            ['Dominancia cruzada',
-             'Relacion bilateral entre dos modelos: el modelo A domina a B si gana en mas criterios de los que pierde. La matriz de dominancia (seccion 7 de este informe) muestra estas relaciones para todos los pares, permitiendo identificar que modelos son globalmente superiores y cuales presentan debilidades especificas frente a sus competidores.'],
+             t('Consumo energetico del modelo por cada 1.000 tokens procesados (entrada + salida). Es el unico parametro que diferencia a los modelos en este comparador: todos los demas factores del escenario permanecen fijos. A mayor valor, mayor huella de carbono por consulta.')],
+            [t('Etiqueta energetica'),
+             t('Clasificacion de eficiencia basada en percentiles calculados sobre el dataset completo (~639.000 combinaciones). A+++ = top 5% mas eficiente; A++ = 5-15%; A+ = 15-30%; A = 30-50%; B = 50-70%; C = 70-85%; D = 85-95%. Permite ubicar cada modelo en el universo de referencia.')],
+            [t('Tokens/s (velocidad de inferencia)'),
+             t('Numero de tokens generados por segundo por el modelo. Un valor mas alto indica mayor rapidez de respuesta. Junto con el CO2/query, define el perfil de eficiencia de cada modelo en el grafico de dispersion.')],
+            [t('Latencia (ms)'),
+             t('Tiempo total estimado de respuesta desde el envio de la consulta hasta la recepcion completa de la respuesta. Depende principalmente de la velocidad del modelo y del numero de tokens de salida.')],
+            [t('Ahorro vs. referencia'),
+             t('Diferencia porcentual de emisiones entre cada modelo y el modelo de referencia seleccionado. Un valor negativo indica que ese modelo emite menos CO2 (es mas eficiente que la referencia). Un valor positivo indica mayor emision. Se calcula como: (CO2_modelo - CO2_ref) / CO2_ref x 100.')],
+            [t('Pareto-optimo'),
+             t('Un modelo es Pareto-optimo si ningun otro modelo del conjunto lo supera simultaneamente en todos los criterios activos (CO2, velocidad, latencia). La frontera de Pareto representa el subconjunto de modelos que ofrecen los mejores trade-offs posibles: elegir uno de estos modelos garantiza que no existe ninguna alternativa mejor en todos los criterios a la vez.')],
+            [t('Dominancia cruzada'),
+             t('Relacion bilateral entre dos modelos: el modelo A domina a B si gana en mas criterios de los que pierde. La matriz de dominancia (seccion 7 de este informe) muestra estas relaciones para todos los pares, permitiendo identificar que modelos son globalmente superiores y cuales presentan debilidades especificas frente a sus competidores.')],
             ['TOPSIS',
-             'Technique for Order of Preference by Similarity to Ideal Solution. Metodo de decision multicriterio que ordena los modelos midiendo su distancia euclidea al escenario ideal (mejor en todos los criterios) y al anti-ideal (peor en todos). Nota: el ranking TOPSIS no aparece en ninguna de las secciones ni graficas de este informe PDF; puede consultarse de forma interactiva en la seccion de analisis TOPSIS de la herramienta web.'],
+             t('Technique for Order of Preference by Similarity to Ideal Solution. Metodo de decision multicriterio que ordena los modelos midiendo su distancia euclidea al escenario ideal (mejor en todos los criterios) y al anti-ideal (peor en todos). Nota: el ranking TOPSIS no aparece en ninguna de las secciones ni graficas de este informe PDF; puede consultarse de forma interactiva en la seccion de analisis TOPSIS de la herramienta web.')],
         ];
 
         glossary.forEach(([term, def]) => {
@@ -4029,12 +4003,12 @@
             // Same footer for all pages (including cover)
             fc(C.navyMid); doc.rect(0, H - 8, W, 8, 'F');
             doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5); tc([147, 197, 253]);
-            doc.text('TFG - Evaluacion del impacto medioambiental de modelos de IA  |  Antonio Luis Jimenez de la Fuente', ML, H - 3);
-            const pgLabel = `Pag. ${pg} / ${totalPages}`;
+            doc.text(t('TFG - Evaluacion del impacto medioambiental de modelos de IA  |  Antonio Luis Jimenez de la Fuente'), ML, H - 3);
+            const pgLabel = t('Pag. {p} / {n}', { p: pg, n: totalPages });
             doc.text(pgLabel, W - MR - doc.getTextWidth(pgLabel), H - 3);
         }
 
-        doc.save(`informe_comparativo_modelos_IA_${dateStr}.pdf`);
+        doc.save(`${t('informe_comparativo_modelos_IA')}_${dateStr}.pdf`);
     }
 
     // ------------------------------------------------------------------
@@ -4055,10 +4029,10 @@
     };
 
     const PRESETS_SIMULACION = [
-        { label: 'Personal',    value: 100 },
-        { label: 'Startup',     value: 10000 },
-        { label: 'Empresa',     value: 1000000 },
-        { label: 'Gran escala', value: 100000000 },
+        { label: 'Personal',       value: 100 },
+        { label: 'Startup',        value: 10000 },
+        { label: t('Empresa'),     value: 1000000 },
+        { label: t('Gran escala'), value: 100000000 },
     ];
 
     const MODELOS_EFICIENTES_SIM_COLORS = ['#4ade80', '#60a5fa', '#fbbf24', '#f472b6', '#a78bfa'];
@@ -4108,7 +4082,7 @@
             const btn = document.createElement('button');
             btn.className = 'preset-chip';
             btn.dataset.value = preset.value;
-            btn.innerHTML = `${preset.label}<span class="preset-chip-val">${preset.value.toLocaleString('es-ES')}</span>`;
+            btn.innerHTML = `${preset.label}<span class="preset-chip-val">${preset.value.toLocaleString(LOCALE)}</span>`;
             btn.onclick = () => updateQueriesDia(preset.value);
             containerPresets.appendChild(btn);
         });
@@ -4144,7 +4118,7 @@
         const slider = document.getElementById('sim-slider');
         const bigNumber = document.getElementById('sim-big-number');
         const compactCount = document.getElementById('sim-compact-count');
-        const formatted = SIM_STATE.queries_dia.toLocaleString('es-ES');
+        const formatted = SIM_STATE.queries_dia.toLocaleString(LOCALE);
 
         if (slider) slider.value = Math.log10(SIM_STATE.queries_dia);
         if (bigNumber) bigNumber.textContent = formatted;
@@ -4168,38 +4142,38 @@
         const coste_euro = energia_ano_kWh * 0.12;
 
         const _fmtCo2 = (kg) => {
-            if (kg >= 1000)    return { val: (kg/1000).toLocaleString('es-ES', {maximumFractionDigits:2}), unit: 'toneladas CO₂' };
-            if (kg >= 0.001)   return { val: kg.toLocaleString('es-ES', {maximumFractionDigits:3}), unit: 'kg CO₂' };
+            if (kg >= 1000)    return { val: (kg/1000).toLocaleString(LOCALE, {maximumFractionDigits:2}), unit: t('toneladas CO₂') };
+            if (kg >= 0.001)   return { val: kg.toLocaleString(LOCALE, {maximumFractionDigits:3}), unit: 'kg CO₂' };
             const g = kg * 1000;
-            if (g >= 0.001)    return { val: g.toLocaleString('es-ES', {maximumFractionDigits:3}), unit: 'g CO₂' };
-            return { val: (g * 1000).toLocaleString('es-ES', {maximumFractionDigits:3}), unit: 'mg CO₂' };
+            if (g >= 0.001)    return { val: g.toLocaleString(LOCALE, {maximumFractionDigits:3}), unit: 'g CO₂' };
+            return { val: (g * 1000).toLocaleString(LOCALE, {maximumFractionDigits:3}), unit: 'mg CO₂' };
         };
         const co2Disp   = _fmtCo2(co2_ano_kg);
         const proj5Disp = _fmtCo2(co2_ano_kg * 5);
 
         const energyDisp = (() => {
-            if (energia_ano_MWh >= 0.01) return { val: energia_ano_MWh.toLocaleString('es-ES', {maximumFractionDigits:3}), unit: 'MWh/año' };
-            if (energia_ano_kWh >= 0.001) return { val: energia_ano_kWh.toLocaleString('es-ES', {maximumFractionDigits:3}), unit: 'kWh/año' };
-            return { val: (energia_ano_kWh * 1000).toLocaleString('es-ES', {maximumFractionDigits:3}), unit: 'Wh/año' };
+            if (energia_ano_MWh >= 0.01) return { val: energia_ano_MWh.toLocaleString(LOCALE, {maximumFractionDigits:3}), unit: t('MWh/año') };
+            if (energia_ano_kWh >= 0.001) return { val: energia_ano_kWh.toLocaleString(LOCALE, {maximumFractionDigits:3}), unit: t('kWh/año') };
+            return { val: (energia_ano_kWh * 1000).toLocaleString(LOCALE, {maximumFractionDigits:3}), unit: t('Wh/año') };
         })();
 
         const costDisp = (() => {
-            if (coste_euro >= 0.01) return { val: coste_euro.toLocaleString('es-ES', {maximumFractionDigits:2}), unit: '€/año' };
-            if (coste_euro >= 0.0001) return { val: (coste_euro*100).toLocaleString('es-ES', {maximumFractionDigits:4}), unit: 'céntimos/año' };
-            return { val: (coste_euro*1000).toLocaleString('es-ES', {maximumFractionDigits:4}), unit: 'm€/año' };
+            if (coste_euro >= 0.01) return { val: coste_euro.toLocaleString(LOCALE, {maximumFractionDigits:2}), unit: t('€/año') };
+            if (coste_euro >= 0.0001) return { val: (coste_euro*100).toLocaleString(LOCALE, {maximumFractionDigits:4}), unit: t('céntimos/año') };
+            return { val: (coste_euro*1000).toLocaleString(LOCALE, {maximumFractionDigits:4}), unit: t('m€/año') };
         })();
 
         const kpis = [
-            { icon: 'hash',               label: 'Queries/día',       value: SIM_STATE.queries_dia.toLocaleString('es-ES'), unit: 'queries/día' },
-            { icon: 'cloud',              label: 'CO₂ anual',         value: co2Disp.val,    unit: co2Disp.unit },
-            { icon: 'zap',                label: 'Energía anual',     value: energyDisp.val, unit: energyDisp.unit },
-            { icon: 'circle-dollar-sign', label: 'Coste energético',  value: costDisp.val,   unit: costDisp.unit },
-            { icon: 'trending-up',        label: 'Proyección 5 años', value: proj5Disp.val,  unit: proj5Disp.unit },
+            { icon: 'hash',               label: t('Queries/día'),       value: SIM_STATE.queries_dia.toLocaleString(LOCALE), unit: t('queries/día') },
+            { icon: 'cloud',              label: t('CO₂ anual'),         value: co2Disp.val,    unit: co2Disp.unit },
+            { icon: 'zap',                label: t('Energía anual'),     value: energyDisp.val, unit: energyDisp.unit },
+            { icon: 'circle-dollar-sign', label: t('Coste energético'),  value: costDisp.val,   unit: costDisp.unit },
+            { icon: 'trending-up',        label: t('Proyección 5 años'), value: proj5Disp.val,  unit: proj5Disp.unit },
         ];
 
         container.innerHTML = `
             <div class="card" style="margin-bottom:24px;">
-                <div class="card-title"><i data-lucide="activity"></i> Métricas de impacto anual</div>
+                <div class="card-title"><i data-lucide="activity"></i> ${t('Métricas de impacto anual')}</div>
                 <div class="metrics-grid">
                     ${kpis.map(k => metricBox(k.icon, k.label, null, k.unit, null, k.value)).join('')}
                 </div>
@@ -4210,17 +4184,17 @@
 
     // Pool de equivalencias con divisores en kg CO₂
     const EQUIVALENCIAS_POOL = [
-        { icon: 'search',       label: 'Búsquedas en Google',     divisor: CO2_REF_KG.google_search,        detailFn: n => `${fmtBigNum(n)} búsquedas en Google` },
-        { icon: 'smartphone',   label: 'Cargas de móvil',         divisor: CO2_REF_KG.phone_charge,         detailFn: n => `${fmtBigNum(n)} cargas completas de smartphone` },
-        { icon: 'monitor-play', label: 'Horas de streaming',      divisor: CO2_REF_KG.streaming_hour,       detailFn: n => `${formatNum(n)} horas de Netflix` },
-        { icon: 'car',          label: 'Km en coche',             divisor: CO2_REF_KG.car_km,               detailFn: n => `${formatNum(n)} km en coche` },
-        { icon: 'fuel',         label: 'Litros de gasolina',      divisor: CO2_REF_KG.gasoline_litre,       detailFn: n => `${formatNum(n)} litros de gasolina quemada` },
-        { icon: 'tree-pine',    label: 'Árboles para compensar',  divisor: CO2_REF_KG.tree_year,            detailFn: n => `${formatNum(n)} árboles necesarios para absorber` },
-        { icon: 'plane',        label: 'Vuelos domésticos',       divisor: CO2_REF_KG.domestic_flight,      detailFn: n => `${formatNum(n)} vuelos nacionales` },
-        { icon: 'plane-takeoff',label: 'Vuelos transatlánticos',  divisor: CO2_REF_KG.transatlantic_flight, detailFn: n => `${formatNum(n)} vuelos NYC–Londres` },
-        { icon: 'car',          label: 'Años conduciendo',        divisor: CO2_REF_KG.car_year,             detailFn: n => `${n.toFixed(2)} años con coche medio` },
-        { icon: 'home',         label: 'Años de hogar medio',     divisor: CO2_REF_KG.household_year,       detailFn: n => `${n.toFixed(2)} años de consumo doméstico` },
-        { icon: 'globe',        label: 'Personas europeas/año',   divisor: CO2_REF_KG.european_year,        detailFn: n => `Equivale a ${n.toFixed(2)} europeos durante 1 año` },
+        { icon: 'search',       label: t('Búsquedas en Google'),     divisor: CO2_REF_KG.google_search,        detailFn: n => t('{n} búsquedas en Google', { n: fmtBigNum(n) }) },
+        { icon: 'smartphone',   label: t('Cargas de móvil'),         divisor: CO2_REF_KG.phone_charge,         detailFn: n => t('{n} cargas completas de smartphone', { n: fmtBigNum(n) }) },
+        { icon: 'monitor-play', label: t('Horas de streaming'),      divisor: CO2_REF_KG.streaming_hour,       detailFn: n => t('{n} horas de Netflix', { n: formatNum(n) }) },
+        { icon: 'car',          label: t('Km en coche'),             divisor: CO2_REF_KG.car_km,               detailFn: n => t('{n} km en coche', { n: formatNum(n) }) },
+        { icon: 'fuel',         label: t('Litros de gasolina'),      divisor: CO2_REF_KG.gasoline_litre,       detailFn: n => t('{n} litros de gasolina quemada', { n: formatNum(n) }) },
+        { icon: 'tree-pine',    label: t('Árboles para compensar'),  divisor: CO2_REF_KG.tree_year,            detailFn: n => t('{n} árboles necesarios para absorber', { n: formatNum(n) }) },
+        { icon: 'plane',        label: t('Vuelos domésticos'),       divisor: CO2_REF_KG.domestic_flight,      detailFn: n => t('{n} vuelos nacionales', { n: formatNum(n) }) },
+        { icon: 'plane-takeoff',label: t('Vuelos transatlánticos'),  divisor: CO2_REF_KG.transatlantic_flight, detailFn: n => t('{n} vuelos NYC–Londres', { n: formatNum(n) }) },
+        { icon: 'car',          label: t('Años conduciendo'),        divisor: CO2_REF_KG.car_year,             detailFn: n => t('{n} años con coche medio', { n: n.toFixed(2) }) },
+        { icon: 'home',         label: t('Años de hogar medio'),     divisor: CO2_REF_KG.household_year,       detailFn: n => t('{n} años de consumo doméstico', { n: n.toFixed(2) }) },
+        { icon: 'globe',        label: t('Personas europeas/año'),   divisor: CO2_REF_KG.european_year,        detailFn: n => t('Equivale a {n} europeos durante 1 año', { n: n.toFixed(2) }) },
     ];
 
     // Selecciona las 6 equivalencias más significativas para el volumen dado
@@ -4248,15 +4222,15 @@
 
         const fmtVal = (ratio) => {
             if (ratio >= 1000000) return fmtBigNum(ratio);
-            if (ratio >= 100) return Math.round(ratio).toLocaleString('es-ES');
+            if (ratio >= 100) return Math.round(ratio).toLocaleString(LOCALE);
             if (ratio >= 1) return ratio.toFixed(1);
             return ratio.toFixed(2);
         };
 
         container.innerHTML = `
             <div class="card" style="margin-bottom:24px;">
-                <div class="card-title"><i data-lucide="leaf"></i> Equivalencias intuitivas (anual)</div>
-                <p style="color:var(--text-secondary);font-size:13px;margin-bottom:16px;">Comprende tu impacto en términos cotidianos.</p>
+                <div class="card-title"><i data-lucide="leaf"></i> ${t('Equivalencias intuitivas (anual)')}</div>
+                <p style="color:var(--text-secondary);font-size:13px;margin-bottom:16px;">${t('Comprende tu impacto en términos cotidianos.')}</p>
                 <div class="breakdown-grid">
                     ${selected.map(eq => `
                         <div class="breakdown-card equiv-card" title="${eq.detailFn(eq.ratio)}">
@@ -4292,7 +4266,7 @@
             const qd = SIM_STATE.queries_dia * Math.pow(1 + growth, y - 1);
             const co2yr = (qd * 365 * SIM_STATE.co2_por_query) / 1000;
             cumActual += co2yr;
-            labels.push(`Año ${y}`);
+            labels.push(t('Año {y}', { y }));
             dataActual.push(cumActual);
             const rowEf = {};
             MODELOS_EFICIENTES_SIM.forEach(m => {
@@ -4304,7 +4278,7 @@
         }
 
         const totalActual = dataActual[dataActual.length - 1];
-        const anoLabel = `${anos} año${anos > 1 ? 's' : ''}`;
+        const anoLabel = anos > 1 ? t('{n} años', { n: anos }) : t('{n} año', { n: anos });
 
         // Switch-hoy: daily saving with currently selected model
         const co2DiaDia = SIM_STATE.queries_dia * SIM_STATE.co2_por_query / 1000;
@@ -4330,7 +4304,7 @@
                 <!-- Before / After summary -->
                 <div style="display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:12px;margin-bottom:16px;">
                     <div style="background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);border-radius:var(--radius);padding:16px;text-align:center;">
-                        <div style="color:var(--text-secondary);font-size:11px;margin-bottom:4px;">Modelo actual (${anoLabel})</div>
+                        <div style="color:var(--text-secondary);font-size:11px;margin-bottom:4px;">${t('Modelo actual ({h})', { h: anoLabel })}</div>
                         <div style="color:#ef4444;font-family:'JetBrains Mono',monospace;font-size:24px;font-weight:700;line-height:1.2;">${fmtU(totalActual)}</div>
                         <div style="color:var(--text-muted);font-size:11px;margin-top:2px;">CO₂</div>
                     </div>
@@ -4349,12 +4323,10 @@
                 <div style="background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.25);border-radius:var(--radius);padding:14px 16px;margin-bottom:16px;display:flex;align-items:flex-start;gap:10px;">
                     <i data-lucide="zap" style="width:18px;height:18px;color:#fbbf24;margin-top:2px;flex-shrink:0;"></i>
                     <div>
-                        <div style="color:#fbbf24;font-size:12px;font-weight:600;margin-bottom:3px;">¿Y si cambias hoy?</div>
+                        <div style="color:#fbbf24;font-size:12px;font-weight:600;margin-bottom:3px;">${t('¿Y si cambias hoy?')}</div>
                         <div style="color:var(--text-secondary);font-size:12px;line-height:1.5;">
-                            Quedan <strong style="color:var(--text-primary);">${diasRestantes} días</strong> para fin de año.
-                            Cambiando ahora a <strong style="color:${modelEf.color};">${modelEf.nombre}</strong> ahorrarías
-                            <strong style="color:#fbbf24;">${fmtU(ahorroRestoAno)}</strong> CO₂ este año
-                            <span style="color:var(--text-muted);font-size:11px;">(${fmtU(ahorroDiario)}/día)</span>
+                            ${t('Quedan <strong style="color:var(--text-primary);">{d} días</strong> para fin de año. Cambiando ahora a <strong style="color:{c};">{m}</strong> ahorrarías <strong style="color:#fbbf24;">{s}</strong> CO₂ este año <span style="color:var(--text-muted);font-size:11px;">({daily}/día)</span>',
+                                { d: diasRestantes, c: modelEf.color, m: modelEf.nombre, s: fmtU(ahorroRestoAno), daily: fmtU(ahorroDiario) })}
                         </div>
                     </div>
                 </div>
@@ -4369,7 +4341,7 @@
                     <div style="background:${modelEf.bg};border:1px solid ${modelEf.color}33;border-radius:var(--radius);padding:12px 16px;display:flex;align-items:center;gap:8px;flex:1;min-width:0;">
                         <i data-lucide="leaf" style="width:15px;height:15px;color:${modelEf.color};flex-shrink:0;"></i>
                         <span style="color:var(--text-primary);font-size:13px;">
-                            Ahorro en ${anoLabel}: <strong style="color:${modelEf.color};">${fmtU(ahorro)}</strong> CO₂${growth > 0 ? ` <span style="color:var(--text-muted);font-size:11px;">(+${SIM_STATE.crecimiento_pct}% crec./año)</span>` : ''}
+                            ${t('Ahorro en {h}:', { h: anoLabel })} <strong style="color:${modelEf.color};">${fmtU(ahorro)}</strong> CO₂${growth > 0 ? ` <span style="color:var(--text-muted);font-size:11px;">${t('(+{g}% crec./año)', { g: SIM_STATE.crecimiento_pct })}</span>` : ''}
                         </span>
                     </div>
                 </div>
@@ -4384,10 +4356,10 @@
                 <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;margin-bottom:16px;">
                     ${ranking.map((m, i) => `
                         <div style="background:${m.bg};border:1px solid ${m.color}44;border-radius:var(--radius);padding:12px;position:relative;overflow:hidden;">
-                            ${i === 0 ? `<div style="position:absolute;top:6px;right:6px;background:${m.color};color:var(--bg-base);font-size:9px;font-weight:700;padding:2px 6px;border-radius:var(--radius-pill);letter-spacing:.5px;">MEJOR</div>` : ''}
+                            ${i === 0 ? `<div style="position:absolute;top:6px;right:6px;background:${m.color};color:var(--bg-base);font-size:9px;font-weight:700;padding:2px 6px;border-radius:var(--radius-pill);letter-spacing:.5px;">${t('MEJOR')}</div>` : ''}
                             <div style="color:var(--text-secondary);font-size:10px;margin-bottom:4px;">${m.nombre}</div>
                             <div style="color:${m.color};font-family:'JetBrains Mono',monospace;font-size:16px;font-weight:700;">−${m.pct}%</div>
-                            <div style="color:var(--text-muted);font-size:10px;margin-top:3px;">Ahorra ${fmtU(m.ahorro)}</div>
+                            <div style="color:var(--text-muted);font-size:10px;margin-top:3px;">${t('Ahorra {v}', { v: fmtU(m.ahorro) })}</div>
                         </div>
                     `).join('')}
                 </div>
@@ -4402,7 +4374,7 @@
                     <div style="background:${best.bg};border:1px solid ${best.color}44;border-radius:var(--radius);padding:12px 16px;display:flex;align-items:center;gap:8px;flex:1;min-width:0;">
                         <i data-lucide="trophy" style="width:15px;height:15px;color:${best.color};flex-shrink:0;"></i>
                         <span style="color:var(--text-primary);font-size:13px;">
-                            Mejor opción: <strong style="color:${best.color};">${best.nombre}</strong> — ahorra <strong style="color:${best.color};">${fmtU(best.ahorro)}</strong> en ${anoLabel}
+                            ${t('Mejor opción: <strong style="color:{c};">{m}</strong> — ahorra <strong style="color:{c};">{v}</strong> en {h}', { c: best.color, m: best.nombre, v: fmtU(best.ahorro), h: anoLabel })}
                         </span>
                     </div>
                 </div>
@@ -4412,11 +4384,11 @@
         container.innerHTML = `
             <div class="card" style="margin-bottom:24px;">
                 <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:20px;">
-                    <div class="card-title" style="margin:0;"><i data-lucide="git-compare"></i> Proyección comparativa</div>
+                    <div class="card-title" style="margin:0;"><i data-lucide="git-compare"></i> ${t('Proyección comparativa')}</div>
                     <!-- Mode toggle -->
                     <div style="display:flex;gap:4px;background:var(--bg-surface);border:1px solid var(--glass-border);border-radius:var(--radius-pill);padding:3px;">
-                        <button id="sim-mode-single" class="preset-chip ${!todosModos ? 'active' : ''}" style="padding:5px 14px;font-size:12px;border-radius:var(--radius-pill);">Un modelo</button>
-                        <button id="sim-mode-all" class="preset-chip ${todosModos ? 'active' : ''}" style="padding:5px 14px;font-size:12px;border-radius:var(--radius-pill);">Comparar todos</button>
+                        <button id="sim-mode-single" class="preset-chip ${!todosModos ? 'active' : ''}" style="padding:5px 14px;font-size:12px;border-radius:var(--radius-pill);">${t('Un modelo')}</button>
+                        <button id="sim-mode-all" class="preset-chip ${todosModos ? 'active' : ''}" style="padding:5px 14px;font-size:12px;border-radius:var(--radius-pill);">${t('Comparar todos')}</button>
                     </div>
                 </div>
 
@@ -4424,21 +4396,21 @@
                 <div style="display:flex;flex-wrap:wrap;gap:16px;margin-bottom:20px;align-items:flex-end;">
                     ${!todosModos ? `
                     <div style="display:flex;flex-direction:column;gap:6px;flex:1;min-width:170px;">
-                        <label style="color:var(--text-secondary);font-size:12px;font-weight:500;">Modelo eficiente</label>
+                        <label style="color:var(--text-secondary);font-size:12px;font-weight:500;">${t('Modelo eficiente')}</label>
                         <select id="sim-modelo-select" style="width:100%;">
                             ${MODELOS_EFICIENTES_SIM.map(m => `<option value="${m.nombre}" ${m.nombre === SIM_STATE.modelo_eficiente ? 'selected' : ''}>${m.nombre} (−${((1-m.factor)*100).toFixed(0)}%)</option>`).join('')}
                         </select>
                     </div>` : ''}
                     <div style="display:flex;flex-direction:column;gap:6px;">
-                        <label style="color:var(--text-secondary);font-size:12px;font-weight:500;">Horizonte temporal</label>
+                        <label style="color:var(--text-secondary);font-size:12px;font-weight:500;">${t('Horizonte temporal')}</label>
                         <div style="display:flex;gap:4px;">
-                            ${[1,2,3,5,10].map(y => `<button class="preset-chip sim-year-btn ${anos === y ? 'active' : ''}" data-years="${y}" style="padding:6px 12px;font-size:12px;">${y}a</button>`).join('')}
+                            ${[1,2,3,5,10].map(y => `<button class="preset-chip sim-year-btn ${anos === y ? 'active' : ''}" data-years="${y}" style="padding:6px 12px;font-size:12px;">${t('{y}a', { y })}</button>`).join('')}
                         </div>
                     </div>
                     <div style="display:flex;flex-direction:column;gap:6px;min-width:170px;">
-                        <label style="color:var(--text-secondary);font-size:12px;font-weight:500;">Crecimiento anual de uso</label>
+                        <label style="color:var(--text-secondary);font-size:12px;font-weight:500;">${t('Crecimiento anual de uso')}</label>
                         <select id="sim-growth-select" style="width:100%;">
-                            ${[0,20,50,100,200].map(g => `<option value="${g}" ${SIM_STATE.crecimiento_pct === g ? 'selected' : ''}>+${g}%${g === 0 ? ' (sin crecimiento)' : ''}</option>`).join('')}
+                            ${[0,20,50,100,200].map(g => `<option value="${g}" ${SIM_STATE.crecimiento_pct === g ? 'selected' : ''}>+${g}%${g === 0 ? t(' (sin crecimiento)') : ''}</option>`).join('')}
                         </select>
                     </div>
                 </div>
@@ -4507,7 +4479,7 @@
                 labels,
                 datasets: [
                     {
-                        label: 'Modelo actual',
+                        label: t('Modelo actual'),
                         data: dataActual,
                         borderColor: '#ef4444',
                         backgroundColor: 'rgba(239,68,68,0.08)',
@@ -4549,7 +4521,7 @@
                         bodyColor: CT.tick,
                         callbacks: {
                             label: c => ` ${c.dataset.label}: ${fmtU(c.parsed.y)} CO₂`,
-                            afterBody: items => items.length >= 2 ? [`  Ahorro acumulado: ${fmtU(items[0].parsed.y - items[1].parsed.y)}`] : [],
+                            afterBody: items => items.length >= 2 ? [t('  Ahorro acumulado: {v}', { v: fmtU(items[0].parsed.y - items[1].parsed.y) })] : [],
                         },
                     },
                 },
@@ -4558,7 +4530,7 @@
                     y: {
                         grid: { color: CT.grid },
                         ticks: { color: CT.tick, font: { size: 11 }, callback: v => v >= 1000 ? `${(v/1000).toFixed(1)}t` : v < 0.01 ? `${(v*1000).toFixed(0)}g` : `${v.toFixed(0)}kg` },
-                        title: { display: true, text: 'CO₂ acumulado', color: CT.axisTitle, font: { size: 11 } },
+                        title: { display: true, text: t('CO₂ acumulado'), color: CT.axisTitle, font: { size: 11 } },
                     },
                 },
             },
@@ -4591,7 +4563,7 @@
                 labels,
                 datasets: [
                     {
-                        label: 'Modelo actual',
+                        label: t('Modelo actual'),
                         data: dataActual,
                         borderColor: '#ef4444',
                         backgroundColor: 'rgba(239,68,68,0.08)',
@@ -4627,7 +4599,7 @@
                     y: {
                         grid: { color: CT.grid },
                         ticks: { color: CT.tick, font: { size: 11 }, callback: v => v >= 1000 ? `${(v/1000).toFixed(1)}t` : v < 0.01 ? `${(v*1000).toFixed(0)}g` : `${v.toFixed(0)}kg` },
-                        title: { display: true, text: 'CO₂ acumulado', color: CT.axisTitle, font: { size: 11 } },
+                        title: { display: true, text: t('CO₂ acumulado'), color: CT.axisTitle, font: { size: 11 } },
                     },
                 },
             },
@@ -4651,27 +4623,27 @@
         const contenidoResultado = overhead === 0
             ? `<div style="background:var(--primary-dim);border:1px solid var(--primary-border);border-radius:var(--radius);padding:14px 16px;display:flex;align-items:center;gap:10px;">
                 <i data-lucide="check-circle" style="width:18px;height:18px;color:var(--primary);flex-shrink:0;"></i>
-                <span style="color:var(--text-primary);font-size:13px;">Impacto inmediato — sin overhead de despliegue, el ahorro empieza desde el primer día.</span>
+                <span style="color:var(--text-primary);font-size:13px;">${t('Impacto inmediato — sin overhead de despliegue, el ahorro empieza desde el primer día.')}</span>
                </div>`
             : `<div style="background:${modelEf.bg};border:1px solid ${modelEf.color}44;border-radius:var(--radius);padding:14px 16px;">
                 <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:4px;">
-                    <span style="color:var(--text-secondary);font-size:12px;">Punto de equilibrio:</span>
-                    <span style="color:${modelEf.color};font-family:'JetBrains Mono',monospace;font-size:20px;font-weight:700;">${breakEvenDays} días</span>
-                    <span style="color:var(--text-muted);font-size:11px;">(~${breakEvenMeses} meses)</span>
+                    <span style="color:var(--text-secondary);font-size:12px;">${t('Punto de equilibrio:')}</span>
+                    <span style="color:${modelEf.color};font-family:'JetBrains Mono',monospace;font-size:20px;font-weight:700;">${t('{d} días', { d: breakEvenDays })}</span>
+                    <span style="color:var(--text-muted);font-size:11px;">${t('(~{m} meses)', { m: breakEvenMeses })}</span>
                 </div>
-                <div style="color:var(--text-muted);font-size:11px;">Tras ${breakEvenDays} días compensas los ${fmtU(overhead)} CO₂ del despliegue y empiezas a ahorrar neto.</div>
+                <div style="color:var(--text-muted);font-size:11px;">${t('Tras {d} días compensas los {o} CO₂ del despliegue y empiezas a ahorrar neto.', { d: breakEvenDays, o: fmtU(overhead) })}</div>
                </div>`;
 
         // Build break-even chart data (2× break-even point, no cap so crossing is always visible)
         const chartDays = overhead > 0 ? Math.max(breakEvenDays * 2, 30) : 180;
         const step = Math.max(1, Math.floor(chartDays / 30));
         const _fmtDay = d => {
-            if (d === 0) return 'Hoy';
+            if (d === 0) return t('Hoy');
             if (chartDays > 730) {
                 const yrs = d / 365;
-                return yrs >= 1 ? `Año ${yrs.toFixed(1).replace('.0','')}` : `Mes ${Math.round(d/30.4)}`;
+                return yrs >= 1 ? t('Año {y}', { y: yrs.toFixed(1).replace('.0','') }) : t('Mes {m}', { m: Math.round(d/30.4) });
             }
-            return `Día ${d}`;
+            return t('Día {d}', { d });
         };
         const beLabels = [], beSinCambio = [], beConModelo = [];
         for (let d = 0; d <= chartDays; d += step) {
@@ -4691,55 +4663,48 @@
 
         container.innerHTML = `
             <div class="card" style="margin-bottom:24px;">
-                <div class="card-title"><i data-lucide="calendar-check"></i> Break-even ambiental</div>
+                <div class="card-title"><i data-lucide="calendar-check"></i> ${t('Break-even ambiental')}</div>
 
                 <!-- Explicación colapsable -->
                 <details style="margin-bottom:16px;background:rgba(255,255,255,.03);border:1px solid var(--glass-border);border-radius:var(--radius);">
                     <summary style="cursor:pointer;padding:10px 14px;color:var(--text-secondary);font-size:12px;list-style:none;display:flex;align-items:center;gap:8px;user-select:none;">
                         <i data-lucide="info" style="width:14px;height:14px;flex-shrink:0;"></i>
-                        <span>¿En qué consiste esta sección?</span>
+                        <span>${t('¿En qué consiste esta sección?')}</span>
                         <i data-lucide="chevron-down" style="width:13px;height:13px;margin-left:auto;"></i>
                     </summary>
                     <div style="padding:12px 14px 14px;border-top:1px solid var(--glass-border);display:flex;flex-direction:column;gap:10px;">
                         <p style="color:var(--text-secondary);font-size:12px;line-height:1.7;margin:0;">
-                            Cambiar a un modelo más eficiente no es gratis desde el punto de vista ambiental.
-                            Hay un <strong style="color:var(--text-primary);">coste de despliegue</strong>: el CO₂ que se emite al entrenar,
-                            transferir o poner en marcha el nuevo modelo. Este coste puede ser pequeño (migración interna)
-                            o mayor (reentrenamiento completo).
+                            ${t('Cambiar a un modelo más eficiente no es gratis desde el punto de vista ambiental. Hay un <strong style="color:var(--text-primary);">coste de despliegue</strong>: el CO₂ que se emite al entrenar, transferir o poner en marcha el nuevo modelo. Este coste puede ser pequeño (migración interna) o mayor (reentrenamiento completo).')}
                         </p>
                         <p style="color:var(--text-secondary);font-size:12px;line-height:1.7;margin:0;">
-                            Una vez en producción, el modelo eficiente emite <em>menos</em> CO₂ por consulta que el actual.
-                            Esa diferencia diaria va devolviendo la deuda inicial, poco a poco.
-                            El <strong style="color:var(--text-primary);">punto de equilibrio</strong> es el día en que la deuda queda saldada:
-                            a partir de ahí cada consulta genera un ahorro neto real.
+                            ${t('Una vez en producción, el modelo eficiente emite <em>menos</em> CO₂ por consulta que el actual. Esa diferencia diaria va devolviendo la deuda inicial, poco a poco. El <strong style="color:var(--text-primary);">punto de equilibrio</strong> es el día en que la deuda queda saldada: a partir de ahí cada consulta genera un ahorro neto real.')}
                         </p>
                         <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px;margin-top:2px;">
                             <div style="background:rgba(239,68,68,.07);border:1px solid rgba(239,68,68,.2);border-radius:8px;padding:10px 12px;">
-                                <div style="color:#f87171;font-size:11px;font-weight:600;margin-bottom:3px;">Línea roja — Sin cambio</div>
-                                <div style="color:var(--text-muted);font-size:11px;line-height:1.5;">CO₂ acumulado si sigues con el modelo actual. Crece a ritmo constante.</div>
+                                <div style="color:#f87171;font-size:11px;font-weight:600;margin-bottom:3px;">${t('Línea roja — Sin cambio')}</div>
+                                <div style="color:var(--text-muted);font-size:11px;line-height:1.5;">${t('CO₂ acumulado si sigues con el modelo actual. Crece a ritmo constante.')}</div>
                             </div>
                             <div style="background:${modelEf.bg};border:1px solid ${modelEf.color}44;border-radius:8px;padding:10px 12px;">
-                                <div style="color:${modelEf.color};font-size:11px;font-weight:600;margin-bottom:3px;">Línea de color — Con ${modelEf.nombre}</div>
-                                <div style="color:var(--text-muted);font-size:11px;line-height:1.5;">Empieza más arriba (el overhead), pero crece más despacio. Cuando cruza la roja, empiezas a ganar.</div>
+                                <div style="color:${modelEf.color};font-size:11px;font-weight:600;margin-bottom:3px;">${t('Línea de color — Con {m}', { m: modelEf.nombre })}</div>
+                                <div style="color:var(--text-muted);font-size:11px;line-height:1.5;">${t('Empieza más arriba (el overhead), pero crece más despacio. Cuando cruza la roja, empiezas a ganar.')}</div>
                             </div>
                             <div style="background:rgba(251,191,36,.07);border:1px solid rgba(251,191,36,.25);border-radius:8px;padding:10px 12px;">
-                                <div style="color:#fbbf24;font-size:11px;font-weight:600;margin-bottom:3px;">Punto amarillo</div>
-                                <div style="color:var(--text-muted);font-size:11px;line-height:1.5;">El cruce entre ambas líneas: el día exacto en que el modelo eficiente ha compensado su coste de despliegue.</div>
+                                <div style="color:#fbbf24;font-size:11px;font-weight:600;margin-bottom:3px;">${t('Punto amarillo')}</div>
+                                <div style="color:var(--text-muted);font-size:11px;line-height:1.5;">${t('El cruce entre ambas líneas: el día exacto en que el modelo eficiente ha compensado su coste de despliegue.')}</div>
                             </div>
                         </div>
                         <p style="color:var(--text-muted);font-size:11px;line-height:1.6;margin:0;">
-                            Si seleccionas <em>"Sin overhead"</em>, significa que el despliegue no tiene coste ambiental asociado
-                            (p. ej., un modelo ya disponible vía API) y el ahorro es inmediato desde el primer día.
+                            ${t('Si seleccionas <em>"Sin overhead"</em>, significa que el despliegue no tiene coste ambiental asociado (p. ej., un modelo ya disponible vía API) y el ahorro es inmediato desde el primer día.')}
                         </p>
                     </div>
                 </details>
 
                 <!-- Overhead selector -->
                 <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px;">
-                    <label style="color:var(--text-secondary);font-size:12px;font-weight:500;">Overhead de despliegue (CO₂ estimado)</label>
+                    <label style="color:var(--text-secondary);font-size:12px;font-weight:500;">${t('Overhead de despliegue (CO₂ estimado)')}</label>
                     <div style="display:flex;gap:6px;flex-wrap:wrap;">
                         ${[
-                            { label: 'Sin overhead', val: 0 },
+                            { label: t('Sin overhead'), val: 0 },
                             { label: '0.5 kg CO₂', val: 0.5 },
                             { label: '5 kg CO₂', val: 5 },
                             { label: '50 kg CO₂', val: 50 },
@@ -4751,7 +4716,7 @@
 
                 ${overhead > 0 ? `
                 <div style="margin-top:16px;">
-                    <div style="color:var(--text-muted);font-size:11px;margin-bottom:8px;">Evolución CO₂ acumulado</div>
+                    <div style="color:var(--text-muted);font-size:11px;margin-bottom:8px;">${t('Evolución CO₂ acumulado')}</div>
                     <div style="height:200px;position:relative;">
                         <canvas id="sim-breakeven-chart"></canvas>
                     </div>
@@ -4777,7 +4742,7 @@
                         labels: beLabels,
                         datasets: [
                             {
-                                label: 'Sin cambio',
+                                label: t('Sin cambio'),
                                 data: beSinCambio,
                                 borderColor: '#ef4444',
                                 backgroundColor: 'rgba(239,68,68,0.06)',
@@ -4787,7 +4752,7 @@
                                 tension: 0.2,
                             },
                             {
-                                label: `Con ${modelEf.nombre}`,
+                                label: t('Con {m}', { m: modelEf.nombre }),
                                 data: beConModelo,
                                 borderColor: modelEf.color,
                                 backgroundColor: modelEf.bg,
@@ -4812,7 +4777,7 @@
                         },
                         scales: {
                             x: { grid: { display: false }, ticks: { color: CT.tick, font: { size: 10 }, maxTicksLimit: 8 } },
-                            y: { grid: { color: CT.grid }, ticks: { color: CT.tick, font: { size: 10 }, callback: v => fmtUb(v) }, title: { display: true, text: 'CO₂ acumulado', color: CT.axisTitle, font: { size: 10 } } },
+                            y: { grid: { color: CT.grid }, ticks: { color: CT.tick, font: { size: 10 }, callback: v => fmtUb(v) }, title: { display: true, text: t('CO₂ acumulado'), color: CT.axisTitle, font: { size: 10 } } },
                         },
                     },
                 });
@@ -4831,23 +4796,23 @@
 
         const strategies = [
             ...MODELOS_EFICIENTES_SIM.map(m => ({
-                label: `Modelo: ${m.nombre}`,
+                label: t('Modelo: {m}', { m: m.nombre }),
                 pct: (1 - m.factor) * 100,
                 ahorro: co2AnualActual * (1 - m.factor),
                 color: m.color + 'bb',
             })),
-            { label: 'Reducir queries −50%', pct: 50, ahorro: co2AnualActual * 0.5, color: '#fb923cbb' },
-            { label: 'Datacenter 100% renovable', pct: 35, ahorro: co2AnualActual * 0.35, color: '#34d399bb' },
-            { label: 'Reducir utilización −20%', pct: 15, ahorro: co2AnualActual * 0.15, color: '#cbd5e1bb' },
-            { label: 'Mejor modelo + renovable', pct: (1 - bestFactor * 0.65) * 100, ahorro: co2AnualActual * (1 - bestFactor * 0.65), color: '#fbbf24bb' },
+            { label: t('Reducir queries −50%'), pct: 50, ahorro: co2AnualActual * 0.5, color: '#fb923cbb' },
+            { label: t('Datacenter 100% renovable'), pct: 35, ahorro: co2AnualActual * 0.35, color: '#34d399bb' },
+            { label: t('Reducir utilización −20%'), pct: 15, ahorro: co2AnualActual * 0.15, color: '#cbd5e1bb' },
+            { label: t('Mejor modelo + renovable'), pct: (1 - bestFactor * 0.65) * 100, ahorro: co2AnualActual * (1 - bestFactor * 0.65), color: '#fbbf24bb' },
         ].sort((a, b) => b.pct - a.pct);
 
         const chartHeight = 80 + strategies.length * 38;
 
         container.innerHTML = `
             <div class="card" style="margin-bottom:24px;">
-                <div class="card-title"><i data-lucide="sliders-horizontal"></i> ¿Qué palanca tiene más impacto?</div>
-                <div style="color:var(--text-secondary);font-size:12px;margin-bottom:16px;">Reducción de CO₂ anual estimada por acción independiente, sobre tu configuración actual.</div>
+                <div class="card-title"><i data-lucide="sliders-horizontal"></i> ${t('¿Qué palanca tiene más impacto?')}</div>
+                <div style="color:var(--text-secondary);font-size:12px;margin-bottom:16px;">${t('Reducción de CO₂ anual estimada por acción independiente, sobre tu configuración actual.')}</div>
                 <div style="height:${chartHeight}px;position:relative;">
                     <canvas id="sim-sensitivity-chart"></canvas>
                 </div>
@@ -4865,7 +4830,7 @@
                 data: {
                     labels: strategies.map(s => s.label),
                     datasets: [{
-                        label: 'Reducción CO₂ (%)',
+                        label: t('Reducción CO₂ (%)'),
                         data: strategies.map(s => s.pct),
                         backgroundColor: strategies.map(s => s.color),
                         borderRadius: 6,
@@ -4888,7 +4853,7 @@
                             callbacks: {
                                 label: c => {
                                     const s = strategies[c.dataIndex];
-                                    return ` −${s.pct.toFixed(1)}% · ahorra ${fmtU(s.ahorro)} CO₂/año`;
+                                    return t(' −{p}% · ahorra {v} CO₂/año', { p: s.pct.toFixed(1), v: fmtU(s.ahorro) });
                                 },
                             },
                         },
@@ -4924,11 +4889,11 @@
             datos_tabla.push({ ano: y, queries_totales, co2_actual_kg, co2_ef_kg, ahorro_pct });
         }
 
-        const fmtTabla = v => v < 0.01 ? (v*1000).toFixed(1) : v < 1 ? v.toFixed(3) : Math.round(v).toLocaleString('es-ES');
+        const fmtTabla = v => v < 0.01 ? (v*1000).toFixed(1) : v < 1 ? v.toFixed(3) : Math.round(v).toLocaleString(LOCALE);
 
         container.innerHTML = `
             <div class="card" style="margin-bottom:24px;">
-                <div class="card-title"><i data-lucide="table-2"></i> Proyección detallada (5 años)</div>
+                <div class="card-title"><i data-lucide="table-2"></i> ${t('Proyección detallada (5 años)')}</div>
 
                 <!-- Line chart -->
                 <div class="chart-container" style="height:220px;margin-bottom:20px;">
@@ -4937,7 +4902,7 @@
 
                 <div style="display:flex;justify-content:flex-end;margin-bottom:12px;">
                     <button id="toggle-tabla-sim" class="button button-secondary" style="font-size:12px;padding:6px 14px;">
-                        <i data-lucide="chevron-down"></i> Ver tabla
+                        <i data-lucide="chevron-down"></i> ${t('Ver tabla')}
                     </button>
                 </div>
                 <div id="tabla-sim-content" style="display:none;">
@@ -4945,18 +4910,18 @@
                         <table style="width:100%;border-collapse:collapse;font-size:13px;font-family:'JetBrains Mono',monospace;">
                             <thead>
                                 <tr style="background:var(--bg-surface);border-bottom:2px solid var(--border-strong);">
-                                    <th style="color:var(--primary);font-weight:700;padding:12px 16px;text-align:left;">Año</th>
-                                    <th style="color:var(--primary);font-weight:700;padding:12px 16px;text-align:right;">Queries totales</th>
-                                    <th style="color:var(--accent-red);font-weight:700;padding:12px 16px;text-align:right;">CO₂ actual</th>
+                                    <th style="color:var(--primary);font-weight:700;padding:12px 16px;text-align:left;">${t('Año')}</th>
+                                    <th style="color:var(--primary);font-weight:700;padding:12px 16px;text-align:right;">${t('Queries totales')}</th>
+                                    <th style="color:var(--accent-red);font-weight:700;padding:12px 16px;text-align:right;">${t('CO₂ actual')}</th>
                                     <th style="color:var(--primary);font-weight:700;padding:12px 16px;text-align:right;">CO₂ ${SIM_STATE.modelo_eficiente}</th>
-                                    <th style="color:var(--accent-teal);font-weight:700;padding:12px 16px;text-align:right;">Ahorro</th>
+                                    <th style="color:var(--accent-teal);font-weight:700;padding:12px 16px;text-align:right;">${t('Ahorro')}</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 ${datos_tabla.map((f, i) => `
                                     <tr style="background:${i % 2 === 0 ? 'var(--bg-surface)' : 'var(--bg-card)'};border-bottom:1px solid var(--glass-border);">
-                                        <td style="color:var(--primary);padding:11px 16px;font-weight:600;">Año ${f.ano}</td>
-                                        <td style="color:var(--text-secondary);padding:11px 16px;text-align:right;">${f.queries_totales.toLocaleString('es-ES')}</td>
+                                        <td style="color:var(--primary);padding:11px 16px;font-weight:600;">${t('Año {y}', { y: f.ano })}</td>
+                                        <td style="color:var(--text-secondary);padding:11px 16px;text-align:right;">${f.queries_totales.toLocaleString(LOCALE)}</td>
                                         <td style="color:var(--accent-red);padding:11px 16px;text-align:right;font-weight:600;">${fmtTabla(f.co2_actual_kg)} kg</td>
                                         <td style="color:var(--primary);padding:11px 16px;text-align:right;font-weight:600;">${fmtTabla(f.co2_ef_kg)} kg</td>
                                         <td style="color:var(--accent-teal);padding:11px 16px;text-align:right;font-weight:700;">${f.ahorro_pct}%</td>
@@ -4982,10 +4947,10 @@
             simTablaChartInstance = new Chart(ctx, {
                 type: 'line',
                 data: {
-                    labels: datos_tabla.map(d => `Año ${d.ano}`),
+                    labels: datos_tabla.map(d => t('Año {y}', { y: d.ano })),
                     datasets: [
                         {
-                            label: 'Modelo actual',
+                            label: t('Modelo actual'),
                             data: datos_tabla.map(d => d.co2_actual_kg),
                             borderColor: '#ef4444',
                             backgroundColor: 'rgba(239,68,68,0.06)',
@@ -5042,8 +5007,8 @@
             tablaAbierta = !tablaAbierta;
             document.getElementById('tabla-sim-content').style.display = tablaAbierta ? 'block' : 'none';
             document.getElementById('toggle-tabla-sim').innerHTML = tablaAbierta
-                ? '<i data-lucide="chevron-up"></i> Ocultar tabla'
-                : '<i data-lucide="chevron-down"></i> Ver tabla';
+                ? '<i data-lucide="chevron-up"></i> ' + t('Ocultar tabla')
+                : '<i data-lucide="chevron-down"></i> ' + t('Ver tabla');
             if (window.lucide) lucide.createIcons();
         };
 
@@ -5065,7 +5030,7 @@
 
     // Inicializar simulación cuando se carga
     async function doSimulate() {
-        if (!LAST_PARAMS) { showError("Calcula emisiones primero."); return; }
+        if (!LAST_PARAMS) { showError(t("Calcula emisiones primero.")); return; }
 
         // Usar el valor seleccionado por el usuario en presets/slider
         const qpd = SIM_STATE.queries_dia;
@@ -5077,7 +5042,7 @@
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(params),
             });
-            if (!resp.ok) { const err = await resp.json(); throw new Error(err.error || "Error en simulación"); }
+            if (!resp.ok) { const err = await resp.json(); throw new Error(err.error || t("Error en simulación")); }
             const data = await resp.json();
             renderSimulation(data, qpd);
         } catch (err) {
@@ -5133,18 +5098,18 @@
 
     // Pool de referencias cotidianas con su CO₂ en kg
     const REFERENCIAS_CO2 = [
-        { label: '1 búsqueda Google',        value: CO2_REF_KG.google_search,        color: ['rgba(96,165,250,.65)','#60a5fa'] },
-        { label: '1 carga de móvil',         value: CO2_REF_KG.phone_charge,         color: ['rgba(251,191,36,.65)','#fbbf24'] },
-        { label: '1 hora de streaming',      value: CO2_REF_KG.streaming_hour,       color: ['rgba(167,139,250,.65)','#a78bfa'] },
-        { label: '1 km en coche',            value: CO2_REF_KG.car_km,               color: ['rgba(251,146,60,.65)','#fb923c'] },
-        { label: '1 litro de gasolina',      value: CO2_REF_KG.gasoline_litre,       color: ['rgba(251,146,60,.65)','#fb923c'] },
-        { label: '1 árbol absorbe/año',      value: CO2_REF_KG.tree_year,            color: ['rgba(52,211,153,.65)','#34d399'] },
-        { label: '1 vuelo doméstico',        value: CO2_REF_KG.domestic_flight,      color: ['rgba(251,191,36,.65)','#fbbf24'] },
-        { label: '1 vuelo transatlántico',   value: CO2_REF_KG.transatlantic_flight, color: ['rgba(251,191,36,.65)','#fbbf24'] },
-        { label: 'Límite París per cápita',  value: CO2_REF_KG.paris_per_capita,     color: ['rgba(248,113,113,.65)','#f87171'] },
-        { label: '1 coche medio/año',        value: CO2_REF_KG.car_year,             color: ['rgba(251,146,60,.65)','#fb923c'] },
-        { label: '1 hogar medio/año',        value: CO2_REF_KG.household_year,       color: ['rgba(167,139,250,.65)','#a78bfa'] },
-        { label: 'Europeo medio/año',        value: CO2_REF_KG.european_year,        color: ['rgba(167,139,250,.65)','#a78bfa'] },
+        { label: t('1 búsqueda Google'),        value: CO2_REF_KG.google_search,        color: ['rgba(96,165,250,.65)','#60a5fa'] },
+        { label: t('1 carga de móvil'),         value: CO2_REF_KG.phone_charge,         color: ['rgba(251,191,36,.65)','#fbbf24'] },
+        { label: t('1 hora de streaming'),      value: CO2_REF_KG.streaming_hour,       color: ['rgba(167,139,250,.65)','#a78bfa'] },
+        { label: t('1 km en coche'),            value: CO2_REF_KG.car_km,               color: ['rgba(251,146,60,.65)','#fb923c'] },
+        { label: t('1 litro de gasolina'),      value: CO2_REF_KG.gasoline_litre,       color: ['rgba(251,146,60,.65)','#fb923c'] },
+        { label: t('1 árbol absorbe/año'),      value: CO2_REF_KG.tree_year,            color: ['rgba(52,211,153,.65)','#34d399'] },
+        { label: t('1 vuelo doméstico'),        value: CO2_REF_KG.domestic_flight,      color: ['rgba(251,191,36,.65)','#fbbf24'] },
+        { label: t('1 vuelo transatlántico'),   value: CO2_REF_KG.transatlantic_flight, color: ['rgba(251,191,36,.65)','#fbbf24'] },
+        { label: t('Límite París per cápita'),  value: CO2_REF_KG.paris_per_capita,     color: ['rgba(248,113,113,.65)','#f87171'] },
+        { label: t('1 coche medio/año'),        value: CO2_REF_KG.car_year,             color: ['rgba(251,146,60,.65)','#fb923c'] },
+        { label: t('1 hogar medio/año'),        value: CO2_REF_KG.household_year,       color: ['rgba(167,139,250,.65)','#a78bfa'] },
+        { label: t('Europeo medio/año'),        value: CO2_REF_KG.european_year,        color: ['rgba(167,139,250,.65)','#a78bfa'] },
     ];
 
     // Selecciona las N referencias más adecuadas para un valor de CO₂
@@ -5164,15 +5129,15 @@
         const co2_ano_kg = (SIM_STATE.queries_dia * 365 * SIM_STATE.co2_por_query) / 1000;
         const refs = pickReferencias(co2_ano_kg, 2);
 
-        const labels = ['Tu modelo (anual)', ...refs.map(r => r.label)];
+        const labels = [t('Tu modelo (anual)'), ...refs.map(r => r.label)];
         const data = [co2_ano_kg, ...refs.map(r => r.value)];
         const bgColors = ['rgba(74,222,128,.65)', ...refs.map(r => r.color[0])];
         const borderColors = ['#4ade80', ...refs.map(r => r.color[1])];
 
         container.innerHTML = `
             <div class="card" style="margin-bottom:24px;">
-                <div class="card-title"><i data-lucide="bar-chart-horizontal"></i> Tu modelo frente a referencias del mundo real</div>
-                <p style="color:var(--text-secondary);font-size:13px;margin-bottom:20px;">CO₂ anual generado por tu modelo de IA comparado con actividades cotidianas.</p>
+                <div class="card-title"><i data-lucide="bar-chart-horizontal"></i> ${t('Tu modelo frente a referencias del mundo real')}</div>
+                <p style="color:var(--text-secondary);font-size:13px;margin-bottom:20px;">${t('CO₂ anual generado por tu modelo de IA comparado con actividades cotidianas.')}</p>
                 <div class="chart-container" style="height:${100 + refs.length * 70}px;">
                     <canvas id="sim-impacto-chart"></canvas>
                 </div>
@@ -5206,14 +5171,14 @@
                             borderWidth: 1,
                             titleColor: CT.text,
                             bodyColor: CT.tick,
-                            callbacks: { label: c => ` ${fmtKg(c.parsed.x)} CO₂/año` }
+                            callbacks: { label: c => t(' {v} CO₂/año', { v: fmtKg(c.parsed.x) }) }
                         },
                     },
                     scales: {
                         x: {
                             grid: { color: CT.grid },
                             ticks: { color: CT.tick, font:{size:11}, callback: tickFmt, maxTicksLimit: 7 },
-                            title: { display: true, text: 'CO₂ / año', color: CT.axisTitle, font:{size:11} },
+                            title: { display: true, text: t('CO₂ / año'), color: CT.axisTitle, font:{size:11} },
                         },
                         y: { grid: { display: false }, ticks: { color: CT.text, font:{size:12}, autoSkip: false } },
                     },
@@ -5251,7 +5216,7 @@
             <div class="energy-label">
                 <div class="energy-label-header">
                     <i data-lucide="tag" style="width:16px;height:16px;display:inline;vertical-align:middle;margin-right:6px"></i>
-                    Etiqueta Energética AI
+                    ${t('Etiqueta Energética AI')}
                 </div>
                 <div class="energy-label-content">
                     <div style="text-align:center;margin-bottom:16px;">
@@ -5260,7 +5225,7 @@
                                 ${label.label || "?"}
                             </div>
                         </div>
-                        <div style="font-size:14px;color:#94a3b1;">${label.description || ""}</div>
+                        <div style="font-size:14px;color:#94a3b1;">${t(label.description || "")}</div>
                     </div>
                     <div class="energy-label-scale">
                         ${scale.map(s => `
@@ -5269,7 +5234,7 @@
                                     ${s.label}
                                 </div>
                                 <div style="flex:1;font-size:12px;color:#94a3b1;">
-                                    ${s.description || ""}
+                                    ${t(s.description || "")}
                                 </div>
                                 <div style="font-size:11px;color:#5a7a64;font-family:'JetBrains Mono',monospace;">
                                     ${s.max_co2_g != null ? "≤" + formatNum(s.max_co2_g) + "g" : (s.min_co2_g != null ? ">" + formatNum(s.min_co2_g) + "g" : "")}
@@ -5278,7 +5243,7 @@
                         `).join("")}
                     </div>
                     <div style="text-align:center;margin-top:16px;font-size:13px;color:#94a3b1;">
-                        Percentil: <strong style="color:var(--primary)">${formatNum(labelData.percentile) ?? "?"}%</strong>
+                        ${t('Percentil:')} <strong style="color:var(--primary)">${formatNum(labelData.percentile) ?? "?"}%</strong>
                     </div>
                 </div>
             </div>
@@ -5286,51 +5251,44 @@
                 <div class="elabel-info-card">
                     <div class="elabel-info-title">
                         <i data-lucide="info" style="width:18px;height:18px;display:inline;vertical-align:middle;margin-right:8px;color:var(--primary)"></i>
-                        ¿Cómo funciona este sistema de etiquetado?
+                                                ${t('¿Cómo funciona este sistema de etiquetado?')}
                     </div>
                     <p class="elabel-info-text">
-                        Este sistema se inspira en el <strong>etiquetado energético europeo</strong> regulado por la
-                        <strong>Directiva 2017/1369/UE</strong>, que desde 2021 ayuda a los consumidores a identificar
-                        la eficiencia energética de electrodomésticos de un vistazo.
+                        ${t('Este sistema se inspira en el <strong>etiquetado energético europeo</strong> regulado por la <strong>Directiva 2017/1369/UE</strong>, que desde 2021 ayuda a los consumidores a identificar la eficiencia energética de electrodomésticos de un vistazo.')}
                     </p>
                     <p class="elabel-info-text">
-                        Al igual que la UE calibra sus umbrales de eficiencia a partir de cómo se distribuyen realmente
-                        los productos en el mercado (usando percentiles), analizamos <strong>639.000 combinaciones</strong> de 
-                        escenarios reales: 15 modelos LLM × 71 centros de datos × 20 dispositivos × 5 redes × 6 tipos de consulta.
-                        Esto nos permite saber dónde se ubica tu consulta dentro del universo completo de posibilidades.
+                        ${t('Al igual que la UE calibra sus umbrales de eficiencia a partir de cómo se distribuyen realmente los productos en el mercado (usando percentiles), analizamos <strong>639.000 combinaciones</strong> de escenarios reales: 15 modelos LLM × 71 centros de datos × 20 dispositivos × 5 redes × 6 tipos de consulta. Esto nos permite saber dónde se ubica tu consulta dentro del universo completo de posibilidades.')}
                     </p>
                 </div>
 
                 <div class="elabel-info-card">
                     <div class="elabel-info-title">
                         <i data-lucide="pie-chart" style="width:18px;height:18px;display:inline;vertical-align:middle;margin-right:8px;color:var(--primary)"></i>
-                        Componentes de emisión
+                                                ${t('Componentes de emisión')}
                     </div>
                     <p class="elabel-info-text" style="margin-bottom:12px;">
-                        Las emisiones de tu consulta provienen de tres fuentes principales. El <strong>centro de datos</strong>
-                        domina el impacto (típicamente el 70–95%), seguido por la <strong>red</strong> de transmisión 
-                        y el <strong>dispositivo</strong> del usuario.
+                        ${t('Las emisiones de tu consulta provienen de tres fuentes principales. El <strong>centro de datos</strong> domina el impacto (típicamente el 70–95%), seguido por la <strong>red</strong> de transmisión y el <strong>dispositivo</strong> del usuario.')}
                     </p>
                     <div class="elabel-factors-grid">
                         <div class="elabel-factor">
                             <div class="elabel-factor-icon" style="background:rgba(56,189,248,0.12);color:#38bdf8;">
                                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"/><rect x="2" y="14" width="20" height="8" rx="2" ry="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>
                             </div>
-                            <div class="elabel-factor-label">Centro de datos</div>
-                            <div class="elabel-factor-sub">Intensidad del carbono + eficiencia</div>
+                            <div class="elabel-factor-label">${t('Centro de datos')}</div>
+                            <div class="elabel-factor-sub">${t('Intensidad del carbono + eficiencia')}</div>
                         </div>
                         <div class="elabel-factor">
                             <div class="elabel-factor-icon" style="background:rgba(251,191,36,0.12);color:#fbbf24;">
                                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>
                             </div>
-                            <div class="elabel-factor-label">Red</div>
-                            <div class="elabel-factor-sub">WiFi, 4G, 5G, Fibra…</div>
+                            <div class="elabel-factor-label">${t('Red')}</div>
+                            <div class="elabel-factor-sub">${t('WiFi, 4G, 5G, Fibra…')}</div>
                         </div>
                         <div class="elabel-factor">
                             <div class="elabel-factor-icon" style="background:rgba(168,85,247,0.12);color:#a855f7;">
                                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
                             </div>
-                            <div class="elabel-factor-label">Dispositivo</div>
+                            <div class="elabel-factor-label">${t('Dispositivo')}</div>
                             <div class="elabel-factor-sub">CPU, GPU, NPU…</div>
                         </div>
                     </div>
@@ -5339,18 +5297,13 @@
                 <div class="elabel-info-card">
                     <div class="elabel-info-title">
                         <i data-lucide="lightbulb" style="width:18px;height:18px;display:inline;vertical-align:middle;margin-right:8px;color:#fbbf24"></i>
-                        ¿Por qué 9 clases y no 7?
+                                                ${t('¿Por qué 9 clases y no 7?')}
                     </div>
                     <p class="elabel-info-text">
-                        La UE simplificó su etiqueta de A+++–D a A–G en 2021 porque los electrodomésticos se volvieron 
-                        cada vez más eficientes y casi todos llegaban a A++. Con los modelos de IA ocurre lo contrario:
-                        el rango de emisiones es <strong>extraordinariamente amplio</strong>.
+                        ${t('La UE simplificó su etiqueta de A+++–D a A–G en 2021 porque los electrodomésticos se volvieron cada vez más eficientes y casi todos llegaban a A++. Con los modelos de IA ocurre lo contrario: el rango de emisiones es <strong>extraordinariamente amplio</strong>.')}
                     </p>
                     <p class="elabel-info-text">
-                        Un consulta puede consumir desde microgramos de CO₂
-                        hasta gramos enteros. Esa variación 
-                        requiere más detalle, por eso usamos <strong>9 clases</strong> (A+++ hasta F) 
-                        con umbrales calibrados según distribuciones reales.
+                        ${t('Un consulta puede consumir desde microgramos de CO₂ hasta gramos enteros. Esa variación requiere más detalle, por eso usamos <strong>9 clases</strong> (A+++ hasta F) con umbrales calibrados según distribuciones reales.')}
                     </p>
                     <div class="elabel-why-visual">
                         ${scaleOrder.map(l => {
@@ -5362,13 +5315,13 @@
                             // Width proportional to percentile range
                             const pRanges = {'A+++':2,'A++':8,'A+':10,'A':10,'B':20,'C':20,'D':20,'E':7,'F':3};
                             const w = pRanges[l] || 10;
-                            return `<div class="elabel-why-bar" style="flex:${w};background:${barColor};" title="${l}: ${s.description || ''}">${l}</div>`;
+                            return `<div class="elabel-why-bar" style="flex:${w};background:${barColor};" title="${l}: ${t(s.description || '')}">${l}</div>`;
                         }).join('')}
                     </div>
                     <div style="display:flex;justify-content:space-between;font-size:13px;color:#4a7c59;margin-top:6px;padding:0 2px;font-weight:700;letter-spacing:0.3px;">
-                        <span>P0 (menor CO₂)</span>
-                        <span>P50 (mediana)</span>
-                        <span>P100 (mayor CO₂)</span>
+                        <span>${t('P0 (menor CO₂)')}</span>
+                        <span>${t('P50 (mediana)')}</span>
+                        <span>${t('P100 (mayor CO₂)')}</span>
                     </div>
                 </div>
             </div>
@@ -5389,7 +5342,7 @@
     function resolveCurrentModelName(modelId) {
         const id = modelId || LAST_PARAMS?.model_id || '';
         if (id === '__custom__') {
-            return LAST_PARAMS?.custom_model?.model_name || 'Modelo personalizado';
+            return LAST_PARAMS?.custom_model?.model_name || t('Modelo personalizado');
         }
         return (OPTIONS.models || []).find(m => m.model_id === id)?.model_name || '';
     }
@@ -5406,12 +5359,12 @@
 
     // Choropleth fill colors (higher opacity for visibility on dark basemap)
     const ciChoroplethRanges = [
-        { max: 100,   fill: 'rgba(74, 222, 128, 0.55)',  label: '< 100 (Muy limpio)' },
-        { max: 200,   fill: 'rgba(134, 239, 172, 0.45)', label: '100–200 (Limpio)' },
-        { max: 300,   fill: 'rgba(251, 191, 36, 0.45)',  label: '200–300 (Medio)' },
-        { max: 400,   fill: 'rgba(249, 115, 22, 0.50)',  label: '300–400 (Alto)' },
-        { max: 600,   fill: 'rgba(239, 68, 68, 0.50)',   label: '400–600 (Muy alto)' },
-        { max: 99999, fill: 'rgba(185, 28, 28, 0.55)',   label: '> 600 (Crítico)' },
+        { max: 100,   fill: 'rgba(74, 222, 128, 0.55)',  label: t('< 100 (Muy limpio)') },
+        { max: 200,   fill: 'rgba(134, 239, 172, 0.45)', label: t('100–200 (Limpio)') },
+        { max: 300,   fill: 'rgba(251, 191, 36, 0.45)',  label: t('200–300 (Medio)') },
+        { max: 400,   fill: 'rgba(249, 115, 22, 0.50)',  label: t('300–400 (Alto)') },
+        { max: 600,   fill: 'rgba(239, 68, 68, 0.50)',   label: t('400–600 (Muy alto)') },
+        { max: 99999, fill: 'rgba(185, 28, 28, 0.55)',   label: t('> 600 (Crítico)') },
     ];
 
     function ciChoroplethFill(ci) {
@@ -5450,9 +5403,9 @@
 
     function renewableBadge(pct) {
         if (pct == null) return '';
-        if (pct >= 80) return `<span class="popup-badge popup-badge-green">${pct.toFixed(0)}% renovable</span>`;
-        if (pct >= 50) return `<span class="popup-badge popup-badge-amber">${pct.toFixed(0)}% renovable</span>`;
-        return `<span class="popup-badge popup-badge-red">${pct.toFixed(0)}% renovable</span>`;
+        if (pct >= 80) return `<span class="popup-badge popup-badge-green">${t('{p}% renovable', { p: pct.toFixed(0) })}</span>`;
+        if (pct >= 50) return `<span class="popup-badge popup-badge-amber">${t('{p}% renovable', { p: pct.toFixed(0) })}</span>`;
+        return `<span class="popup-badge popup-badge-red">${t('{p}% renovable', { p: pct.toFixed(0) })}</span>`;
     }
 
     function detectGreenwash(dc) {
@@ -5505,15 +5458,15 @@
         const legendDiv = document.createElement('div');
         legendDiv.className = 'map-legend';
         legendDiv.innerHTML = `
-            <h4>Intensidad Carbono (gCO₂/kWh)</h4>
+            <h4>${t('Intensidad Carbono (gCO₂/kWh)')}</h4>
             ${ciChoroplethRanges.map(r => `<div class="map-legend-item"><div class="map-legend-rect" style="background:${r.fill}"></div> ${r.label}</div>`).join('')}
             <hr class="map-legend-divider">
-            <h4>Proveedores</h4>
+            <h4>${t('Proveedores')}</h4>
             <div class="map-legend-item"><div class="map-legend-dot" style="background:#a78bfa"></div> Deep Green</div>
             <div class="map-legend-item"><div class="map-legend-dot" style="background:#f97316"></div> AWS</div>
             <div class="map-legend-item"><div class="map-legend-dot" style="background:#4ade80"></div> GCP</div>
             <div class="map-legend-item"><div class="map-legend-dot" style="background:#38bdf8"></div> Azure</div>
-            <p class="map-legend-note">Color del país = CI de la red eléctrica<br>Color del icono = proveedor</p>
+            <p class="map-legend-note">${t('Color del país = CI de la red eléctrica<br>Color del icono = proveedor')}</p>
         `;
         document.getElementById("map").appendChild(legendDiv);
 
@@ -5533,7 +5486,7 @@
             zones.forEach(z => {
                 if (z.carbon_intensity == null) return;
                 const iso = z.code.includes('-') ? z.code.split('-')[0] : z.code;
-                if (!countryCI[iso]) countryCI[iso] = { sum: 0, count: 0, name: z.country_name || iso };
+                if (!countryCI[iso]) countryCI[iso] = { sum: 0, count: 0, name: z.country_name ? t(z.country_name) : iso };
                 countryCI[iso].sum += z.carbon_intensity;
                 countryCI[iso].count++;
             });
@@ -5597,8 +5550,8 @@
                         const iso2 = iso3ToIso2[String(numericId).padStart(3, '0')] || '';
                         const cData = countryCI[iso2];
                         const name = cData?.name || feature.properties?.name || iso2;
-                        const ciText = cData ? `${cData.avg} gCO₂/kWh` : 'Sin datos';
-                        const zonesText = cData && cData.count > 1 ? ` (${cData.count} zonas)` : '';
+                        const ciText = cData ? `${cData.avg} gCO₂/kWh` : t('Sin datos');
+                        const zonesText = cData && cData.count > 1 ? t(' ({n} zonas)', { n: cData.count }) : '';
                         layer.bindTooltip(`<strong>${name}</strong><br>${ciText}${zonesText}`, {
                             sticky: true,
                             className: 'choropleth-tooltip',
@@ -5654,7 +5607,7 @@
                 // Popup content
                 const renewPct = dc.renewable_pct ?? dc.provider_renewable_pct;
                 const gwBadge = isGreenwash
-                    ? `<div style="margin-top:6px"><span class="popup-badge popup-badge-amber popup-badge-pulse"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> Posible greenwashing</span></div>`
+                    ? `<div style="margin-top:6px"><span class="popup-badge popup-badge-amber popup-badge-pulse"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> ${t('Posible greenwashing')}</span></div>`
                     : '';
 
                 const co2Estimate = ci != null && LAST_RESULT
@@ -5671,25 +5624,25 @@
                     </div>
                     <div class="popup-body">
                         <div class="popup-row">
-                            <span class="popup-row-label">Intensidad carbono</span>
-                            <span class="popup-row-value" style="color:${ciColorSolid(ci)}">${ci != null ? ci.toFixed(0) + ' gCO₂/kWh' : 'N/D'}</span>
+                            <span class="popup-row-label">${t('Intensidad carbono')}</span>
+                            <span class="popup-row-value" style="color:${ciColorSolid(ci)}">${ci != null ? ci.toFixed(0) + ' gCO₂/kWh' : t('N/D')}</span>
                         </div>
                         <div class="popup-row">
                             <span class="popup-row-label">PUE</span>
-                            <span class="popup-row-value">${dc.pue ? dc.pue.toFixed(2) : 'N/D'}</span>
+                            <span class="popup-row-value">${dc.pue ? dc.pue.toFixed(2) : t('N/D')}</span>
                         </div>
                         <div class="popup-row">
-                            <span class="popup-row-label">Renovables declaradas</span>
+                            <span class="popup-row-label">${t('Renovables declaradas')}</span>
                             <span>${renewableBadge(renewPct)}</span>
                         </div>
                         ${gwBadge}
                         <hr class="popup-divider">
                         <div class="popup-co2">
                             ${co2Estimate
-                                ? `<div class="popup-co2-label">Estimación CO₂/query en este DC:</div>
+                                ? `<div class="popup-co2-label">${t('Estimación CO₂/query en este DC:')}</div>
                                    <div class="popup-co2-value">${co2Estimate} gCO₂</div>
-                                   <div class="popup-co2-sub">${resolveCurrentModelName()} | ${LAST_PARAMS?.request_type || 'Petición'}</div>`
-                                : `<div class="popup-co2-label" style="color:#64748b;font-style:italic;">Realiza un cálculo primero para ver la estimación de CO₂/query</div>`
+                                   <div class="popup-co2-sub">${resolveCurrentModelName()} | ${LAST_PARAMS?.request_type || t('Petición')}</div>`
+                                : `<div class="popup-co2-label" style="color:#64748b;font-style:italic;">${t('Realiza un cálculo primero para ver la estimación de CO₂/query')}</div>`
                             }
                         </div>
                     </div>
@@ -5714,7 +5667,7 @@
     function updateMapPopups() {
         if (!map || mapMarkers.length === 0) return;
         const modelName = resolveCurrentModelName();
-        const reqType = LAST_PARAMS?.request_type || 'Petición';
+        const reqType = LAST_PARAMS?.request_type || t('Petición');
         mapMarkers.forEach((marker, i) => {
             const dc = mapDCData[i];
             if (!dc) return;
@@ -5726,7 +5679,7 @@
             const provColor = getProviderColor(dc.provider);
             const isGreenwash = detectGreenwash(dc);
             const gwBadge = isGreenwash
-                ? `<div style="margin-top:6px"><span class="popup-badge popup-badge-amber popup-badge-pulse"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> Posible greenwashing</span></div>`
+                ? `<div style="margin-top:6px"><span class="popup-badge popup-badge-amber popup-badge-pulse"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> ${t('Posible greenwashing')}</span></div>`
                 : '';
             const popupHtml = `
                 <div class="popup-header">
@@ -5738,25 +5691,25 @@
                 </div>
                 <div class="popup-body">
                     <div class="popup-row">
-                        <span class="popup-row-label">Intensidad carbono</span>
-                        <span class="popup-row-value" style="color:${ciColorSolid(ci)}">${ci != null ? ci.toFixed(0) + ' gCO\u2082/kWh' : 'N/D'}</span>
+                        <span class="popup-row-label">${t('Intensidad carbono')}</span>
+                        <span class="popup-row-value" style="color:${ciColorSolid(ci)}">${ci != null ? ci.toFixed(0) + ' gCO\u2082/kWh' : t('N/D')}</span>
                     </div>
                     <div class="popup-row">
                         <span class="popup-row-label">PUE</span>
-                        <span class="popup-row-value">${dc.pue ? dc.pue.toFixed(2) : 'N/D'}</span>
+                        <span class="popup-row-value">${dc.pue ? dc.pue.toFixed(2) : t('N/D')}</span>
                     </div>
                     <div class="popup-row">
-                        <span class="popup-row-label">Renovables declaradas</span>
+                        <span class="popup-row-label">${t('Renovables declaradas')}</span>
                         <span>${renewableBadge(renewPct)}</span>
                     </div>
                     ${gwBadge}
                     <hr class="popup-divider">
                     <div class="popup-co2">
                         ${co2Estimate
-                            ? `<div class="popup-co2-label">Estimación CO\u2082/query en este DC:</div>
+                            ? `<div class="popup-co2-label">${t('Estimación CO₂/query en este DC:')}</div>
                                <div class="popup-co2-value">${co2Estimate} gCO\u2082</div>
                                <div class="popup-co2-sub">${modelName} | ${reqType}</div>`
-                            : `<div class="popup-co2-label" style="color:#64748b;font-style:italic;">Realiza un cálculo primero para ver la estimación de CO\u2082/query</div>`
+                            : `<div class="popup-co2-label" style="color:#64748b;font-style:italic;">${t('Realiza un cálculo primero para ver la estimación de CO₂/query')}</div>`
                         }
                     </div>
                 </div>
@@ -5778,36 +5731,36 @@
 
         panels.innerHTML = `
             <div class="map-panel">
-                <h3><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg> Resumen del dataset</h3>
+                <h3><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg> ${t('Resumen del dataset')}</h3>
                 <div class="map-stat">
-                    <span class="map-stat-label">Total Data Centers</span>
+                    <span class="map-stat-label">${t('Total Data Centers')}</span>
                     <span class="map-stat-value">${totalDCs}</span>
                 </div>
                 <div class="map-stat">
-                    <span class="map-stat-label">Proveedores</span>
+                    <span class="map-stat-label">${t('Proveedores')}</span>
                     <span>${provBadges}</span>
                 </div>
                 <div class="map-stat">
-                    <span class="map-stat-label">PUE medio</span>
+                    <span class="map-stat-label">${t('PUE medio')}</span>
                     <span class="map-stat-value">${avgPUE.toFixed(2)}</span>
                 </div>
                 <div class="pue-bar"><div class="pue-bar-fill" style="width:${puePct}%;background:var(--primary)"></div></div>
                 <div class="map-stat">
-                    <span class="map-stat-label"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#4ade80" stroke-width="2"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/></svg> Mejor PUE</span>
+                    <span class="map-stat-label"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#4ade80" stroke-width="2"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/></svg> ${t('Mejor PUE')}</span>
                     <span class="map-stat-value" style="color:#4ade80">${bestPUE.toFixed(2)} <span style="font-size:10px;color:#5a7a64">${bestName}</span></span>
                 </div>
                 <div class="map-stat">
-                    <span class="map-stat-label"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg> Peor PUE</span>
+                    <span class="map-stat-label"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg> ${t('Peor PUE')}</span>
                     <span class="map-stat-value" style="color:#ef4444">${worstPUE.toFixed(2)} <span style="font-size:10px;color:#5a7a64">${worstName}</span></span>
                 </div>
             </div>
             <div class="map-panel">
-                <h3><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="m9 12 2 2 4-4"/></svg> Recomendaciones</h3>
-                <div class="map-rec"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="m9 12 2 2 4-4"/></svg> Elige data centers en países con baja intensidad de carbono (&lt;100 gCO₂/kWh)</div>
-                <div class="map-rec"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="m9 12 2 2 4-4"/></svg> Prioriza proveedores con PUE bajo — valores cercanos a 1.0 son ideales</div>
-                <div class="map-rec"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="m9 12 2 2 4-4"/></svg> Desconfía de claims de renovables si el CI del país es alto (greenwashing)</div>
-                <div class="map-rec"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="m9 12 2 2 4-4"/></svg> GCP en Nórdicos ofrece la mejor combinación de PUE bajo + grid verde</div>
-                <div class="map-rec"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="m9 12 2 2 4-4"/></svg> Usa modelos más pequeños y eficientes para consultas simples</div>
+                <h3><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="m9 12 2 2 4-4"/></svg> ${t('Recomendaciones')}</h3>
+                <div class="map-rec"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="m9 12 2 2 4-4"/></svg> ${t('Elige data centers en países con baja intensidad de carbono (&lt;100 gCO₂/kWh)')}</div>
+                <div class="map-rec"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="m9 12 2 2 4-4"/></svg> ${t('Prioriza proveedores con PUE bajo — valores cercanos a 1.0 son ideales')}</div>
+                <div class="map-rec"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="m9 12 2 2 4-4"/></svg> ${t('Desconfía de claims de renovables si el CI del país es alto (greenwashing)')}</div>
+                <div class="map-rec"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="m9 12 2 2 4-4"/></svg> ${t('GCP en Nórdicos ofrece la mejor combinación de PUE bajo + grid verde')}</div>
+                <div class="map-rec"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="m9 12 2 2 4-4"/></svg> ${t('Usa modelos más pequeños y eficientes para consultas simples')}</div>
             </div>
         `;
     }
@@ -5827,7 +5780,7 @@
         if (Math.abs(n) < 0.001) return n.toExponential(2);
         if (Math.abs(n) < 1) return n.toFixed(4);
         if (Math.abs(n) < 100) return n.toFixed(2);
-        return n.toLocaleString("es-ES", { maximumFractionDigits: 2 });
+        return n.toLocaleString(LOCALE, { maximumFractionDigits: 2 });
     }
 
     function showError(msg) {

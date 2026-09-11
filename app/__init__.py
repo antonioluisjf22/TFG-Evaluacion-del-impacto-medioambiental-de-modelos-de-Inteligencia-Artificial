@@ -41,6 +41,11 @@ def create_app():
     app.json = _SafeJSONProvider(app)
     app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "tfg-carbon-calculator-dev")
 
+    # Idioma de la interfaz (ES/EN) — ver app/i18n.py
+    from app.i18n import init_i18n
+
+    init_i18n(app)
+
     # Registrar blueprints
     from app.routes.main import main_bp
     from app.routes.api import api_bp

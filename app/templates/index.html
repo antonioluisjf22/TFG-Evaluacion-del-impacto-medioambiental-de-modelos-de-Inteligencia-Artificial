@@ -13,49 +13,49 @@
             <div class="stepper-progress" id="form-stepper">
                 <div class="stepper-step" data-step="1" data-field="model_id">
                     <div class="stepper-num">1</div>
-                    <span class="stepper-label">Modelo</span>
+                    <span class="stepper-label">{{ _('Modelo') }}</span>
                 </div>
                 <div class="stepper-line"></div>
                 <div class="stepper-step" data-step="2" data-field="request_type">
                     <div class="stepper-num">2</div>
-                    <span class="stepper-label">Petición</span>
+                    <span class="stepper-label">{{ _('Petición') }}</span>
                 </div>
                 <div class="stepper-line"></div>
                 <div class="stepper-step" data-step="3" data-field="data_center_id">
                     <div class="stepper-num">3</div>
-                    <span class="stepper-label">Data Center</span>
+                    <span class="stepper-label">{{ _('Data Center') }}</span>
                 </div>
                 <div class="stepper-line"></div>
                 <div class="stepper-step" data-step="4" data-field="device_id">
                     <div class="stepper-num">4</div>
-                    <span class="stepper-label">Dispositivo</span>
+                    <span class="stepper-label">{{ _('Dispositivo') }}</span>
                 </div>
                 <div class="stepper-line"></div>
                 <div class="stepper-step" data-step="5" data-field="inference_processor">
                     <div class="stepper-num">5</div>
-                    <span class="stepper-label">Procesador</span>
+                    <span class="stepper-label">{{ _('Procesador') }}</span>
                 </div>
                 <div class="stepper-line"></div>
                 <div class="stepper-step" data-step="6" data-field="network_id">
                     <div class="stepper-num">6</div>
-                    <span class="stepper-label">Red</span>
+                    <span class="stepper-label">{{ _('Red') }}</span>
                 </div>
                 <div class="stepper-line"></div>
                 <div class="stepper-step" data-step="7" data-field="user_country">
                     <div class="stepper-num">7</div>
-                    <span class="stepper-label">País</span>
+                    <span class="stepper-label">{{ _('País') }}</span>
                 </div>
                 <div class="stepper-line"></div>
                 <div class="stepper-step" data-step="8" data-field="utilization">
                     <div class="stepper-num">8</div>
-                    <span class="stepper-label">Utilización</span>
+                    <span class="stepper-label">{{ _('Utilización') }}</span>
                 </div>
             </div>
 
             <!-- Cargar ejemplo button -->
-            <button type="button" class="btn-load-example" id="btn-load-example" title="Carga datos de ejemplo en el formulario">
+            <button type="button" class="btn-load-example" id="btn-load-example" title="{{ _('Carga datos de ejemplo en el formulario') }}">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                Cargar ejemplo
+                {{ _('Cargar ejemplo') }}
             </button>
 
             <!-- Header -->
@@ -63,14 +63,14 @@
                 <div class="form-header-left">
                     <div class="form-header-icon"><i data-lucide="microscope"></i></div>
                     <div>
-                        <div class="form-header-title">Parámetros de entrada</div>
-                        <div class="form-header-sub">Configura cada parámetro para obtener el cálculo de emisiones</div>
+                        <div class="form-header-title">{{ _('Parámetros de entrada') }}</div>
+                        <div class="form-header-sub">{{ _('Configura cada parámetro para obtener el cálculo de emisiones') }}</div>
                     </div>
                 </div>
                 <div class="form-header-chips">
-                    <span class="chip chip-green" data-tip="15 modelos de IA con datos de consumo verificados">15 modelos</span>
-                    <span class="chip chip-blue" data-tip="71 data centers reales de AWS, GCP, Azure y Deep Green">71 data centers</span>
-                    <span class="chip chip-teal" data-tip="20 dispositivos: smartphones, portátiles, tablets y PCs">20 dispositivos</span>
+                    <span class="chip chip-green" data-tip="{{ _('15 modelos de IA con datos de consumo verificados') }}">{{ _('15 modelos') }}</span>
+                    <span class="chip chip-blue" data-tip="{{ _('71 data centers reales de AWS, GCP, Azure y Deep Green') }}">{{ _('71 data centers') }}</span>
+                    <span class="chip chip-teal" data-tip="{{ _('20 dispositivos: smartphones, portátiles, tablets y PCs') }}">{{ _('20 dispositivos') }}</span>
                 </div>
             </div>
 
@@ -79,89 +79,89 @@
                 <div class="form-section-header">
                     <div class="form-section-icon"><i data-lucide="monitor"></i></div>
                     <div>
-                        <div class="form-section-title">Infraestructura del servidor</div>
-                        <div class="form-section-desc">Dónde y cómo se ejecuta el modelo de IA</div>
+                        <div class="form-section-title">{{ _('Infraestructura del servidor') }}</div>
+                        <div class="form-section-desc">{{ _('Dónde y cómo se ejecuta el modelo de IA') }}</div>
                     </div>
                 </div>
                 <div class="form-grid-3">
                     <div class="input-group">
                         <label for="model_id">
-                            <span class="field-icon"><i data-lucide="cpu"></i></span> 1. Modelo de IA
+                            <span class="field-icon"><i data-lucide="cpu"></i></span> {{ _('1. Modelo de IA') }}
                         </label>
-                        <p class="field-desc">El modelo que procesa tu consulta. Modelos más grandes consumen más energía pero suelen dar mejores respuestas.</p>
+                        <p class="field-desc">{{ _('El modelo que procesa tu consulta. Modelos más grandes consumen más energía pero suelen dar mejores respuestas.') }}</p>
                         <select id="model_id" name="model_id" required>
-                            <option value="">— Selecciona un modelo —</option>
+                            <option value="">{{ _('— Selecciona un modelo —') }}</option>
                         </select>
                         <button type="button" class="btn-custom-toggle" data-target="custom-model-panel">
-                            <i data-lucide="edit-3"></i> Introducir valores personalizados
+                            <i data-lucide="edit-3"></i> {{ _('Introducir valores personalizados') }}
                         </button>
                         <div id="custom-model-panel" class="custom-input-panel" style="display:none;">
                             <div class="custom-panel-header">
-                                <span class="custom-mode-badge">Modo personalizado</span>
-                                <button type="button" class="btn-custom-cancel" data-target="custom-model-panel">✕ Cancelar</button>
+                                <span class="custom-mode-badge">{{ _('Modo personalizado') }}</span>
+                                <button type="button" class="btn-custom-cancel" data-target="custom-model-panel">{{ _('✕ Cancelar') }}</button>
                             </div>
-                            <p class="custom-panel-hint">Solo el nombre es obligatorio. El resto se estima automáticamente si se deja vacío.</p>
+                            <p class="custom-panel-hint">{{ _('Solo el nombre es obligatorio. El resto se estima automáticamente si se deja vacío.') }}</p>
                             <div class="form-row">
-                                <label>Nombre del modelo</label>
-                                <input type="text" id="custom_model_name" placeholder="Ej: Mi Modelo LLM" />
-                            </div>
-                            <div class="form-row">
-                                <label>Nº parámetros (B)</label>
-                                <input type="number" id="custom_model_num_parameters" placeholder="Ej: 70 (= 70B)" step="any" min="0" />
+                                <label>{{ _('Nombre del modelo') }}</label>
+                                <input type="text" id="custom_model_name" placeholder="{{ _('Ej: Mi Modelo LLM') }}" />
                             </div>
                             <div class="form-row">
-                                <label>Energía por 1k tokens (Wh)</label>
-                                <input type="number" id="custom_model_energy_wh_per_1k_tokens" placeholder="Ej: 0.012" step="any" min="0" />
+                                <label>{{ _('Nº parámetros (B)') }}</label>
+                                <input type="number" id="custom_model_num_parameters" placeholder="{{ _('Ej: 70 (= 70B)') }}" step="any" min="0" />
                             </div>
                             <div class="form-row">
-                                <label>Latencia por token (ms)</label>
-                                <input type="number" id="custom_model_latency_ms_per_token" placeholder="Ej: 20" step="any" min="0" />
+                                <label>{{ _('Energía por 1k tokens (Wh)') }}</label>
+                                <input type="number" id="custom_model_energy_wh_per_1k_tokens" placeholder="{{ _('Ej: 0.012') }}" step="any" min="0" />
+                            </div>
+                            <div class="form-row">
+                                <label>{{ _('Latencia por token (ms)') }}</label>
+                                <input type="number" id="custom_model_latency_ms_per_token" placeholder="{{ _('Ej: 20') }}" step="any" min="0" />
                             </div>
                         </div>
                         <div id="model-info" class="device-info" style="display:none;"></div>
                     </div>
                     <div class="input-group">
                         <label for="request_type">
-                            <span class="field-icon"><i data-lucide="message-square"></i></span> 2. Tipo de petición
+                            <span class="field-icon"><i data-lucide="message-square"></i></span> {{ _('2. Tipo de petición') }}
                         </label>
-                        <p class="field-desc">Qué le pides a la IA. Tareas largas (resumir, generar código) procesan más tokens y consumen más energía.</p>
+                        <p class="field-desc">{{ _('Qué le pides a la IA. Tareas largas (resumir, generar código) procesan más tokens y consumen más energía.') }}</p>
                         <select id="request_type" name="request_type">
-                            <option value="">— Selecciona tipo —</option>
+                            <option value="">{{ _('— Selecciona tipo —') }}</option>
                         </select>
                         <div id="tokens-info" class="device-info" style="display:none;"></div>
                     </div>
                     <div class="input-group">
                         <label for="data_center_id">
-                            <span class="field-icon"><i data-lucide="server"></i></span> 3. Data Center
+                            <span class="field-icon"><i data-lucide="server"></i></span> {{ _('3. Data Center') }}
                         </label>
-                        <p class="field-desc"><strong>Puede estar en un país distinto al tuyo.</strong> Su localización determina la huella de la electricidad del servidor. PUE mide la eficiencia (1.0 = perfecto).</p>
+                        <p class="field-desc">{{ _('<strong>Puede estar en un país distinto al tuyo.</strong> Su localización determina la huella de la electricidad del servidor. PUE mide la eficiencia (1.0 = perfecto).') }}</p>
                         <select id="data_center_id" name="data_center_id" required>
-                            <option value="">— Selecciona data center —</option>
+                            <option value="">{{ _('— Selecciona data center —') }}</option>
                         </select>
                         <button type="button" class="btn-custom-toggle" data-target="custom-dc-panel">
-                            <i data-lucide="edit-3"></i> Introducir valores personalizados
+                            <i data-lucide="edit-3"></i> {{ _('Introducir valores personalizados') }}
                         </button>
                         <div id="custom-dc-panel" class="custom-input-panel" style="display:none;">
                             <div class="custom-panel-header">
-                                <span class="custom-mode-badge">Modo personalizado</span>
-                                <button type="button" class="btn-custom-cancel" data-target="custom-dc-panel">✕ Cancelar</button>
+                                <span class="custom-mode-badge">{{ _('Modo personalizado') }}</span>
+                                <button type="button" class="btn-custom-cancel" data-target="custom-dc-panel">{{ _('✕ Cancelar') }}</button>
                             </div>
-                            <p class="custom-panel-hint">Solo el nombre es obligatorio. País: ES y PUE: 1.58 por defecto si se deja vacío.</p>
+                            <p class="custom-panel-hint">{{ _('Solo el nombre es obligatorio. País: ES y PUE: 1.58 por defecto si se deja vacío.') }}</p>
                             <div class="form-row">
-                                <label>Nombre / Región</label>
-                                <input type="text" id="custom_dc_region" placeholder="Ej: Mi DC Madrid" />
+                                <label>{{ _('Nombre / Región') }}</label>
+                                <input type="text" id="custom_dc_region" placeholder="{{ _('Ej: Mi DC Madrid') }}" />
                             </div>
                             <div class="form-row">
-                                <label>País (ISO alpha-2)</label>
-                                <input type="text" id="custom_dc_country_code" placeholder="Ej: ES" maxlength="5" />
+                                <label>{{ _('País (ISO alpha-2)') }}</label>
+                                <input type="text" id="custom_dc_country_code" placeholder="{{ _('Ej: ES') }}" maxlength="5" />
                             </div>
                             <div class="form-row">
                                 <label>PUE</label>
-                                <input type="number" id="custom_dc_pue" placeholder="Ej: 1.15" step="0.01" min="1.0" value="1.15" />
+                                <input type="number" id="custom_dc_pue" placeholder="{{ _('Ej: 1.15') }}" step="0.01" min="1.0" value="1.15" />
                             </div>
                             <div class="form-row">
-                                <label>% Renovable del proveedor</label>
-                                <input type="number" id="custom_dc_provider_renewable_pct" placeholder="Ej: 80" step="any" min="0" max="100" />
+                                <label>{{ _('% Renovable del proveedor') }}</label>
+                                <input type="number" id="custom_dc_provider_renewable_pct" placeholder="{{ _('Ej: 80') }}" step="any" min="0" max="100" />
                             </div>
                         </div>
                         <div id="dc-info" class="device-info" style="display:none;"></div>
@@ -174,80 +174,80 @@
                 <div class="form-section-header">
                     <div class="form-section-icon"><i data-lucide="smartphone"></i></div>
                     <div>
-                        <div class="form-section-title">Tu dispositivo y conectividad</div>
-                        <div class="form-section-desc">El equipo desde el que realizas la consulta y tu conexión a internet</div>
+                        <div class="form-section-title">{{ _('Tu dispositivo y conectividad') }}</div>
+                        <div class="form-section-desc">{{ _('El equipo desde el que realizas la consulta y tu conexión a internet') }}</div>
                     </div>
                 </div>
                 <div class="form-grid-4">
                     <div class="input-group">
                         <label for="device_id">
-                            <span class="field-icon"><i data-lucide="laptop"></i></span> 4. Dispositivo cliente
+                            <span class="field-icon"><i data-lucide="laptop"></i></span> {{ _('4. Dispositivo cliente') }}
                         </label>
-                        <p class="field-desc">Tu móvil, portátil, etc. Consume energía mientras espera la respuesta del servidor.</p>
+                        <p class="field-desc">{{ _('Tu móvil, portátil, etc. Consume energía mientras espera la respuesta del servidor.') }}</p>
                         <select id="device_id" name="device_id" required>
-                            <option value="">— Selecciona dispositivo —</option>
+                            <option value="">{{ _('— Selecciona dispositivo —') }}</option>
                         </select>
                         <button type="button" class="btn-custom-toggle" data-target="custom-device-panel">
-                            <i data-lucide="edit-3"></i> Introducir valores personalizados
+                            <i data-lucide="edit-3"></i> {{ _('Introducir valores personalizados') }}
                         </button>
                         <div id="custom-device-panel" class="custom-input-panel" style="display:none;">
                             <div class="custom-panel-header">
-                                <span class="custom-mode-badge">Modo personalizado</span>
-                                <button type="button" class="btn-custom-cancel" data-target="custom-device-panel">✕ Cancelar</button>
+                                <span class="custom-mode-badge">{{ _('Modo personalizado') }}</span>
+                                <button type="button" class="btn-custom-cancel" data-target="custom-device-panel">{{ _('✕ Cancelar') }}</button>
                             </div>
-                            <p class="custom-panel-hint">Solo el nombre es obligatorio. Los consumos se estiman con valores típicos de portátil si se dejan vacíos.</p>
+                            <p class="custom-panel-hint">{{ _('Solo el nombre es obligatorio. Los consumos se estiman con valores típicos de portátil si se dejan vacíos.') }}</p>
                             <div class="form-row">
-                                <label>Nombre del dispositivo</label>
-                                <input type="text" id="custom_device_name" placeholder="Ej: Mi portátil gaming" />
+                                <label>{{ _('Nombre del dispositivo') }}</label>
+                                <input type="text" id="custom_device_name" placeholder="{{ _('Ej: Mi portátil gaming') }}" />
                             </div>
                             <div class="form-row">
-                                <label>Procesador de inferencia principal</label>
+                                <label>{{ _('Procesador de inferencia principal') }}</label>
                                 <select id="custom_device_primary_inference_target">
-                                    <option value="">— Selecciona procesador —</option>
+                                    <option value="">{{ _('— Selecciona procesador —') }}</option>
                                     <option value="cpu">CPU</option>
                                     <option value="gpu">GPU</option>
                                     <option value="npu">NPU</option>
                                 </select>
                             </div>
                             <div class="form-row">
-                                <label>Consumo idle del sistema (W)</label>
-                                <input type="number" id="custom_device_system_idle_watts" placeholder="Ej: 5" step="any" min="0" />
+                                <label>{{ _('Consumo idle del sistema (W)') }}</label>
+                                <input type="number" id="custom_device_system_idle_watts" placeholder="{{ _('Ej: 5') }}" step="any" min="0" />
                             </div>
                             <div class="form-row">
                                 <label>CPU TDP (W)</label>
-                                <input type="number" id="custom_device_cpu_tdp_watts" placeholder="Ej: 45" step="any" min="0" />
+                                <input type="number" id="custom_device_cpu_tdp_watts" placeholder="{{ _('Ej: 45') }}" step="any" min="0" />
                             </div>
                             <div class="form-row">
-                                <label>CPU inferencia (W)</label>
-                                <input type="number" id="custom_device_inference_cpu_watts" placeholder="Ej: 35" step="any" min="0" />
+                                <label>{{ _('CPU inferencia (W)') }}</label>
+                                <input type="number" id="custom_device_inference_cpu_watts" placeholder="{{ _('Ej: 35') }}" step="any" min="0" />
                             </div>
                             <div class="form-row">
-                                <label>GPU TDP (W) <small>(0 si no tiene)</small></label>
-                                <input type="number" id="custom_device_gpu_tdp_watts" placeholder="Ej: 150" step="any" min="0" value="0" />
+                                <label>GPU TDP (W) <small>{{ _('(0 si no tiene)') }}</small></label>
+                                <input type="number" id="custom_device_gpu_tdp_watts" placeholder="{{ _('Ej: 150') }}" step="any" min="0" value="0" />
                             </div>
                             <div class="form-row">
-                                <label>GPU inferencia (W)</label>
-                                <input type="number" id="custom_device_inference_gpu_watts" placeholder="Ej: 100" step="any" min="0" value="0" />
+                                <label>{{ _('GPU inferencia (W)') }}</label>
+                                <input type="number" id="custom_device_inference_gpu_watts" placeholder="{{ _('Ej: 100') }}" step="any" min="0" value="0" />
                             </div>
                             <div class="form-row">
-                                <label>NPU TDP (W) <small>(0 si no tiene)</small></label>
-                                <input type="number" id="custom_device_npu_tdp_watts" placeholder="Ej: 15" step="any" min="0" value="0" />
+                                <label>NPU TDP (W) <small>{{ _('(0 si no tiene)') }}</small></label>
+                                <input type="number" id="custom_device_npu_tdp_watts" placeholder="{{ _('Ej: 15') }}" step="any" min="0" value="0" />
                             </div>
                             <div class="form-row">
-                                <label>NPU inferencia (W)</label>
-                                <input type="number" id="custom_device_inference_npu_watts" placeholder="Ej: 10" step="any" min="0" value="0" />
+                                <label>{{ _('NPU inferencia (W)') }}</label>
+                                <input type="number" id="custom_device_inference_npu_watts" placeholder="{{ _('Ej: 10') }}" step="any" min="0" value="0" />
                             </div>
                         </div>
                         <div id="device-info" class="device-info" style="display:none;"></div>
                     </div>
                     <div class="input-group">
                         <label for="inference_processor">
-                            <span class="field-icon"><i data-lucide="zap"></i></span> 5. Procesador <span class="tooltip" data-tooltip="auto = usa el chip óptimo del dispositivo">?</span>
+                            <span class="field-icon"><i data-lucide="zap"></i></span> {{ _('5. Procesador') }} <span class="tooltip" data-tooltip="{{ _('auto = usa el chip óptimo del dispositivo') }}">?</span>
                         </label>
-                        <p class="field-desc">Qué chip procesa la espera. La NPU es el más eficiente, si tu dispositivo la tiene.</p>
+                        <p class="field-desc">{{ _('Qué chip procesa la espera. La NPU es el más eficiente, si tu dispositivo la tiene.') }}</p>
                         <select id="inference_processor" name="inference_processor">
-                            <option value="">— Selecciona procesador —</option>
-                            <option value="auto">Auto (detectar óptimo)</option>
+                            <option value="">{{ _('— Selecciona procesador —') }}</option>
+                            <option value="auto">{{ _('Auto (detectar óptimo)') }}</option>
                             <option value="cpu">CPU</option>
                             <option value="gpu">GPU</option>
                             <option value="npu">NPU</option>
@@ -257,20 +257,20 @@
                     </div>
                     <div class="input-group">
                         <label for="network_id">
-                            <span class="field-icon"><i data-lucide="wifi"></i></span> 6. Tipo de red
+                            <span class="field-icon"><i data-lucide="wifi"></i></span> {{ _('6. Tipo de red') }}
                         </label>
-                        <p class="field-desc">Cómo te conectas a internet. La fibra óptica es la opción más eficiente energéticamente.</p>
+                        <p class="field-desc">{{ _('Cómo te conectas a internet. La fibra óptica es la opción más eficiente energéticamente.') }}</p>
                         <select id="network_id" name="network_id" required>
-                            <option value="">— Selecciona red —</option>
+                            <option value="">{{ _('— Selecciona red —') }}</option>
                         </select>
                     </div>
                     <div class="input-group">
                         <label for="user_country">
-                            <span class="field-icon"><i data-lucide="globe"></i></span> 7. País del usuario
+                            <span class="field-icon"><i data-lucide="globe"></i></span> {{ _('7. País del usuario') }}
                         </label>
-                        <p class="field-desc">Tu ubicación física. Determina la intensidad de carbono de la electricidad que alimenta <strong>tu dispositivo</strong>.</p>
+                        <p class="field-desc">{{ _('Tu ubicación física. Determina la intensidad de carbono de la electricidad que alimenta <strong>tu dispositivo</strong>.') }}</p>
                         <select id="user_country" name="user_country">
-                            <option value="">— Selecciona país —</option>
+                            <option value="">{{ _('— Selecciona país —') }}</option>
                         </select>
                     </div>
                 </div>
@@ -281,8 +281,8 @@
                 <div class="form-section-header">
                     <div class="form-section-icon"><i data-lucide="bar-chart-2"></i></div>
                     <div>
-                        <div class="form-section-title">8. Factor de utilización (U)</div>
-                        <div class="form-section-desc">Cuánto se exige tu dispositivo durante la espera — 70% es el valor típico</div>
+                        <div class="form-section-title">{{ _('8. Factor de utilización (U)') }}</div>
+                        <div class="form-section-desc">{{ _('Cuánto se exige tu dispositivo durante la espera — 70% es el valor típico') }}</div>
                     </div>
                 </div>
                 <div class="utilization-container">
@@ -294,7 +294,7 @@
                            min="0" max="100" value="0" step="5"
                            class="utilization-slider">
                     <div id="utilization-formula" class="device-info" style="color: var(--primary); font-weight: 600; font-size: 13px; margin-top: 16px;">
-                        U = 0% — Mover el slider para configurar
+                        {{ _('U = 0% — Mover el slider para configurar') }}
                     </div>
                 </div>
             </div>
@@ -305,7 +305,7 @@
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                         <circle cx="12" cy="12" r="10"/><polyline points="12 8 16 12 12 16"/><line x1="8" y1="12" x2="16" y2="12"/>
                     </svg>
-                    Calcular emisiones
+                    {{ _('Calcular emisiones') }}
                 </button>
             </div>
 
@@ -318,31 +318,31 @@
 <!-- ============================================================ -->
 <div id="tab-resultados" class="tab-content">
     <div id="results-placeholder" class="hero">
-        <h2>Sin resultados aún</h2>
-        <p>Configura los parámetros en la pestaña <strong>Formulario</strong> y pulsa <em>Calcular emisiones</em>.</p>
+        <h2>{{ _('Sin resultados aún') }}</h2>
+        <p>{{ _('Configura los parámetros en la pestaña <strong>Formulario</strong> y pulsa <em>Calcular emisiones</em>.') }}</p>
     </div>
     <div id="results-content" style="display: none;">
         <div id="estimated-fields-banner" class="estimated-banner" style="display:none;"></div>
         <div class="metrics-grid" id="results-metrics"></div>
 
         <div class="card">
-            <div class="card-title"><i data-lucide="bar-chart-2"></i> Desglose por componente</div>
+            <div class="card-title"><i data-lucide="bar-chart-2"></i> {{ _('Desglose por componente') }}</div>
             <div class="breakdown-grid" id="results-breakdown"></div>
         </div>
         <div class="card">
-            <div class="card-title"><i data-lucide="globe"></i> Equivalencias intuitivas</div>
+            <div class="card-title"><i data-lucide="globe"></i> {{ _('Equivalencias intuitivas') }}</div>
             <div id="results-equivalencies" class="breakdown-grid"></div>
         </div>
 
         <!-- Desglose de fórmulas -->
         <div class="card" id="formula-section">
-            <div class="card-title"><i data-lucide="sigma"></i> Desglose de fórmulas</div>
-            <p style="font-size:13px;color:var(--text-secondary);margin-bottom:20px;">Cálculo paso a paso de las emisiones de cada componente.</p>
+            <div class="card-title"><i data-lucide="sigma"></i> {{ _('Desglose de fórmulas') }}</div>
+            <p style="font-size:13px;color:var(--text-secondary);margin-bottom:20px;">{{ _('Cálculo paso a paso de las emisiones de cada componente.') }}</p>
             <div id="results-formula"></div>
         </div>
         <div class="card" id="whatif-section">
-            <div class="card-title"><i data-lucide="git-branch"></i> ¿Qué hubiera pasado si...?</div>
-            <p style="font-size:13px;color:var(--text-secondary);margin-bottom:16px;">Explora cómo cambiarían tus emisiones con diferentes decisiones. Selecciona alternativas y compara en tiempo real.</p>
+            <div class="card-title"><i data-lucide="git-branch"></i> {{ _('¿Qué hubiera pasado si...?') }}</div>
+            <p style="font-size:13px;color:var(--text-secondary);margin-bottom:16px;">{{ _('Explora cómo cambiarían tus emisiones con diferentes decisiones. Selecciona alternativas y compara en tiempo real.') }}</p>
             <div id="whatif-controls" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-bottom:20px;"></div>
             <div id="whatif-results"></div>
         </div>
@@ -354,17 +354,17 @@
 <!-- ============================================================ -->
 <div id="tab-dashboard" class="tab-content">
     <div id="dashboard-placeholder" class="hero">
-        <h2>Dashboard</h2>
-        <p>Se generará automáticamente tras calcular las emisiones.</p>
+        <h2>{{ _('Dashboard') }}</h2>
+        <p>{{ _('Se generará automáticamente tras calcular las emisiones.') }}</p>
     </div>
     <div id="dashboard-content" style="display: none;">
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
             <div class="chart-container">
-                <div class="card-title"><i data-lucide="pie-chart"></i> Distribución por componente</div>
+                <div class="card-title"><i data-lucide="pie-chart"></i> {{ _('Distribución por componente') }}</div>
                 <div class="chart-wrapper"><canvas id="pie-chart"></canvas></div>
             </div>
             <div class="chart-container">
-                <div class="card-title"><i data-lucide="bar-chart-2"></i> Energía por componente (Wh)</div>
+                <div class="card-title"><i data-lucide="bar-chart-2"></i> {{ _('Energía por componente (Wh)') }}</div>
                 <div class="chart-wrapper"><canvas id="bar-chart"></canvas></div>
             </div>
         </div>
@@ -378,8 +378,8 @@
 <!-- ============================================================ -->
 <div id="tab-comparador" class="tab-content">
     <div id="comparador-placeholder" class="hero">
-        <h2>Comparador de modelos</h2>
-        <p>Calcula emisiones primero para comparar todos los modelos con la misma configuración.</p>
+        <h2>{{ _('Comparador de modelos') }}</h2>
+        <p>{{ _('Calcula emisiones primero para comparar todos los modelos con la misma configuración.') }}</p>
     </div>
     <div id="comparador-content" style="display: none;">
 
@@ -390,8 +390,8 @@
         <div class="comp-methodology-note">
             <div class="comp-note-icon"><i data-lucide="info"></i></div>
             <div class="comp-note-body">
-                <strong>Nota metodológica: alcance del comparador</strong>
-                <p>Este comparador evalúa exclusivamente las emisiones de CO₂ asociadas a los <strong>modelos de IA durante el periodo de inferencia</strong>. El resto de parámetros (dispositivo del usuario, red de datos y data center) se mantienen fijos según la configuración del último cálculo, de modo que la única variable entre modelos es su consumo energético por cada 1.000 tokens procesados (<em>energy_wh_per_1k_tokens</em>). Esto permite una comparación directa, equitativa y bajo condiciones idénticas.</p>
+                <strong>{{ _('Nota metodológica: alcance del comparador') }}</strong>
+                <p>{{ _('Este comparador evalúa exclusivamente las emisiones de CO₂ asociadas a los <strong>modelos de IA durante el periodo de inferencia</strong>. El resto de parámetros (dispositivo del usuario, red de datos y data center) se mantienen fijos según la configuración del último cálculo, de modo que la única variable entre modelos es su consumo energético por cada 1.000 tokens procesados (<em>energy_wh_per_1k_tokens</em>). Esto permite una comparación directa, equitativa y bajo condiciones idénticas.') }}</p>
             </div>
         </div>
 
@@ -404,8 +404,8 @@
         <div class="pareto-main-grid">
             <!-- Enhanced Pareto Scatter Plot -->
             <div class="chart-container pareto-scatter-wrap">
-                <div class="card-title"><i data-lucide="crosshair"></i> Rendimiento vs Sostenibilidad — Frente de Pareto</div>
-                <p class="comp-chart-desc" id="pareto-scatter-desc">Eje X: velocidad de inferencia (tokens/s). Eje Y: huella de CO₂ por consulta (gCO₂). El modelo ideal se sitúa abajo-derecha (rápido y limpio). Los modelos ★ son <strong>Pareto-óptimos</strong>: ningún otro modelo los supera simultáneamente en todos los criterios seleccionados. La zona sombreada en verde representa el <strong>frente de Pareto eficiente</strong>. Arrastra sobre el gráfico para seleccionar múltiples modelos.</p>
+                <div class="card-title"><i data-lucide="crosshair"></i> {{ _('Rendimiento vs Sostenibilidad — Frente de Pareto') }}</div>
+                <p class="comp-chart-desc" id="pareto-scatter-desc">{{ _('Eje X: velocidad de inferencia (tokens/s). Eje Y: huella de CO₂ por consulta (gCO₂). El modelo ideal se sitúa abajo-derecha (rápido y limpio). Los modelos ★ son <strong>Pareto-óptimos</strong>: ningún otro modelo los supera simultáneamente en todos los criterios seleccionados. La zona sombreada en verde representa el <strong>frente de Pareto eficiente</strong>. Arrastra sobre el gráfico para seleccionar múltiples modelos.') }}</p>
                 <div class="chart-wrapper pareto-chart-wrapper" style="min-height:420px;position:relative">
                     <canvas id="scatter-chart"></canvas>
                     <div class="pareto-lasso-rect" id="lasso-rect"></div>
@@ -418,7 +418,7 @@
             <!-- Tabbed Analysis Panel -->
             <div class="pareto-side-panel" id="pareto-side-panel">
                 <div class="pareto-tabs-header">
-                    <button class="pareto-tab active" data-ptab="dominance">🏆 Dominancia</button>
+                    <button class="pareto-tab active" data-ptab="dominance">{{ _('🏆 Dominancia') }}</button>
                     <button class="pareto-tab" data-ptab="topsis">⚖️ TOPSIS</button>
                     <button class="pareto-tab" data-ptab="radar">📊 Radar</button>
                 </div>
@@ -433,8 +433,8 @@
 
         <!-- Dominance Matrix -->
         <div class="card pareto-matrix-card">
-            <div class="card-title"><i data-lucide="grid-3x3"></i> Matriz de dominancia cruzada</div>
-            <p class="comp-chart-desc">Celda <span class="dom-legend-g">verde</span> = la fila domina a la columna en todos los criterios. Celda <span class="dom-legend-r">roja</span> = es dominada. Celda <span class="dom-legend-y">gris</span> = trade-off (ninguno domina al otro). Pasa el ratón sobre una celda para resaltar ambos modelos en el scatter plot.</p>
+            <div class="card-title"><i data-lucide="grid-3x3"></i> {{ _('Matriz de dominancia cruzada') }}</div>
+            <p class="comp-chart-desc">{{ _('Celda <span class="dom-legend-g">verde</span> = la fila domina a la columna en todos los criterios. Celda <span class="dom-legend-r">roja</span> = es dominada. Celda <span class="dom-legend-y">gris</span> = trade-off (ninguno domina al otro). Pasa el ratón sobre una celda para resaltar ambos modelos en el scatter plot.') }}</p>
             <div class="table-responsive" id="dominance-matrix-wrap"></div>
         </div>
 
@@ -450,14 +450,14 @@
 
         <!-- 3. Detailed comparison table -->
         <div class="card">
-            <div class="card-title"><i data-lucide="list-ordered"></i> Comparativa detallada</div>
-            <p class="comp-chart-desc">Ordenados de menor a mayor emisión. La barra muestra el CO₂ relativo al modelo más contaminante. El ahorro es respecto al modelo seleccionado en el formulario.</p>
+            <div class="card-title"><i data-lucide="list-ordered"></i> {{ _('Comparativa detallada') }}</div>
+            <p class="comp-chart-desc">{{ _('Ordenados de menor a mayor emisión. La barra muestra el CO₂ relativo al modelo más contaminante. El ahorro es respecto al modelo seleccionado en el formulario.') }}</p>
             <div class="table-responsive" id="detailed-comparison-table"></div>
         </div>
 
         <!-- 4. Vertical bar chart — CO₂/query -->
         <div class="chart-container">
-            <div class="card-title"><i data-lucide="bar-chart-2"></i> Comparativa de emisiones CO₂/query</div>
+            <div class="card-title"><i data-lucide="bar-chart-2"></i> {{ _('Comparativa de emisiones CO₂/query') }}</div>
             <div class="chart-wrapper" style="min-height:400px"><canvas id="vertical-bar-chart"></canvas></div>
         </div>
 
@@ -474,17 +474,16 @@
     <div id="sim-launch-panel">
         <div class="card" style="text-align:center;padding:48px 32px 44px;">
             <div class="card-title" style="justify-content:center;margin-bottom:14px;">
-                <i data-lucide="activity"></i> ¿Cuánto CO₂ genera tu IA?
+                <i data-lucide="activity"></i> {{ _('¿Cuánto CO₂ genera tu IA?') }}
             </div>
             <p style="color:var(--text-secondary);font-size:14px;max-width:520px;margin:0 auto 36px;line-height:1.7;">
-                Introduce las consultas diarias que recibirá tu modelo.<br>
-                Verás al instante su huella de carbono anual y cómo se compara con límites reales.
+                {{ _('Introduce las consultas diarias que recibirá tu modelo.<br>Verás al instante su huella de carbono anual y cómo se compara con límites reales.') }}
             </p>
 
             <!-- Número grande dinámico -->
             <div class="sim-big-display">
-                <div class="sim-big-number" id="sim-big-number">1.000.000</div>
-                <div class="sim-big-unit">queries / día</div>
+                <div class="sim-big-number" id="sim-big-number">{{ _('1.000.000') }}</div>
+                <div class="sim-big-unit">{{ _('queries / día') }}</div>
             </div>
 
             <!-- Preset chips -->
@@ -501,7 +500,7 @@
 
             <!-- Botón simular -->
             <button class="button button-primary button-lg shimmer" id="btn-simulate">
-                <i data-lucide="play"></i> Simular impacto anual
+                <i data-lucide="play"></i> {{ _('Simular impacto anual') }}
             </button>
         </div>
     </div>
@@ -511,10 +510,10 @@
         <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
             <i data-lucide="settings-2" style="color:var(--primary);width:16px;height:16px;flex-shrink:0;"></i>
             <span style="font-family:'JetBrains Mono',monospace;color:var(--primary);font-size:15px;font-weight:700;" id="sim-compact-count">—</span>
-            <span style="color:var(--text-muted);font-size:11px;text-transform:uppercase;letter-spacing:.06em;">queries / día</span>
+            <span style="color:var(--text-muted);font-size:11px;text-transform:uppercase;letter-spacing:.06em;">{{ _('queries / día') }}</span>
             <div style="flex:1;"></div>
             <button class="button button-secondary" id="btn-ajustar-sim" style="padding:6px 14px;font-size:12px;">
-                <i data-lucide="sliders-horizontal"></i> Ajustar
+                <i data-lucide="sliders-horizontal"></i> {{ _('Ajustar') }}
             </button>
         </div>
     </div>
@@ -537,8 +536,8 @@
 <!-- ============================================================ -->
 <div id="tab-energy-label" class="tab-content">
     <div id="label-placeholder" class="hero">
-        <h2>Etiqueta energética</h2>
-        <p>Se generará automáticamente tras calcular las emisiones.</p>
+        <h2>{{ _('Etiqueta energética') }}</h2>
+        <p>{{ _('Se generará automáticamente tras calcular las emisiones.') }}</p>
     </div>
     <div id="label-content" style="display: none;">
         <div id="energy-label-widget"></div>
@@ -550,27 +549,27 @@
 <!-- ============================================================ -->
 <div id="tab-mapa" class="tab-content">
     <div class="section">
-        <div class="section-title"><i data-lucide="globe"></i> Mapa de data centers e intensidad de carbono</div>
+        <div class="section-title"><i data-lucide="globe"></i> {{ _('Mapa de data centers e intensidad de carbono') }}</div>
 
         <!-- Explanation panel -->
         <div class="map-explain">
-            <div class="map-explain-title"><i data-lucide="info"></i> Qué ves en este mapa</div>
+            <div class="map-explain-title"><i data-lucide="info"></i> {{ _('Qué ves en este mapa') }}</div>
             <div class="map-explain-grid">
                 <div class="map-explain-item">
                     <i data-lucide="globe" style="color:var(--primary)"></i>
-                    <span>Países coloreados (choropleth) según la <span class="hl-green">intensidad de carbono</span> real de su red eléctrica, con datos de Electricity Maps</span>
+                    <span>{{ _('Países coloreados (choropleth) según la <span class="hl-green">intensidad de carbono</span> real de su red eléctrica, con datos de Electricity Maps') }}</span>
                 </div>
                 <div class="map-explain-item">
                     <i data-lucide="map-pin" style="color:var(--accent-blue)"></i>
-                    <span>Marcadores de <span class="hl-blue">data centers</span> con color por proveedor (A=AWS, G=GCP, Z=Azure, D=Deep Green) y borde por CI</span>
+                    <span>{{ _('Marcadores de <span class="hl-blue">data centers</span> con color por proveedor (A=AWS, G=GCP, Z=Azure, D=Deep Green) y borde por CI') }}</span>
                 </div>
                 <div class="map-explain-item">
                     <i data-lucide="mouse-pointer" style="color:var(--text-secondary)"></i>
-                    <span>Haz clic en un marcador para ver detalles: CI, PUE, renovables y CO₂/query estimado</span>
+                    <span>{{ _('Haz clic en un marcador para ver detalles: CI, PUE, renovables y CO₂/query estimado') }}</span>
                 </div>
                 <div class="map-explain-item">
                     <i data-lucide="alert-triangle" style="color:var(--accent-amber)"></i>
-                    <span>DCs con <span class="hl-green">posible greenwashing</span> detectado muestran un pulso ámbar</span>
+                    <span>{{ _('DCs con <span class="hl-green">posible greenwashing</span> detectado muestran un pulso ámbar') }}</span>
                 </div>
             </div>
         </div>

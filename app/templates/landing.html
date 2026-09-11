@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="{{ lang }}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CarbonAI — Calculadora de Huella de Carbono para IA</title>
+    <title>{{ _("CarbonAI — Calculadora de Huella de Carbono para IA") }}</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@600;700;800&display=swap" rel="stylesheet">
     <!-- Anti-flash: apply saved theme before first paint -->
@@ -354,6 +354,35 @@
         }
         #theme-toggle svg { pointer-events: none; }
 
+        /* === Language switch (ES / EN) === */
+        #lang-switch {
+            position: fixed;
+            bottom: 110px;
+            right: 24px;
+            z-index: 100;
+            display: inline-flex;
+            border: 1px solid rgba(76,175,80,0.35);
+            border-radius: 100px;
+            background: rgba(6,13,10,0.72);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            overflow: hidden;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.35);
+            opacity: 0;
+            animation: fadeUp 0.8s ease 1.8s forwards;
+        }
+        #lang-switch a {
+            padding: 7px 11px;
+            font-size: 11px; font-weight: 700;
+            letter-spacing: 1px;
+            color: rgba(255,255,255,0.45);
+            text-decoration: none;
+            cursor: none;
+            transition: background 0.3s, color 0.3s;
+        }
+        #lang-switch a:hover { color: #4CAF50; background: rgba(76,175,80,0.14); }
+        #lang-switch a.active { background: #4CAF50; color: #060D0A; }
+
         /* === Light mode overrides === */
         body.light-mode,
         html.light-mode body {
@@ -407,6 +436,14 @@
             border-color: rgba(39,107,46,0.7);
         }
         body.light-mode #transition-overlay { background: #EFF8F1; }
+        body.light-mode #lang-switch {
+            background: rgba(234,245,235,0.88);
+            border-color: rgba(39,107,46,0.4);
+            box-shadow: 0 2px 12px rgba(0,0,0,0.12);
+        }
+        body.light-mode #lang-switch a { color: rgba(12,31,16,0.5); }
+        body.light-mode #lang-switch a:hover { color: #276B2E; background: rgba(39,107,46,0.12); }
+        body.light-mode #lang-switch a.active { background: #276B2E; color: #EFF8F1; }
     </style>
 </head>
 <body>
@@ -420,7 +457,7 @@
 
         <div class="brand-badge">
             <div class="brand-dot"></div>
-            <span class="brand-text">Realizado por Antonio Luis Jiménez de la Fuente</span>
+            <span class="brand-text">{{ _('Realizado por Antonio Luis Jiménez de la Fuente') }}</span>
         </div>
 
         <h1 class="hero-title">
@@ -428,29 +465,29 @@
         </h1>
 
         <p class="hero-subtitle">
-            Evaluación del impacto medioambiental de modelos de IA<br>
-            <em>Impacto visible, futuro sostenible.</em>
+            {{ _('Evaluación del impacto medioambiental de modelos de IA') }}<br>
+            <em>{{ _('Impacto visible, futuro sostenible.') }}</em>
         </p>
 
         <div class="stats-row">
             <div class="stat-item">
                 <div class="stat-value">15</div>
-                <div class="stat-label">Modelos de IA</div>
+                <div class="stat-label">{{ _('Modelos de IA') }}</div>
             </div>
             <div class="stat-sep"></div>
             <div class="stat-item">
                 <div class="stat-value">71</div>
-                <div class="stat-label">Data Centers</div>
+                <div class="stat-label">{{ _('Data Centers') }}</div>
             </div>
             <div class="stat-sep"></div>
             <div class="stat-item">
                 <div class="stat-value">125</div>
-                <div class="stat-label">Zonas CI</div>
+                <div class="stat-label">{{ _('Zonas CI') }}</div>
             </div>
             <div class="stat-sep"></div>
             <div class="stat-item">
                 <div class="stat-value">gCO₂</div>
-                <div class="stat-label">Precisión</div>
+                <div class="stat-label">{{ _('Precisión') }}</div>
             </div>
         </div>
 
@@ -464,9 +501,9 @@
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                     <circle cx="12" cy="12" r="10"/><polyline points="12 8 16 12 12 16"/><line x1="8" y1="12" x2="16" y2="12"/>
                 </svg>
-                Empezar a calcular
+                {{ _('Empezar a calcular') }}
             </button>
-            <p class="cta-hint">Haz clic en cualquier parte para continuar</p>
+            <p class="cta-hint">{{ _('Haz clic en cualquier parte para continuar') }}</p>
         </div>
     </div>
 
@@ -474,8 +511,14 @@
         <div class="marquee-track" id="marquee-track"></div>
     </div>
 
+    <!-- Language switch (ES / EN) -->
+    <nav id="lang-switch" aria-label="{{ _('Idioma') }}">
+        <a href="?lang=es" hreflang="es" title="Español" class="{{ 'active' if lang == 'es' else '' }}">ES</a>
+        <a href="?lang=en" hreflang="en" title="English" class="{{ 'active' if lang == 'en' else '' }}">EN</a>
+    </nav>
+
     <!-- Theme toggle button -->
-    <button id="theme-toggle" aria-label="Cambiar tema">
+    <button id="theme-toggle" aria-label="{{ _('Cambiar tema') }}">
         <!-- Icon injected by JS -->
     </button>
 
@@ -575,10 +618,10 @@
     // MARQUEE
     // ============================================================
     const items = [
-        "Huella de Carbono", "Modelos de IA", "Data Centers", "Intensidad de Carbono",
-        "Eficiencia Energética", "Energías Renovables", "CO₂ por Query", "GPT-4",
+        {{ _("Huella de Carbono")|tojson }}, {{ _("Modelos de IA")|tojson }}, {{ _("Data Centers")|tojson }}, {{ _("Intensidad de Carbono")|tojson }},
+        {{ _("Eficiencia Energética")|tojson }}, {{ _("Energías Renovables")|tojson }}, {{ _("CO₂ por Query")|tojson }}, "GPT-4",
         "Gemini Ultra", "Claude 3", "Llama 3", "Mistral Large", "PUE", "gCO₂/kWh",
-        "Etiqueta Energética", "Comparativa de Modelos", "Evaluación Medioambiental",
+        {{ _("Etiqueta Energética")|tojson }}, {{ _("Comparativa de Modelos")|tojson }}, {{ _("Evaluación Medioambiental")|tojson }},
     ];
     const track = document.getElementById("marquee-track");
     [...items, ...items, ...items, ...items].forEach(txt => {
@@ -598,6 +641,9 @@
     }
 
     document.getElementById("cta-btn").addEventListener("click", startTransition);
+
+    // Language links must not trigger the page transition
+    document.getElementById("lang-switch").addEventListener("click", e => e.stopPropagation());
 
     // Click anywhere on the content background also triggers it
     document.getElementById("landing-content").addEventListener("click", e => {
@@ -620,6 +666,7 @@
     // THEME TOGGLE
     // ============================================================
     const themeBtn = document.getElementById("theme-toggle");
+    const THEME_LABELS = { toDark: {{ _('Cambiar a modo nocturno')|tojson }}, toLight: {{ _('Cambiar a modo diurno')|tojson }} };
 
     const SUN_ICON = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
         <circle cx="12" cy="12" r="5"/>
@@ -643,14 +690,14 @@
             document.body.classList.add("light-mode");
             document.documentElement.classList.add('light-mode');
             themeBtn.innerHTML = MOON_ICON;
-            themeBtn.setAttribute('title', 'Cambiar a modo nocturno');
-            themeBtn.setAttribute('aria-label', 'Cambiar a modo nocturno');
+            themeBtn.setAttribute('title', THEME_LABELS.toDark);
+            themeBtn.setAttribute('aria-label', THEME_LABELS.toDark);
         } else {
             document.body.classList.remove('light-mode');
             document.documentElement.classList.remove('light-mode');
             themeBtn.innerHTML = SUN_ICON;
-            themeBtn.setAttribute("title", "Cambiar a modo diurno");
-            themeBtn.setAttribute("aria-label", "Cambiar a modo diurno");
+            themeBtn.setAttribute("title", THEME_LABELS.toLight);
+            themeBtn.setAttribute("aria-label", THEME_LABELS.toLight);
         }
         try { localStorage.setItem("carbonai-theme", mode); } catch (_) {}
     }
