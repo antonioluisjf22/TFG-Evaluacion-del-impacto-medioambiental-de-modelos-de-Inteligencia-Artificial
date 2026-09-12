@@ -51,6 +51,7 @@
 - **Etiquetado A+++ – F** — umbrales calculados sobre ~639 000 combinaciones posibles, análogo al etiquetado de electrodomésticos de la UE.
 - **Carbon intensity en tiempo real** — Electricity Maps API con sistema de 4 niveles de fallback; opera en modo offline sin clave API.
 - **Cobertura**: 15 modelos LLM · 71 datacenters (AWS, GCP, Azure, DeepGreen) · 20 dispositivos · 5 tecnologías de red · 128 zonas geográficas.
+- **Interfaz bilingüe (ES/EN)** — selector en la cabecera; también con `?lang=en` / `?lang=es` en la URL (se recuerda en cookie) o según el `Accept-Language` del navegador.
 
 ---
 
@@ -82,7 +83,8 @@ La intensidad de carbono ($CI$, gCO₂/kWh) se obtiene en tiempo real de Electri
 │   ├── services/
 │   │   ├── calculator_service.py    # Orquestador del motor de cálculo
 │   │   └── report_service.py        # Comparativas y generación de informes
-│   ├── static/                      # CSS + JS (Chart.js, Leaflet)
+│   ├── i18n.py                      # Idioma ES/EN de las plantillas (?lang=, cookie, Accept-Language)
+│   ├── static/                      # CSS + JS (Chart.js, Leaflet) · js/i18n.js = traducciones del frontend
 │   └── templates/                   # landing.html · index.html · base.html
 ├── scripts/
 │   ├── calculate_emissions.py       # Motor CarbonCalculator (8 CSVs)
@@ -158,6 +160,7 @@ docker compose up -d
 2. En la **Calculadora**: seleccionar modelo LLM, datacenter, dispositivo, tecnología de red e introducir número de tokens.
 3. Pulsar **Calcular**: se muestra el CO₂ total, el desglose por componente y la etiqueta A+++ – F.
 4. En el **Comparador**: añadir varias configuraciones para obtener el análisis de dominancia Pareto.
+5. **Idioma**: botón **ES / EN** en la cabecera, o `http://localhost:5000/calculator?lang=en`.
 
 ---
 
